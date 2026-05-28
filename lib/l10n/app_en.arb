@@ -1,0 +1,17 @@
+{
+  "@@locale": "en",
+  "appName": "ThaiShield",
+  "appTagline": "Your Travel Safety Companion",
+  "selectLanguage": "Select Your Language",
+  "selectLanguageSubtitle": "Choose your preferred language to continue",
+  "continueButton": "Continue",
+  "languageEnglish": "English",
+  "languageChinese": "Chinese",
+  "languageRussian": "Russian",
+  "languageKorean": "Korean",
+  "languageJapanese": "Japanese",
+  "homeTitle": "ThaiShield",
+  "mapTab": "Map",
+  "scannerTab": "Scanner",
+  "sosTab": "SOS"
+}

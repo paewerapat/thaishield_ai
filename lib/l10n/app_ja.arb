@@ -1,0 +1,17 @@
+{
+  "@@locale": "ja",
+  "appName": "タイシールド",
+  "appTagline": "あなたの旅行安全コンパニオン",
+  "selectLanguage": "言語を選択",
+  "selectLanguageSubtitle": "続けるには言語を選択してください",
+  "continueButton": "続ける",
+  "languageEnglish": "英語",
+  "languageChinese": "中国語",
+  "languageRussian": "ロシア語",
+  "languageKorean": "韓国語",
+  "languageJapanese": "日本語",
+  "homeTitle": "タイシールド",
+  "mapTab": "地図",
+  "scannerTab": "スキャナー",
+  "sosTab": "SOS"
+}

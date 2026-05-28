@@ -1,0 +1,17 @@
+{
+  "@@locale": "ru",
+  "appName": "ТайШилд",
+  "appTagline": "Ваш спутник безопасного путешествия",
+  "selectLanguage": "Выберите язык",
+  "selectLanguageSubtitle": "Выберите предпочитаемый язык для продолжения",
+  "continueButton": "Продолжить",
+  "languageEnglish": "Английский",
+  "languageChinese": "Китайский",
+  "languageRussian": "Русский",
+  "languageKorean": "Корейский",
+  "languageJapanese": "Японский",
+  "homeTitle": "ТайШилд",
+  "mapTab": "Карта",
+  "scannerTab": "Сканер",
+  "sosTab": "SOS"
+}

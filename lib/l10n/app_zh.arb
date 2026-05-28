@@ -1,0 +1,17 @@
+{
+  "@@locale": "zh",
+  "appName": "泰盾",
+  "appTagline": "您的旅行安全伴侣",
+  "selectLanguage": "选择您的语言",
+  "selectLanguageSubtitle": "选择您偏好的语言以继续",
+  "continueButton": "继续",
+  "languageEnglish": "英语",
+  "languageChinese": "中文",
+  "languageRussian": "俄语",
+  "languageKorean": "韩语",
+  "languageJapanese": "日语",
+  "homeTitle": "泰盾",
+  "mapTab": "地图",
+  "scannerTab": "扫描",
+  "sosTab": "求救"
+}
