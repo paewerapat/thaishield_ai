@@ -27,14 +27,14 @@ class HomeTab extends StatelessWidget {
   Widget _buildHeader(String lang) {
     return Row(
       children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A3A5C),
-            borderRadius: BorderRadius.circular(12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.asset(
+            'assets/images/logo.jpg',
+            width: 44,
+            height: 44,
+            fit: BoxFit.cover,
           ),
-          child: const Icon(Icons.shield_outlined, color: Color(0xFF4FC3F7), size: 26),
         ),
         const SizedBox(width: 12),
         const Column(

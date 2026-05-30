@@ -14,7 +14,7 @@ class MainBottomNav extends StatelessWidget {
     _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home', color: Color(0xFF4FC3F7)),
     _NavItem(icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Map', color: Color(0xFF66BB6A)),
     _NavItem(icon: Icons.document_scanner_outlined, activeIcon: Icons.document_scanner, label: 'Scan', color: Color(0xFF4FC3F7)),
-    _NavItem(icon: Icons.shield_outlined, activeIcon: Icons.shield, label: 'SOS', color: Color(0xFFEF5350)),
+    _NavItem(icon: Icons.sos_outlined, activeIcon: Icons.sos, label: 'SOS', color: Color(0xFFEF5350)),
   ];
 
   @override

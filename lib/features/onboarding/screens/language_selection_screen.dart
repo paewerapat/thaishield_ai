@@ -55,17 +55,13 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A3A5C),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Icon(
-            Icons.shield_outlined,
-            color: Color(0xFF4FC3F7),
-            size: 44,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Image.asset(
+            'assets/images/logo.jpg',
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
           ),
         ),
         const SizedBox(height: 20),
