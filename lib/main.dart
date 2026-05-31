@@ -28,10 +28,11 @@ class ThaiShieldApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: const [
+        Locale('th'),
         Locale('en'),
         Locale('zh'),
-        Locale('ru'),
         Locale('ko'),
+        Locale('ru'),
         Locale('ja'),
       ],
       localizationsDelegates: const [

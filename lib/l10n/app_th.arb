@@ -1,0 +1,17 @@
+{
+  "@@locale": "th",
+  "appName": "ThaiShield",
+  "appTagline": "เที่ยวไทย ปลอดภัย ฉลาดเลือก",
+  "selectLanguage": "เลือกภาษา",
+  "selectLanguageSubtitle": "กรุณาเลือกภาษาของคุณ",
+  "continueButton": "ต่อไป",
+  "languageEnglish": "อังกฤษ",
+  "languageChinese": "จีน",
+  "languageRussian": "รัสเซีย",
+  "languageKorean": "เกาหลี",
+  "languageJapanese": "ญี่ปุ่น",
+  "homeTitle": "ThaiShield",
+  "mapTab": "แผนที่",
+  "scannerTab": "สแกน",
+  "sosTab": "SOS"
+}

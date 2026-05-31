@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../map/screens/map_screen.dart';
 import '../../scanner/screens/scanner_screen.dart';
 import '../../sos/screens/sos_screen.dart';
+import '../../profile/screens/profile_screen.dart';
 import '../widgets/home_tab.dart';
 import '../widgets/main_bottom_nav.dart';
 
@@ -17,9 +18,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _screens = [
     HomeTab(),
-    MapScreen(),
     ScannerScreen(),
+    MapScreen(),
     SosScreen(),
+    ProfileScreen(),
   ];
 
   @override
