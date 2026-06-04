@@ -24,23 +24,22 @@ class DefaultFirebaseOptions {
   }
 
   // TODO: Replace with real values from `flutterfire configure`
+
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey:            'YOUR_ANDROID_API_KEY',
-    appId:             'YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId:         'YOUR_PROJECT_ID',
-    storageBucket:     'YOUR_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyDWw6C1hHSmuATc_zC6FP545J1gqK36UQE',
+    appId: '1:479467305669:android:9dfcd44c0da33b7d70ceac',
+    messagingSenderId: '479467305669',
+    projectId: 'thaishield-ai-790eb',
+    storageBucket: 'thaishield-ai-790eb.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey:            'YOUR_IOS_API_KEY',
-    appId:             'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId:         'YOUR_PROJECT_ID',
-    storageBucket:     'YOUR_PROJECT_ID.appspot.com',
-    iosBundleId:       'com.thaishield.thaishieldAi',
+    apiKey: 'AIzaSyAizR99SKJVuWN_a5xprISN6P093U5ui1Y',
+    appId: '1:479467305669:ios:c827becdb65c72ff70ceac',
+    messagingSenderId: '479467305669',
+    projectId: 'thaishield-ai-790eb',
+    storageBucket: 'thaishield-ai-790eb.firebasestorage.app',
+    iosBundleId: 'com.thaishield.thaishieldAi',
   );
-
   static const FirebaseOptions web = FirebaseOptions(
     apiKey:            'YOUR_WEB_API_KEY',
     appId:             'YOUR_WEB_APP_ID',

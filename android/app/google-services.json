@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "479467305669",
+    "project_id": "thaishield-ai-790eb",
+    "storage_bucket": "thaishield-ai-790eb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479467305669:android:9dfcd44c0da33b7d70ceac",
+        "android_client_info": {
+          "package_name": "com.thaishield.thaishield_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWw6C1hHSmuATc_zC6FP545J1gqK36UQE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
