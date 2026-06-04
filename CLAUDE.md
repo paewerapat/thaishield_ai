@@ -12,37 +12,114 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
 
 ## 2. Core Features Scope & Logic (Budget 45,000 THB)
 
-### Phase 1: Language Onboarding
-- Screen on first-launch to choose language: EN, ZH, RU, KO, JA.
-- Save global selection in Local App State using `shared_preferences`.
-- Automatically localize app labels based on this local state.
+### Phase 1: Language Onboarding ✅ COMPLETE
+- [x] First-launch screen to choose language: TH, EN, ZH, KO, RU, JA (6 languages incl. Thai per mockup).
+- [x] Save global selection in Local App State using `shared_preferences` via `LocaleProvider`.
+- [x] App labels localize automatically via ARB files + flutter_localizations.
+- [x] Bottom navigation: 5 tabs — Home, Scan, Map, SOS, Profile.
+- [x] Language can be changed anytime from Profile → Language tile (bottom sheet).
+- [x] Android release build configured (keystore signing + Play Store AAB upload).
+
+### Phase 1: Firebase Backend Setup ← IN PROGRESS
+- [ ] Install FlutterFire CLI and run `flutterfire configure` to generate `firebase_options.dart`.
+- [ ] Add `firebase_core` and `cloud_firestore` packages.
+- [ ] Initialize Firebase in `main.dart`.
+- [ ] Populate Firestore seed data via Firebase Console (price_standards, partner_locations, alert_zones).
+
+#### Firestore Schema
+
+**Collection: `price_standards`**
+```
+{
+  id:         string,          // e.g. "pad_thai"
+  name_en:    string,
+  name_th:    string,
+  name_zh:    string,
+  name_ko:    string,
+  name_ru:    string,
+  name_ja:    string,
+  min_price:  number,          // THB
+  max_price:  number,          // THB
+  category:   string,          // "food" | "transport" | "attraction"
+  updated_at: timestamp
+}
+```
+
+**Collection: `partner_locations`**
+```
+{
+  id:           string,
+  name:         string,
+  lat:          number,
+  lng:          number,
+  type:         string,        // "restaurant" | "hotel" | "transport"
+  rating:       number,        // 0.0 - 5.0
+  is_verified:  boolean,
+  price_tier:   string,        // "fair" | "caution" | "high"
+  image_url:    string
+}
+```
+
+**Collection: `alert_zones`**
+```
+{
+  id:             string,
+  name:           string,
+  center_lat:     number,
+  center_lng:     number,
+  radius_km:      number,
+  risk_level:     string,      // "safe" | "caution" | "danger"
+  description_en: string,
+  description_th: string
+}
+```
 
 ### Phase 2: Fair Price & Travel Alert Map
-- Integrated via `google_maps_flash` or official `google_maps_flutter` plugin.
-- **Backend Data:** Fetch Mockup Data from Cloud Firestore (approx. 10 verified partner nodes, 2-3 dynamic pricing zones).
-- **Out of Scope:** NO local Admin Panel / CMS for managing shops. All data is populated directly in the Firebase Console by the dev.
-- **Interaction:** Tapping pins displays a Custom Pop-up showing Partner Name, Average Rating, and a Verified Badge.
+- Integrated via official `google_maps_flutter` plugin.
+- **Backend Data:** Fetch from Cloud Firestore (`partner_locations`, `alert_zones`).
+- **Out of Scope:** NO local Admin Panel / CMS. All data populated directly in Firebase Console.
+- **Interaction:** Tapping pins shows Custom Pop-up with Partner Name, Rating, Verified Badge.
+- Color zones: green (safe) / amber (caution) / red (danger) overlays on map.
 
 ### Phase 3: AI Price Scanner
-- Activate native camera inside the app to capture text/numbers from menus or transit signs.
-- **Mockup Logic:** Process the scanned string numbers, calculate the variance percentage against the standard average price stored in Firestore.
-- **Visual Output:** Show a colored variance bar (e.g., "+15% from standard price").
-- **CRITICAL LEGAL BOUNDARY:** The output UI **MUST NEVER** display specific restaurant names, exact locations, or brands. Show only pure statistical variance to avoid defamation issues.
+- Activate native camera to capture text/numbers from menus or transit signs.
+- **Mockup Logic:** Match scanned text against `price_standards` in Firestore, calculate variance %.
+- **Visual Output:** Colored variance bar (e.g., "+15% from standard price").
+- **CRITICAL LEGAL BOUNDARY:** Output UI **MUST NEVER** display specific restaurant names, exact locations, or brands. Show only pure statistical variance to avoid defamation issues.
 
 ### Phase 4: AI Voice SOS (STT to TTS Mode)
-- Tap and hold/press to record English speech -> Convert to string via Native Speech-to-Text (STT).
-- Call external AI API (Gemini or OpenAI API) via a structured JSON payload.
-- **PROMPT COMPLIANCE:** The AI translation prompt must force the returned Thai string to be highly polite and **ALWAYS** end with polite particles ("ครับ" or "ค่ะ").
-- Convert the returned Thai string into audio out loud using Native Text-to-Speech (TTS).
+- Tap and hold to record English speech → Native STT → string.
+- Call Gemini or OpenAI API via structured JSON payload.
+- **PROMPT COMPLIANCE:** Returned Thai string MUST always end with polite particles ("ครับ" or "ค่ะ").
+- Convert returned Thai string to audio via Native TTS.
 
 ## 3. Strict Out of Scope (DO NOT CODE)
-- NO User Registration / Authentication / Login screens (Firebase Auth is completely omitted for this MVP).
+- NO User Registration / Authentication / Login screens (Firebase Auth completely omitted for MVP).
 - NO User Scan History logs or personal profile tracking databases.
 - NO Rating Forms or Community comment inputs.
 - NO Live Chat or Premium Support layout simulators.
 
-## 4. Useful Project Commands
-- Run app: `flutter run`
-- Fetch plugins: `flutter pub get`
-- Clean caches: `flutter clean`
-- Android build: `flutter build apk --split-per-abi` or `flutter build appbundle`
+## 4. Firebase Setup Instructions
+```bash
+# 1. Install FlutterFire CLI (run once)
+dart pub global activate flutterfire_cli
+
+# 2. Install Firebase CLI (run once)
+npm install -g firebase-tools
+
+# 3. Login to Firebase
+firebase login
+
+# 4. Configure project (generates lib/firebase_options.dart)
+flutterfire configure
+```
+After running `flutterfire configure`, select the Firebase project and enable Android + iOS platforms.
+
+## 5. Useful Project Commands
+- Run app:          `flutter run`
+- Fetch plugins:    `flutter pub get`
+- Clean caches:     `flutter clean`
+- Analyze code:     `flutter analyze lib/`
+- Android APK:      `flutter build apk --split-per-abi --release`
+- Android Bundle:   `flutter build appbundle --release`
+- iOS (CI only):    handled by Codemagic pipeline
