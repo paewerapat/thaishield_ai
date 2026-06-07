@@ -3,6 +3,9 @@
         android:label="thaishield_ai"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDWw6C1hHSmuATc_zC6FP545J1gqK36UQE"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
