@@ -8,17 +8,20 @@ class HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            _buildHeader(locale.languageCode.toUpperCase()),
-            const SizedBox(height: 32),
-            _buildFeatureCards(context),
-          ],
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 24),
+              _buildHeader(locale.languageCode.toUpperCase()),
+              const SizedBox(height: 32),
+              _buildFeatureCards(context),
+            ],
+          ),
         ),
       ),
     );
@@ -42,11 +45,15 @@ class HomeTab extends StatelessWidget {
           children: [
             Text(
               'ThaiShield',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Color(0xFF0D1B2A),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             Text(
               'Travel Safe · Stay Smart',
-              style: TextStyle(color: Color(0xFF607D8B), fontSize: 12),
+              style: TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
             ),
           ],
         ),
@@ -54,12 +61,16 @@ class HomeTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A3A5C),
+            color: const Color(0xFFE3F2FD),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             lang,
-            style: const TextStyle(color: Color(0xFF4FC3F7), fontSize: 12, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Color(0xFF1976D2),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -79,7 +90,7 @@ class HomeTab extends StatelessWidget {
         icon: Icons.map_outlined,
         title: 'Smart Map',
         subtitle: 'แผนที่พาร์ทเนอร์ & โซนเตือนภัย',
-        color: const Color(0xFF66BB6A),
+        color: const Color(0xFF2E7D32),
         phase: 'Phase 2',
       ),
       _FeatureCard(
@@ -92,10 +103,12 @@ class HomeTab extends StatelessWidget {
     ];
 
     return Column(
-      children: cards.map((card) => Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: _FeatureCardWidget(card: card),
-      )).toList(),
+      children: cards
+          .map((card) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _FeatureCardWidget(card: card),
+              ))
+          .toList(),
     );
   }
 }
@@ -124,9 +137,16 @@ class _FeatureCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF152230),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E3048)),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -134,7 +154,7 @@ class _FeatureCardWidget extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: card.color.withValues(alpha: 0.15),
+              color: card.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(card.icon, color: card.color, size: 26),
@@ -144,22 +164,39 @@ class _FeatureCardWidget extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(card.title,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(
+                  card.title,
+                  style: const TextStyle(
+                    color: Color(0xFF0D1B2A),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(card.subtitle,
-                    style: const TextStyle(color: Color(0xFF607D8B), fontSize: 12)),
+                Text(
+                  card.subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF90A4AE),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: card.color.withValues(alpha: 0.12),
+              color: card.color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(card.phase,
-                style: TextStyle(color: card.color, fontSize: 11, fontWeight: FontWeight.w500)),
+            child: Text(
+              card.phase,
+              style: TextStyle(
+                color: card.color,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),

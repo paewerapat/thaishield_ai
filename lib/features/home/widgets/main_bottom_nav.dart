@@ -10,32 +10,40 @@ class MainBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
+  static const _tabs = [
+    _TabConfig(Icons.home_outlined, Icons.home_rounded, 'Home', Color(0xFF4FC3F7)),
+    _TabConfig(Icons.document_scanner_outlined, Icons.document_scanner_rounded, 'Scan', Color(0xFF4FC3F7)),
+    _TabConfig(Icons.map_outlined, Icons.map_rounded, 'Map', Color(0xFF2E7D32)),
+    _TabConfig(Icons.sos_outlined, Icons.sos_rounded, 'SOS', Color(0xFFEF5350)),
+    _TabConfig(Icons.person_outline_rounded, Icons.person_rounded, 'Profile', Color(0xFF4FC3F7)),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF0D1B2A),
-        border: Border(top: BorderSide(color: Color(0xFF1E3048), width: 1)),
+        image: DecorationImage(
+          image: AssetImage('assets/images/menu-bg.png'),
+          fit: BoxFit.cover,
+        ),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 64,
+          height: 60,
           child: Row(
-            children: [
-              _buildTab(0, Icons.home_outlined, Icons.home, 'Home', const Color(0xFF4FC3F7)),
-              _buildScanTab(),
-              _buildTab(2, Icons.map_outlined, Icons.map, 'Map', const Color(0xFF66BB6A)),
-              _buildSosTab(),
-              _buildTab(4, Icons.person_outline, Icons.person, 'Profile', const Color(0xFF90CAF9)),
-            ],
+            children: List.generate(
+              _tabs.length,
+              (i) => _buildTab(i),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTab(int index, IconData icon, IconData activeIcon, String label, Color color) {
+  Widget _buildTab(int index) {
+    final tab = _tabs[index];
     final isActive = currentIndex == index;
     return Expanded(
       child: InkWell(
@@ -44,17 +52,17 @@ class MainBottomNav extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? color : const Color(0xFF455A64),
+              isActive ? tab.activeIcon : tab.icon,
+              color: isActive ? tab.color : const Color(0xFFBDBDBD),
               size: 24,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
-              label,
+              tab.label,
               style: TextStyle(
-                color: isActive ? color : const Color(0xFF455A64),
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                color: isActive ? tab.color : const Color(0xFFBDBDBD),
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.normal,
               ),
             ),
           ],
@@ -62,18 +70,12 @@ class MainBottomNav extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildScanTab() {
-    return _buildTab(
-      1,
-      Icons.document_scanner_outlined,
-      Icons.document_scanner,
-      'Scan',
-      const Color(0xFF4FC3F7),
-    );
-  }
-
-  Widget _buildSosTab() {
-    return _buildTab(3, Icons.sos_outlined, Icons.sos, 'SOS', const Color(0xFFEF5350));
-  }
+class _TabConfig {
+  const _TabConfig(this.icon, this.activeIcon, this.label, this.color);
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final Color color;
 }

@@ -11,9 +11,31 @@ Color _riskColor(String riskLevel) {
     case 'danger':
       return const Color(0xFFEF5350);
     case 'caution':
-      return const Color(0xFFFFCA28);
+      return const Color(0xFFFF9800);
     default:
-      return const Color(0xFF66BB6A);
+      return const Color(0xFF4CAF50);
+  }
+}
+
+IconData _riskIcon(String riskLevel) {
+  switch (riskLevel) {
+    case 'danger':
+      return Icons.warning_rounded;
+    case 'caution':
+      return Icons.error_outline_rounded;
+    default:
+      return Icons.check_circle_outline_rounded;
+  }
+}
+
+String _riskLabel(String riskLevel) {
+  switch (riskLevel) {
+    case 'danger':
+      return 'High Risk';
+    case 'caution':
+      return 'Caution';
+    default:
+      return 'Safe';
   }
 }
 
@@ -28,8 +50,11 @@ class _MapScreenState extends State<MapScreen> {
   final _markers = <Marker>{};
   final _circles = <Circle>{};
   final _partnersById = <String, PartnerLocation>{};
+  PartnerLocation? _selectedPartner;
+  AlertZone? _selectedZone;
   bool _loading = true;
   String? _error;
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -54,7 +79,10 @@ class _MapScreenState extends State<MapScreen> {
                   ? BitmapDescriptor.hueAzure
                   : BitmapDescriptor.hueOrange,
             ),
-            onTap: () => _showPartnerSheet(partner),
+            onTap: () => setState(() {
+              _selectedPartner = partner;
+              _selectedZone = null;
+            }),
           ),
         );
       }
@@ -67,17 +95,22 @@ class _MapScreenState extends State<MapScreen> {
             circleId: CircleId(zone.id),
             center: LatLng(zone.centerLat, zone.centerLng),
             radius: zone.radiusKm * 1000,
-            fillColor: color.withValues(alpha: 0.18),
+            fillColor: color.withValues(alpha: 0.2),
             strokeColor: color,
             strokeWidth: 2,
             consumeTapEvents: true,
-            onTap: () => _showZoneSheet(zone),
+            onTap: () => setState(() {
+              _selectedZone = zone;
+              _selectedPartner = null;
+            }),
           ),
         );
       }
 
       if (!mounted) return;
       setState(() {
+        _selectedPartner =
+            partners.where((p) => p.isVerified).firstOrNull ?? partners.firstOrNull;
         _markers
           ..clear()
           ..addAll(markers);
@@ -95,180 +128,475 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _showPartnerSheet(PartnerLocation partner) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF142233),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _PartnerSheet(partner: partner),
-    );
-  }
-
-  void _showZoneSheet(AlertZone zone) {
-    final locale = Localizations.localeOf(context).languageCode;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF142233),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _ZoneSheet(zone: zone, langCode: locale),
-    );
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1B2A),
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF4FC3F7)),
-              )
-            : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  )
-                : GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: _bangkok,
-                      zoom: 12,
-                    ),
-                    markers: _markers,
-                    circles: _circles,
-                    myLocationButtonEnabled: false,
-                  ),
+        child: Column(
+          children: [
+            _MapHeader(),
+            _LegendRow(),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF2E7D32),
+                      ),
+                    )
+                  : _error != null
+                      ? Center(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: Color(0xFF0D1B2A)),
+                          ),
+                        )
+                      : Stack(
+                          children: [
+                            GoogleMap(
+                              initialCameraPosition: const CameraPosition(
+                                target: _bangkok,
+                                zoom: 12,
+                              ),
+                              markers: _markers,
+                              circles: _circles,
+                              myLocationButtonEnabled: false,
+                              zoomControlsEnabled: false,
+                              onMapCreated: (c) => _mapController = c,
+                              onTap: (_) => setState(() => _selectedZone = null),
+                            ),
+                            if (_selectedZone != null)
+                              Positioned(
+                                top: 12,
+                                left: 16,
+                                right: 16,
+                                child: _ZonePopup(
+                                  zone: _selectedZone!,
+                                  langCode: Localizations.localeOf(context)
+                                      .languageCode,
+                                  onClose: () =>
+                                      setState(() => _selectedZone = null),
+                                ),
+                              ),
+                            Positioned(
+                              right: 12,
+                              bottom: 12,
+                              child: _FloatingButtons(
+                                onCenter: () => _mapController?.animateCamera(
+                                  CameraUpdate.newLatLng(_bangkok),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+            ),
+            if (!_loading && _error == null)
+              _PartnerBottomPanel(partner: _selectedPartner),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _PartnerSheet extends StatelessWidget {
-  const _PartnerSheet({required this.partner});
-
-  final PartnerLocation partner;
-
+class _MapHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  partner.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (partner.isVerified)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4FC3F7).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF4FC3F7)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.verified, color: Color(0xFF4FC3F7), size: 14),
-                      SizedBox(width: 4),
-                      Text(
-                        'Verified',
-                        style: TextStyle(color: Color(0xFF4FC3F7), fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+          const Icon(Icons.shield, color: Color(0xFF2E7D32), size: 22),
+          const SizedBox(width: 8),
+          const Text(
+            'Smart Map',
+            style: TextStyle(
+              color: Color(0xFF0D1B2A),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.star, color: Color(0xFFFFCA28), size: 18),
-              const SizedBox(width: 4),
-              Text(
-                partner.rating.toStringAsFixed(1),
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(width: 16),
-              Icon(_typeIcon(partner.type), color: Colors.white38, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                partner.type,
-                style: const TextStyle(color: Colors.white38, fontSize: 13),
-              ),
-            ],
+          const Spacer(),
+          Icon(Icons.tune_rounded, color: Colors.grey[600], size: 22),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Row(
+        children: [
+          _LegendChip(color: const Color(0xFF4CAF50), label: 'Safe Zone'),
+          const SizedBox(width: 12),
+          _LegendChip(color: const Color(0xFFFF9800), label: 'Caution'),
+          const SizedBox(width: 12),
+          _LegendChip(color: const Color(0xFFEF5350), label: 'Danger'),
+          const SizedBox(width: 12),
+          _LegendChip(
+            color: const Color(0xFF1565C0),
+            label: 'Partner',
+            isPin: true,
           ),
         ],
       ),
     );
   }
+}
 
-  IconData _typeIcon(String type) {
-    switch (type) {
-      case 'hotel':
-        return Icons.hotel;
-      case 'transport':
-        return Icons.directions_car;
-      default:
-        return Icons.restaurant;
-    }
+class _LegendChip extends StatelessWidget {
+  const _LegendChip({
+    required this.color,
+    required this.label,
+    this.isPin = false,
+  });
+  final Color color;
+  final String label;
+  final bool isPin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        isPin
+            ? Icon(Icons.location_on, color: color, size: 12)
+            : Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[700],
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }
 
-class _ZoneSheet extends StatelessWidget {
-  const _ZoneSheet({required this.zone, required this.langCode});
-
+class _ZonePopup extends StatelessWidget {
+  const _ZonePopup({
+    required this.zone,
+    required this.langCode,
+    required this.onClose,
+  });
   final AlertZone zone;
   final String langCode;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
     final color = _riskColor(zone.riskLevel);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+    final desc = zone.localizedDescription(langCode);
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(14),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              color: color,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(_riskIcon(zone.riskLevel), color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          zone.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          _riskLabel(zone.riskLevel),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: onClose,
+                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    desc,
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: onClose,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D1B2A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('ดูรายละเอียด', style: TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingButtons extends StatelessWidget {
+  const _FloatingButtons({required this.onCenter});
+  final VoidCallback onCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _FabButton(icon: Icons.my_location_rounded, onTap: onCenter),
+        const SizedBox(height: 8),
+        _FabButton(icon: Icons.layers_rounded, onTap: () {}),
+      ],
+    );
+  }
+}
+
+class _FabButton extends StatelessWidget {
+  const _FabButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 3,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: const Color(0xFF0D1B2A), size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _PartnerBottomPanel extends StatelessWidget {
+  const _PartnerBottomPanel({required this.partner});
+  final PartnerLocation? partner;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  zone.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+              const Text(
+                'Verified Partner',
+                style: TextStyle(
+                  color: Color(0xFF0D1B2A),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF2E7D32),
+                size: 22,
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          if (partner == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'แตะหมุดบนแผนที่เพื่อดูข้อมูลพาร์ทเนอร์',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            )
+          else
+            _PartnerCard(partner: partner!),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartnerCard extends StatelessWidget {
+  const _PartnerCard({required this.partner});
+  final PartnerLocation partner;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 80,
+            height: 72,
+            color: const Color(0xFFE8F5E9),
+            child: const Icon(
+              Icons.image_outlined,
+              color: Color(0xFF4CAF50),
+              size: 32,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                partner.name,
+                style: const TextStyle(
+                  color: Color(0xFF0D1B2A),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 16),
+                  const SizedBox(width: 3),
+                  Text(
+                    partner.rating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Color(0xFF0D1B2A),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                children: [
+                  _Tag(
+                    label: partner.priceTier.toUpperCase(),
+                    color: partner.priceTier == 'fair'
+                        ? const Color(0xFFFF9800)
+                        : const Color(0xFFEF5350),
+                  ),
+                  const _Tag(label: 'SAFE', color: Color(0xFF4CAF50)),
+                  if (partner.isVerified)
+                    const _Tag(
+                      label: 'VERIFIED',
+                      color: Color(0xFF2E7D32),
+                      icon: Icons.verified_rounded,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label, required this.color, this.icon});
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: color, size: 10),
+            const SizedBox(width: 2),
+          ],
           Text(
-            zone.localizedDescription(langCode),
-            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
