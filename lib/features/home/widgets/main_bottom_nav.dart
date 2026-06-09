@@ -30,6 +30,10 @@ class MainBottomNav extends StatelessWidget {
           image: AssetImage('assets/images/menu-bg.png'),
           fit: BoxFit.fill,
           alignment: Alignment.center,
+          colorFilter: ColorFilter.mode(
+            Color(0xCC0D1B2A),
+            BlendMode.srcOver,
+          ),
         ),
       ),
       child: SafeArea(
