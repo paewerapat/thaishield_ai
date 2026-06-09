@@ -1,0 +1,145 @@
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyDWw6C1hHSmuATc_zC6FP545J1gqK36UQE',
+  projectId: 'thaishield-ai-790eb',
+  storageBucket: 'thaishield-ai-790eb.firebasestorage.app',
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const partnerLocations = {
+  landmark_bangkok: {
+    name: 'The Landmark Bangkok',
+    lat: 13.7401, lng: 100.5601,
+    type: 'hotel', rating: 4.8,
+    is_verified: true, price_tier: 'fair',
+    image_url: 'https://example.com/landmark.jpg',
+  },
+  chatuchak_restaurant_01: {
+    name: 'Chatuchak Local Kitchen',
+    lat: 13.7999, lng: 100.5500,
+    type: 'restaurant', rating: 4.2,
+    is_verified: true, price_tier: 'fair',
+    image_url: 'https://example.com/chatuchak.jpg',
+  },
+  siam_tuk_tuk_stand: {
+    name: 'Siam Tuk Tuk Stand',
+    lat: 13.7466, lng: 100.5347,
+    type: 'transport', rating: 3.6,
+    is_verified: false, price_tier: 'caution',
+    image_url: 'https://example.com/tuktuk.jpg',
+  },
+  silom_restaurant_02: {
+    name: 'Silom Night Market Grill',
+    lat: 13.7244, lng: 100.5290,
+    type: 'restaurant', rating: 4.5,
+    is_verified: true, price_tier: 'fair',
+    image_url: 'https://example.com/silom.jpg',
+  },
+  sukhumvit_hotel_01: {
+    name: 'Sukhumvit Boutique Inn',
+    lat: 13.7300, lng: 100.5700,
+    type: 'hotel', rating: 4.1,
+    is_verified: true, price_tier: 'fair',
+    image_url: 'https://example.com/sukhumvit.jpg',
+  },
+};
+
+const alertZones = {
+  zone_silom_safe: {
+    name: 'Silom Business District',
+    center_lat: 13.7244, center_lng: 100.5278, radius_km: 1.0,
+    risk_level: 'safe',
+    description_en: 'Business and tourist-friendly area with verified partners.',
+    description_th: 'ย่านธุรกิจและท่องเที่ยว มีพาร์ทเนอร์ที่ผ่านการรับรอง',
+  },
+  zone_khaosan_caution: {
+    name: 'Khaosan Road Area',
+    center_lat: 13.7590, center_lng: 100.4972, radius_km: 0.5,
+    risk_level: 'caution',
+    description_en: 'Popular tourist area. Watch out for overpriced tuk-tuks and tours.',
+    description_th: 'พื้นที่ท่องเที่ยว ระวังตุ๊กตุ๊กและทัวร์ราคาแพง',
+  },
+  zone_patpong_caution: {
+    name: 'Patpong Night Bazaar',
+    center_lat: 13.7274, center_lng: 100.5300, radius_km: 0.4,
+    risk_level: 'caution',
+    description_en: 'Busy night market area. Be cautious of pickpockets and inflated prices.',
+    description_th: 'ตลาดนัดกลางคืน ระวังล้วงกระเป๋าและราคาสูงเกินจริง',
+  },
+  zone_danger_01: {
+    name: 'High Risk Zone',
+    center_lat: 13.7500, center_lng: 100.5200, radius_km: 0.3,
+    risk_level: 'danger',
+    description_en: 'High crime rate reported. Avoid this area at night.',
+    description_th: 'มีรายงานอาชญากรรมสูง ควรหลีกเลี่ยงในเวลากลางคืน',
+  },
+  zone_sukhumvit_safe: {
+    name: 'Sukhumvit Tourist Zone',
+    center_lat: 13.7300, center_lng: 100.5680, radius_km: 1.2,
+    risk_level: 'safe',
+    description_en: 'Well-lit tourist corridor with hotels and verified restaurants.',
+    description_th: 'แหล่งท่องเที่ยวมีแสงสว่าง มีโรงแรมและร้านอาหารที่ผ่านการรับรอง',
+  },
+};
+
+const priceStandards = {
+  pad_thai: {
+    name_en: 'Pad Thai', name_th: 'ผัดไทย', name_zh: '炒河粉',
+    name_ko: '팟타이', name_ru: 'Пад Тай', name_ja: 'パッタイ',
+    min_price: 80, max_price: 120, category: 'food',
+  },
+  tom_yum_goong: {
+    name_en: 'Tom Yum Goong', name_th: 'ต้มยำกุ้ง', name_zh: '冬阴功虾',
+    name_ko: '똠얌꿍', name_ru: 'Том Ям Кунг', name_ja: 'トムヤムクン',
+    min_price: 150, max_price: 250, category: 'food',
+  },
+  green_curry: {
+    name_en: 'Green Curry', name_th: 'แกงเขียวหวาน', name_zh: '绿咖喱',
+    name_ko: '그린 커리', name_ru: 'Зелёный карри', name_ja: 'グリーンカレー',
+    min_price: 100, max_price: 180, category: 'food',
+  },
+  tuk_tuk_short: {
+    name_en: 'Tuk Tuk (Short Trip)', name_th: 'ตุ๊กตุ๊ก (ระยะสั้น)', name_zh: '嘟嘟车 (短途)',
+    name_ko: '뚝뚝 (단거리)', name_ru: 'Тук-Тук (короткий)', name_ja: 'トゥクトゥク（近距離）',
+    min_price: 60, max_price: 100, category: 'transport',
+  },
+  taxi_meter: {
+    name_en: 'Taxi (Meter)', name_th: 'แท็กซี่ (มิเตอร์)', name_zh: '出租车 (计价器)',
+    name_ko: '택시 (미터)', name_ru: 'Такси (счётчик)', name_ja: 'タクシー（メーター）',
+    min_price: 35, max_price: 200, category: 'transport',
+  },
+  grand_palace: {
+    name_en: 'Grand Palace Entrance', name_th: 'พระบรมมหาราชวัง', name_zh: '大皇宫门票',
+    name_ko: '왕궁 입장료', name_ru: 'Большой дворец', name_ja: '王宮入場料',
+    min_price: 500, max_price: 500, category: 'attraction',
+  },
+};
+
+async function seed() {
+  const collections = [
+    { name: 'partner_locations', data: partnerLocations },
+    { name: 'alert_zones', data: alertZones },
+    { name: 'price_standards', data: priceStandards },
+  ];
+
+  for (const { name, data } of collections) {
+    const entries = Object.entries(data);
+    for (const [id, fields] of entries) {
+      await setDoc(doc(db, name, id), fields);
+      console.log(`  ✓ ${name}/${id}`);
+    }
+    console.log(`✅ ${name} — ${entries.length} documents\n`);
+  }
+
+  console.log('🎉 Seed completed!');
+  process.exit(0);
+}
+
+seed().catch((err) => {
+  console.error('❌ Seed failed:', err.message);
+  process.exit(1);
+});
