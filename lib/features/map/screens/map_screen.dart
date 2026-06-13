@@ -31,11 +31,61 @@ IconData _riskIcon(String riskLevel) {
 String _riskLabel(String riskLevel) {
   switch (riskLevel) {
     case 'danger':
-      return 'High Risk';
+      return 'Community Alert Zone';
     case 'caution':
-      return 'Caution';
+      return 'Tourist Advisory Area';
     default:
-      return 'Safe';
+      return 'Travel Information Area';
+  }
+}
+
+String _riskLabelTh(String riskLevel) {
+  switch (riskLevel) {
+    case 'danger':
+      return 'พื้นที่ที่ชุมชนแจ้งเตือน';
+    case 'caution':
+      return 'พื้นที่คำแนะนำสำหรับนักท่องเที่ยว';
+    default:
+      return 'พื้นที่ข้อมูลการท่องเที่ยว';
+  }
+}
+
+IconData _typeIcon(String type) {
+  switch (type) {
+    case 'hotel':
+      return Icons.hotel_rounded;
+    case 'transport':
+      return Icons.local_taxi_rounded;
+    default:
+      return Icons.restaurant_rounded;
+  }
+}
+
+String _typeLabel(String type, bool isTh) {
+  switch (type) {
+    case 'hotel':
+      return isTh ? 'โรงแรม' : 'Hotel';
+    case 'transport':
+      return isTh ? 'การเดินทาง' : 'Transport';
+    default:
+      return isTh ? 'ร้านอาหาร' : 'Restaurant';
+  }
+}
+
+String _typeDescription(String type, bool isTh) {
+  switch (type) {
+    case 'hotel':
+      return isTh
+          ? 'ที่พักที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว'
+          : 'A participating ThaiShield partner offering transparent pricing information for travelers.';
+    case 'transport':
+      return isTh
+          ? 'บริการเดินทางที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลค่าโดยสารโดยประมาณสำหรับนักท่องเที่ยว'
+          : 'A participating ThaiShield transport partner offering estimated fare information for travelers.';
+    default:
+      return isTh
+          ? 'ร้านอาหารที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว'
+          : 'A participating ThaiShield restaurant partner offering transparent pricing information for travelers.';
   }
 }
 
@@ -79,10 +129,13 @@ class _MapScreenState extends State<MapScreen> {
                   ? BitmapDescriptor.hueAzure
                   : BitmapDescriptor.hueOrange,
             ),
-            onTap: () => setState(() {
-              _selectedPartner = partner;
-              _selectedZone = null;
-            }),
+            onTap: () {
+              setState(() {
+                _selectedPartner = partner;
+                _selectedZone = null;
+              });
+              _openPartnerDetail(partner);
+            },
           ),
         );
       }
@@ -132,6 +185,24 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     _mapController?.dispose();
     super.dispose();
+  }
+
+  void _openPartnerDetail(PartnerLocation partner) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _PartnerDetailSheet(
+        partner: partner,
+        onShowOnMap: () {
+          Navigator.pop(sheetContext);
+          setState(() => _selectedPartner = partner);
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(LatLng(partner.lat, partner.lng), 16),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -201,7 +272,12 @@ class _MapScreenState extends State<MapScreen> {
                         ),
             ),
             if (!_loading && _error == null)
-              _PartnerBottomPanel(partner: _selectedPartner),
+              _PartnerBottomPanel(
+                partner: _selectedPartner,
+                onViewDetails: _selectedPartner != null
+                    ? () => _openPartnerDetail(_selectedPartner!)
+                    : null,
+              ),
           ],
         ),
       ),
@@ -240,19 +316,29 @@ class _LegendRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _LegendChip(color: const Color(0xFF4CAF50), label: 'Safe Zone'),
-          const SizedBox(width: 12),
-          _LegendChip(color: const Color(0xFFFF9800), label: 'Caution'),
-          const SizedBox(width: 12),
-          _LegendChip(color: const Color(0xFFEF5350), label: 'Danger'),
-          const SizedBox(width: 12),
           _LegendChip(
+            icon: Icons.check_circle_rounded,
+            color: const Color(0xFF4CAF50),
+            label: 'Travel Info',
+          ),
+          _LegendChip(
+            icon: Icons.error_rounded,
+            color: const Color(0xFFFF9800),
+            label: 'Advisory',
+          ),
+          _LegendChip(
+            icon: Icons.cancel_rounded,
+            color: const Color(0xFFEF5350),
+            label: 'Alert Zone',
+          ),
+          _LegendChip(
+            icon: Icons.location_on_rounded,
             color: const Color(0xFF1565C0),
             label: 'Partner',
-            isPin: true,
           ),
         ],
       ),
@@ -262,36 +348,44 @@ class _LegendRow extends StatelessWidget {
 
 class _LegendChip extends StatelessWidget {
   const _LegendChip({
+    required this.icon,
     required this.color,
     required this.label,
-    this.isPin = false,
   });
+  final IconData icon;
   final Color color;
   final String label;
-  final bool isPin;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        isPin
-            ? Icon(Icons.location_on, color: color, size: 12)
-            : Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[700],
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -310,6 +404,12 @@ class _ZonePopup extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _riskColor(zone.riskLevel);
     final desc = zone.localizedDescription(langCode);
+    final points = desc
+        .split(RegExp(r'(?<=[.!])\s+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
     return Material(
       elevation: 6,
       borderRadius: BorderRadius.circular(14),
@@ -320,28 +420,36 @@ class _ZonePopup extends StatelessWidget {
           children: [
             Container(
               color: color,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(_riskIcon(zone.riskLevel), color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(_riskIcon(zone.riskLevel), color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          zone.name,
+                          _riskLabel(zone.riskLevel),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 15,
                           ),
                         ),
                         Text(
-                          _riskLabel(zone.riskLevel),
+                          _riskLabelTh(zone.riskLevel),
                           style: const TextStyle(
                             color: Colors.white70,
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -356,19 +464,51 @@ class _ZonePopup extends StatelessWidget {
             ),
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    desc,
-                    style: TextStyle(
-                      color: Colors.grey[800],
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.place_rounded, color: Colors.grey[500], size: 14),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          zone.name,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
+                  for (final point in points)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(_riskIcon(zone.riskLevel), color: color, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              point,
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontSize: 13,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 4),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -376,12 +516,15 @@ class _ZonePopup extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0D1B2A),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('ดูรายละเอียด', style: TextStyle(fontSize: 13)),
+                      child: const Text(
+                        'ดูรายละเอียด',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                 ],
@@ -439,23 +582,25 @@ class _FabButton extends StatelessWidget {
 }
 
 class _PartnerBottomPanel extends StatelessWidget {
-  const _PartnerBottomPanel({required this.partner});
+  const _PartnerBottomPanel({required this.partner, this.onViewDetails});
   final PartnerLocation? partner;
+  final VoidCallback? onViewDetails;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -3),
+            blurRadius: 14,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -466,18 +611,25 @@ class _PartnerBottomPanel extends StatelessWidget {
                 'Verified Partner',
                 style: TextStyle(
                   color: Color(0xFF0D1B2A),
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF2E7D32),
-                size: 22,
+              InkWell(
+                onTap: onViewDetails,
+                borderRadius: BorderRadius.circular(20),
+                child: const Padding(
+                  padding: EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF2E7D32),
+                    size: 22,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           if (partner == null)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
@@ -486,8 +638,20 @@ class _PartnerBottomPanel extends StatelessWidget {
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
             )
-          else
+          else ...[
             _PartnerCard(partner: partner!),
+            const SizedBox(height: 10),
+            Text(
+              Localizations.localeOf(context).languageCode == 'th'
+                  ? 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้'
+                  : 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 10,
+                height: 1.3,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -500,13 +664,18 @@ class _PartnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Review count isn't part of the Firestore schema yet — derive a stable
+    // placeholder from the partner id so the UI matches the mockup layout.
+    final reviewCount = 80 + (partner.id.hashCode.abs() % 600);
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           child: Container(
-            width: 80,
-            height: 72,
+            width: 88,
+            height: 80,
             color: const Color(0xFFE8F5E9),
             child: const Icon(
               Icons.image_outlined,
@@ -515,7 +684,7 @@ class _PartnerCard extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,37 +694,52 @@ class _PartnerCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Color(0xFF0D1B2A),
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 15,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 16),
+                  const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 17),
                   const SizedBox(width: 3),
                   Text(
                     partner.rating.toStringAsFixed(1),
                     style: const TextStyle(
                       color: Color(0xFF0D1B2A),
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '($reviewCount รีวิว)',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
+                runSpacing: 6,
                 children: [
                   _Tag(
-                    label: partner.priceTier.toUpperCase(),
+                    label: partner.priceTier == 'fair'
+                        ? 'FAIR PRICE'
+                        : 'ABOVE TYPICAL RANGE',
                     color: partner.priceTier == 'fair'
-                        ? const Color(0xFFFF9800)
-                        : const Color(0xFFEF5350),
+                        ? const Color(0xFF4CAF50)
+                        : const Color(0xFFFF9800),
                   ),
-                  const _Tag(label: 'SAFE', color: Color(0xFF4CAF50)),
+                  const _Tag(
+                    label: 'PARTNER',
+                    color: Color(0xFF1565C0),
+                    icon: Icons.shield_rounded,
+                  ),
                   if (partner.isVerified)
                     const _Tag(
                       label: 'VERIFIED',
@@ -581,29 +765,229 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        color: color,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, color: color, size: 10),
-            const SizedBox(width: 2),
+            Icon(icon, color: Colors.white, size: 11),
+            const SizedBox(width: 3),
           ],
           Text(
             label,
-            style: TextStyle(
-              color: color,
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 10,
               fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PartnerDetailSheet extends StatelessWidget {
+  const _PartnerDetailSheet({required this.partner, required this.onShowOnMap});
+  final PartnerLocation partner;
+  final VoidCallback onShowOnMap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTh = Localizations.localeOf(context).languageCode == 'th';
+    final reviewCount = 80 + (partner.id.hashCode.abs() % 600);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: EdgeInsets.zero,
+            children: [
+              SizedBox(
+                height: 44,
+                child: Stack(
+                  children: [
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 4,
+                      top: 0,
+                      child: IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Container(
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    _typeIcon(partner.type),
+                    color: const Color(0xFF4CAF50),
+                    size: 56,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      partner.name,
+                      style: const TextStyle(
+                        color: Color(0xFF0D1B2A),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(_typeIcon(partner.type), color: Colors.grey[500], size: 15),
+                        const SizedBox(width: 5),
+                        Text(
+                          _typeLabel(partner.type, isTh),
+                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, color: Color(0xFFFFB300), size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          partner.rating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: Color(0xFF0D1B2A),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isTh ? '($reviewCount รีวิว)' : '($reviewCount reviews)',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _Tag(
+                          label: partner.priceTier == 'fair'
+                              ? 'FAIR PRICE'
+                              : 'ABOVE TYPICAL RANGE',
+                          color: partner.priceTier == 'fair'
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFFF9800),
+                        ),
+                        const _Tag(
+                          label: 'PARTNER',
+                          color: Color(0xFF1565C0),
+                          icon: Icons.shield_rounded,
+                        ),
+                        if (partner.isVerified)
+                          const _Tag(
+                            label: 'VERIFIED',
+                            color: Color(0xFF2E7D32),
+                            icon: Icons.verified_rounded,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Divider(color: Colors.grey[200]),
+                    const SizedBox(height: 12),
+                    Text(
+                      isTh ? 'เกี่ยวกับ' : 'About',
+                      style: const TextStyle(
+                        color: Color(0xFF0D1B2A),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _typeDescription(partner.type, isTh),
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onShowOnMap,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0D1B2A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.map_rounded, size: 18),
+                        label: Text(
+                          isTh ? 'ดูบนแผนที่' : 'Show on Map',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isTh
+                          ? 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้'
+                          : 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 10,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

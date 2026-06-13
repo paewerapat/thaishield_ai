@@ -72,17 +72,20 @@ Future<String> _seed(FirebaseFirestore db) async {
         'radius_km': 0.5,
         'risk_level': 'caution',
         'description_en':
-            'Popular tourist area. Watch out for overpriced tuk-tuks and tours.',
-        'description_th': 'พื้นที่ท่องเที่ยว ระวังตุ๊กตุ๊กและทัวร์ราคาแพง',
+            'Popular tourist area. Tuk-tuk and tour pricing here may vary significantly from typical rates — compare before booking.',
+        'description_th':
+            'พื้นที่ท่องเที่ยวที่ได้รับความนิยม ราคาตุ๊กตุ๊กและทัวร์ในบริเวณนี้อาจแตกต่างจากราคาทั่วไป ควรเปรียบเทียบราคาก่อนตัดสินใจ',
       },
       'zone_danger_01': {
-        'name': 'High Risk Zone',
+        'name': 'Community Alert Zone',
         'center_lat': 13.7500,
         'center_lng': 100.5200,
         'radius_km': 0.3,
         'risk_level': 'danger',
-        'description_en': 'High crime rate reported. Avoid this area at night.',
-        'description_th': 'มีรายงานอาชญากรรมสูง ควรหลีกเลี่ยงในเวลากลางคืน',
+        'description_en':
+            'Increased community reports in this area. Extra caution is recommended, especially at night.',
+        'description_th':
+            'มีรายงานจากชุมชนในพื้นที่นี้เพิ่มขึ้น แนะนำให้เพิ่มความระมัดระวังเป็นพิเศษ โดยเฉพาะช่วงเวลากลางคืน',
       },
     };
 

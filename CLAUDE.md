@@ -123,3 +123,67 @@ After running `flutterfire configure`, select the Firebase project and enable An
 - Android APK:      `flutter build apk --split-per-abi --release`
 - Android Bundle:   `flutter build appbundle --release`
 - iOS (CI only):    handled by Codemagic pipeline
+
+## 6. Legal Safe Wording Guide (MANDATORY — applies to ALL user-facing text)
+
+ThaiShield AI displays pricing and travel-safety information. To minimize legal risk
+(defamation, accusation, or damages claims against shops, individuals, or areas),
+**all UI copy, alerts, scan results, and map screens MUST use neutral, statistical,
+informational wording** — never accusatory or judgmental language.
+
+This applies to: widget text, ARB localization strings, Firestore seed data
+(`tools/seed_firestore.js`, `lib/tools/seed_data.dart`), push notifications, and any
+AI-generated (Gemini/OpenAI) responses shown to users.
+
+### Wording replacement table
+
+| Avoid (Never use) | Use instead |
+|---|---|
+| Scam | Travel Alert |
+| Scammer | Community Alert |
+| Tourist Scam | Tourist Advisory |
+| Fraud | Price Information |
+| Fraudulent Business | Community Reported Area |
+| Overcharge | Higher Than Average |
+| Rip-off Price | Above Typical Range |
+| Cheating Tourists | Pricing Variation |
+| Fake Price | Price Difference |
+| Dangerous Shop | Travel Advisory |
+| Unfair Shop | Community Feedback |
+| Bad Business | User Experience Report |
+| Unsafe Area | Travel Information Zone |
+| Blacklist Shop | Watchlist Area |
+| Tourist Trap | Tourist Caution Area |
+| Price Gouging | Significant Price Variation |
+| Exploitation | Unusual Pricing Pattern |
+| "This Shop Is Expensive" | "Price Appears Above Local Average" |
+| "This Shop Is Overcharging" | "Price Is Higher Than Typical Range" |
+| "Avoid This Shop" | "Compare Before Purchasing" |
+| "Do Not Buy Here" | "Consider Comparing Prices" |
+| "This Taxi Is Cheating" | "Fare Appears Higher Than Average" |
+| "This Merchant Is Dishonest" | "Pricing Information Available" |
+| Verified Fair Price | Certified Fair Price |
+| Guaranteed Fair Price | Participating Partner |
+| Featured Partner / Government Approved | Partner Business |
+| Safe Zone | Travel Information Area |
+| Dangerous Zone | Tourist Advisory Area |
+| Scam Area | Community Alert Zone |
+| Fraud Zone | Travel Advisory Zone |
+
+### Additional rules
+- **Never** display shop names, logos, or other shop-identifying info on the price-scan
+  results screen (see Phase 3 boundary above) — show only statistical variance.
+- **Never** use directly accusatory words: Scam, Fraud, Cheating, Overcharge, Rip-off,
+  Dangerous, Unsafe, Blacklist, Exploitation, etc.
+- Frame all price commentary statistically: "Average Price", "Price Variation",
+  "Above Typical Range", "Significant Price Variation".
+- Every screen that shows price analysis (Scanner results, Map partner panel, etc.)
+  **MUST display a disclaimer**:
+  - **EN:** "This information is generated from statistical and community-based data
+    and is intended for informational purposes only. Actual prices may vary."
+  - **TH:** "ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น
+    ราคาจริงอาจแตกต่างกันได้"
+
+The app's goal is to **inform** tourists to help them make decisions — never to **judge
+or accuse** any specific shop, person, or area. Apply this standard to every new
+feature and copy change.

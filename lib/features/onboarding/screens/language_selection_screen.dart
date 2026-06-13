@@ -92,7 +92,7 @@ class LanguageSelectionScreen extends StatelessWidget {
                 Icon(Icons.shield_outlined, color: Color(0xFF4CAF50), size: 14),
                 SizedBox(width: 6),
                 Text(
-                  "don't get lost, don't get scammed",
+                  "don't get lost, stay informed",
                   style: TextStyle(color: Color(0xFF8FAF94), fontSize: 11),
                 ),
               ],
