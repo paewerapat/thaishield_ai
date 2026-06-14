@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, GeoPoint } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDWw6C1hHSmuATc_zC6FP545J1gqK36UQE',
@@ -9,6 +9,22 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// Builds an irregular hexagon of GeoPoints around a center point, used to
+// render alert zones as area shapes on the map instead of plain circles.
+function polygonAround(lat, lng, radiusKm) {
+  const latOffset = radiusKm / 111;
+  const lngOffset = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
+  const angles = [90, 150, 220, 270, 330, 30];
+  const mults = [1.0, 0.75, 1.1, 0.85, 1.15, 0.9];
+  return angles.map((deg, i) => {
+    const rad = (deg * Math.PI) / 180;
+    return new GeoPoint(
+      lat + latOffset * mults[i] * Math.sin(rad),
+      lng + lngOffset * mults[i] * Math.cos(rad),
+    );
+  });
+}
 
 const partnerLocations = {
   landmark_bangkok: {
@@ -52,6 +68,7 @@ const alertZones = {
   zone_silom_safe: {
     name: 'Silom Business District',
     center_lat: 13.7244, center_lng: 100.5278, radius_km: 1.0,
+    polygon: polygonAround(13.7244, 100.5278, 1.0),
     risk_level: 'safe',
     description_en: 'Business and tourist-friendly area with verified partners.',
     description_th: 'ย่านธุรกิจและท่องเที่ยว มีพาร์ทเนอร์ที่ผ่านการรับรอง',
@@ -59,6 +76,7 @@ const alertZones = {
   zone_khaosan_caution: {
     name: 'Khaosan Road Area',
     center_lat: 13.7590, center_lng: 100.4972, radius_km: 0.5,
+    polygon: polygonAround(13.7590, 100.4972, 0.5),
     risk_level: 'caution',
     description_en: 'Popular tourist area. Tuk-tuk and tour pricing here may vary significantly from typical rates — compare before booking.',
     description_th: 'พื้นที่ท่องเที่ยวที่ได้รับความนิยม ราคาตุ๊กตุ๊กและทัวร์ในบริเวณนี้อาจแตกต่างจากราคาทั่วไป ควรเปรียบเทียบราคาก่อนตัดสินใจ',
@@ -66,6 +84,7 @@ const alertZones = {
   zone_patpong_caution: {
     name: 'Patpong Night Bazaar',
     center_lat: 13.7274, center_lng: 100.5300, radius_km: 0.4,
+    polygon: polygonAround(13.7274, 100.5300, 0.4),
     risk_level: 'caution',
     description_en: 'Busy night market area. Prices and conditions here may vary — please stay alert to your surroundings and confirm prices before purchasing.',
     description_th: 'ตลาดนัดกลางคืนที่มีผู้คนพลุกพล่าน โปรดดูแลทรัพย์สินส่วนตัวและตรวจสอบราคาก่อนตัดสินใจซื้อ',
@@ -73,6 +92,7 @@ const alertZones = {
   zone_danger_01: {
     name: 'Community Alert Zone',
     center_lat: 13.7500, center_lng: 100.5200, radius_km: 0.3,
+    polygon: polygonAround(13.7500, 100.5200, 0.3),
     risk_level: 'danger',
     description_en: 'Increased community reports in this area. Extra caution is recommended, especially at night.',
     description_th: 'มีรายงานจากชุมชนในพื้นที่นี้เพิ่มขึ้น แนะนำให้เพิ่มความระมัดระวังเป็นพิเศษ โดยเฉพาะช่วงเวลากลางคืน',
@@ -80,6 +100,7 @@ const alertZones = {
   zone_sukhumvit_safe: {
     name: 'Sukhumvit Tourist Zone',
     center_lat: 13.7300, center_lng: 100.5680, radius_km: 1.2,
+    polygon: polygonAround(13.7300, 100.5680, 1.2),
     risk_level: 'safe',
     description_en: 'Well-lit tourist corridor with hotels and verified restaurants.',
     description_th: 'แหล่งท่องเที่ยวมีแสงสว่าง มีโรงแรมและร้านอาหารที่ผ่านการรับรอง',

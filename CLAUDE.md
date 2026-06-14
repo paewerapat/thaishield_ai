@@ -68,6 +68,7 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
   center_lat:     number,
   center_lng:     number,
   radius_km:      number,
+  polygon:        array<GeoPoint>,  // area boundary points for map overlay (replaces circle radius display)
   risk_level:     string,      // "safe" | "caution" | "danger"
   description_en: string,
   description_th: string

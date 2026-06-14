@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/models/alert_zone.dart';
 import '../../../core/models/partner_location.dart';
@@ -72,6 +73,106 @@ String _typeLabel(String type, bool isTh) {
   }
 }
 
+class _Review {
+  const _Review({
+    required this.name,
+    required this.initials,
+    required this.rating,
+    required this.comment,
+  });
+
+  final String name;
+  final String initials;
+  final int rating;
+  final String comment;
+}
+
+List<_Review> _sampleReviews(String type, bool isTh) {
+  switch (type) {
+    case 'hotel':
+      return [
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
+          initials: 'A',
+          rating: 5,
+          comment: isTh
+              ? 'ห้องพักสะอาด พนักงานเป็นมิตร และทำเลสะดวกสำหรับเดินทางไปแหล่งท่องเที่ยว'
+              : 'Clean rooms, friendly staff, and a convenient location for getting around.',
+        ),
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว B' : 'Traveler B',
+          initials: 'B',
+          rating: 4,
+          comment: isTh
+              ? 'ราคาตรงตามที่แสดงในแอป คุ้มค่ากับสิ่งที่ได้รับ'
+              : 'Price matched what was shown in the app — good value overall.',
+        ),
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว C' : 'Traveler C',
+          initials: 'C',
+          rating: 5,
+          comment: isTh
+              ? 'บริการรวดเร็วและให้ข้อมูลที่เป็นประโยชน์กับนักท่องเที่ยว'
+              : 'Quick service and helpful information for first-time visitors.',
+        ),
+      ];
+    case 'transport':
+      return [
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
+          initials: 'A',
+          rating: 5,
+          comment: isTh
+              ? 'คนขับใช้มิเตอร์ตามปกติ ค่าโดยสารตรงกับช่วงราคาที่แอปแสดง'
+              : 'Driver used the meter as expected — fare matched the typical range shown in the app.',
+        ),
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว B' : 'Traveler B',
+          initials: 'B',
+          rating: 4,
+          comment: isTh
+              ? 'สะดวกและรวดเร็วในการเดินทางช่วงเวลาเร่งด่วน'
+              : 'Convenient and quick, even during busy hours.',
+        ),
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว C' : 'Traveler C',
+          initials: 'C',
+          rating: 4,
+          comment: isTh
+              ? 'พนักงานพูดคุยเป็นมิตรและช่วยแนะนำเส้นทาง'
+              : 'Friendly driver who helped with directions along the way.',
+        ),
+      ];
+    default:
+      return [
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
+          initials: 'A',
+          rating: 5,
+          comment: isTh
+              ? 'อาหารอร่อยและราคาตรงกับข้อมูลที่แสดงในแอป'
+              : 'Great food, and pricing matched the information shown in the app.',
+        ),
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว B' : 'Traveler B',
+          initials: 'B',
+          rating: 4,
+          comment: isTh
+              ? 'บรรยากาศดีและพนักงานเป็นมิตรกับนักท่องเที่ยว'
+              : 'Nice atmosphere and staff were welcoming to tourists.',
+        ),
+        _Review(
+          name: isTh ? 'นักท่องเที่ยว C' : 'Traveler C',
+          initials: 'C',
+          rating: 5,
+          comment: isTh
+              ? 'คุ้มค่ากับราคาที่จ่าย และมีเมนูให้เลือกหลากหลาย'
+              : 'Good value for the price, with a varied menu to choose from.',
+        ),
+      ];
+  }
+}
+
 String _typeDescription(String type, bool isTh) {
   switch (type) {
     case 'hotel':
@@ -99,12 +200,21 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final _markers = <Marker>{};
   final _circles = <Circle>{};
+  final _polygons = <Polygon>{};
   final _partnersById = <String, PartnerLocation>{};
+  final _zonesById = <String, AlertZone>{};
   PartnerLocation? _selectedPartner;
   AlertZone? _selectedZone;
   bool _loading = true;
   String? _error;
   GoogleMapController? _mapController;
+  MapType _mapType = MapType.normal;
+  bool _showPartnerPins = true;
+  final Map<String, bool> _zoneVisibility = {
+    'safe': true,
+    'caution': true,
+    'danger': true,
+  };
 
   @override
   void initState() {
@@ -141,23 +251,42 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       final circles = <Circle>{};
+      final polygons = <Polygon>{};
       for (final zone in zones) {
+        _zonesById[zone.id] = zone;
         final color = _riskColor(zone.riskLevel);
-        circles.add(
-          Circle(
-            circleId: CircleId(zone.id),
-            center: LatLng(zone.centerLat, zone.centerLng),
-            radius: zone.radiusKm * 1000,
-            fillColor: color.withValues(alpha: 0.2),
-            strokeColor: color,
-            strokeWidth: 2,
-            consumeTapEvents: true,
-            onTap: () => setState(() {
-              _selectedZone = zone;
-              _selectedPartner = null;
-            }),
-          ),
-        );
+        if (zone.polygon.length >= 3) {
+          polygons.add(
+            Polygon(
+              polygonId: PolygonId(zone.id),
+              points: zone.polygon,
+              fillColor: color.withValues(alpha: 0.2),
+              strokeColor: color,
+              strokeWidth: 2,
+              consumeTapEvents: true,
+              onTap: () => setState(() {
+                _selectedZone = zone;
+                _selectedPartner = null;
+              }),
+            ),
+          );
+        } else {
+          circles.add(
+            Circle(
+              circleId: CircleId(zone.id),
+              center: LatLng(zone.centerLat, zone.centerLng),
+              radius: zone.radiusKm * 1000,
+              fillColor: color.withValues(alpha: 0.2),
+              strokeColor: color,
+              strokeWidth: 2,
+              consumeTapEvents: true,
+              onTap: () => setState(() {
+                _selectedZone = zone;
+                _selectedPartner = null;
+              }),
+            ),
+          );
+        }
       }
 
       if (!mounted) return;
@@ -170,6 +299,9 @@ class _MapScreenState extends State<MapScreen> {
         _circles
           ..clear()
           ..addAll(circles);
+        _polygons
+          ..clear()
+          ..addAll(polygons);
         _loading = false;
       });
     } catch (e) {
@@ -185,6 +317,38 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     _mapController?.dispose();
     super.dispose();
+  }
+
+  void _openLayersSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _LayersSheet(
+        showPartnerPins: _showPartnerPins,
+        zoneVisibility: _zoneVisibility,
+        onPartnerPinsChanged: (value) =>
+            setState(() => _showPartnerPins = value),
+        onZoneVisibilityChanged: (riskLevel, value) =>
+            setState(() => _zoneVisibility[riskLevel] = value),
+      ),
+    );
+  }
+
+  void _openMapSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _MapSettingsSheet(
+        mapType: _mapType,
+        onMapTypeChanged: (type) => setState(() => _mapType = type),
+      ),
+    );
   }
 
   void _openPartnerDetail(PartnerLocation partner) {
@@ -212,7 +376,7 @@ class _MapScreenState extends State<MapScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _MapHeader(),
+            _MapHeader(onSettingsTap: _openMapSettings),
             _LegendRow(),
             Expanded(
               child: _loading
@@ -235,8 +399,18 @@ class _MapScreenState extends State<MapScreen> {
                                 target: _bangkok,
                                 zoom: 12,
                               ),
-                              markers: _markers,
-                              circles: _circles,
+                              mapType: _mapType,
+                              markers: _showPartnerPins ? _markers : const {},
+                              circles: _circles.where((c) {
+                                final zone = _zonesById[c.circleId.value];
+                                return zone == null ||
+                                    (_zoneVisibility[zone.riskLevel] ?? true);
+                              }).toSet(),
+                              polygons: _polygons.where((p) {
+                                final zone = _zonesById[p.polygonId.value];
+                                return zone == null ||
+                                    (_zoneVisibility[zone.riskLevel] ?? true);
+                              }).toSet(),
                               myLocationButtonEnabled: false,
                               zoomControlsEnabled: true,
                               zoomGesturesEnabled: true,
@@ -266,6 +440,7 @@ class _MapScreenState extends State<MapScreen> {
                                 onCenter: () => _mapController?.animateCamera(
                                   CameraUpdate.newLatLng(_bangkok),
                                 ),
+                                onLayers: _openLayersSheet,
                               ),
                             ),
                           ],
@@ -286,6 +461,10 @@ class _MapScreenState extends State<MapScreen> {
 }
 
 class _MapHeader extends StatelessWidget {
+  const _MapHeader({required this.onSettingsTap});
+
+  final VoidCallback onSettingsTap;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -293,7 +472,11 @@ class _MapHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          const Icon(Icons.shield, color: Color(0xFF2E7D32), size: 22),
+          SvgPicture.asset(
+            'assets/icons/Google_Maps_icon_(2020).svg',
+            width: 22,
+            height: 22,
+          ),
           const SizedBox(width: 8),
           const Text(
             'Smart Map',
@@ -304,7 +487,14 @@ class _MapHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Icon(Icons.tune_rounded, color: Colors.grey[600], size: 22),
+          InkWell(
+            onTap: onSettingsTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.tune_rounded, color: Colors.grey[600], size: 22),
+            ),
+          ),
         ],
       ),
     );
@@ -538,8 +728,9 @@ class _ZonePopup extends StatelessWidget {
 }
 
 class _FloatingButtons extends StatelessWidget {
-  const _FloatingButtons({required this.onCenter});
+  const _FloatingButtons({required this.onCenter, required this.onLayers});
   final VoidCallback onCenter;
+  final VoidCallback onLayers;
 
   @override
   Widget build(BuildContext context) {
@@ -548,7 +739,7 @@ class _FloatingButtons extends StatelessWidget {
       children: [
         _FabButton(icon: Icons.my_location_rounded, onTap: onCenter),
         const SizedBox(height: 8),
-        _FabButton(icon: Icons.layers_rounded, onTap: () {}),
+        _FabButton(icon: Icons.layers_rounded, onTap: onLayers),
       ],
     );
   }
@@ -792,6 +983,113 @@ class _Tag extends StatelessWidget {
   }
 }
 
+class _ReviewsSection extends StatelessWidget {
+  const _ReviewsSection({required this.type, required this.isTh});
+  final String type;
+  final bool isTh;
+
+  @override
+  Widget build(BuildContext context) {
+    final reviews = _sampleReviews(type, isTh);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isTh ? 'รีวิวจากนักท่องเที่ยว' : 'Traveler Reviews',
+          style: const TextStyle(
+            color: Color(0xFF0D1B2A),
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isTh
+              ? 'ตัวอย่างความคิดเห็นจากชุมชนนักท่องเที่ยว'
+              : 'Sample feedback from the traveler community',
+          style: TextStyle(color: Colors.grey[500], fontSize: 11),
+        ),
+        const SizedBox(height: 10),
+        for (final review in reviews)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _ReviewCard(review: review),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({required this.review});
+  final _Review review;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: const Color(0xFFE0E0E0),
+                child: Text(
+                  review.initials,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF616161),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review.name,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0D1B2A),
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(
+                        5,
+                        (i) => Icon(
+                          i < review.rating
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          color: const Color(0xFFFFB300),
+                          size: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            review.comment,
+            style: TextStyle(color: Colors.grey[700], fontSize: 12.5, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PartnerDetailSheet extends StatelessWidget {
   const _PartnerDetailSheet({required this.partner, required this.onShowOnMap});
   final PartnerLocation partner;
@@ -950,7 +1248,11 @@ class _PartnerDetailSheet extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    Divider(color: Colors.grey[200]),
+                    const SizedBox(height: 12),
+                    _ReviewsSection(type: partner.type, isTh: isTh),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -988,6 +1290,299 @@ class _PartnerDetailSheet extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _LayersSheet extends StatefulWidget {
+  const _LayersSheet({
+    required this.showPartnerPins,
+    required this.zoneVisibility,
+    required this.onPartnerPinsChanged,
+    required this.onZoneVisibilityChanged,
+  });
+
+  final bool showPartnerPins;
+  final Map<String, bool> zoneVisibility;
+  final ValueChanged<bool> onPartnerPinsChanged;
+  final void Function(String riskLevel, bool value) onZoneVisibilityChanged;
+
+  @override
+  State<_LayersSheet> createState() => _LayersSheetState();
+}
+
+class _LayersSheetState extends State<_LayersSheet> {
+  late bool _showPartnerPins;
+  late Map<String, bool> _zoneVisibility;
+
+  @override
+  void initState() {
+    super.initState();
+    _showPartnerPins = widget.showPartnerPins;
+    _zoneVisibility = Map.of(widget.zoneVisibility);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTh = Localizations.localeOf(context).languageCode == 'th';
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              isTh ? 'เลเยอร์บนแผนที่' : 'Map Layers',
+              style: const TextStyle(
+                color: Color(0xFF0D1B2A),
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isTh
+                  ? 'เลือกแสดงหมุดและพื้นที่บนแผนที่'
+                  : 'Choose which pins and areas to show',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            _LayerToggleRow(
+              icon: Icons.location_on_rounded,
+              color: const Color(0xFF1565C0),
+              label: isTh ? 'หมุดพาร์ทเนอร์' : 'Partner Pins',
+              value: _showPartnerPins,
+              onChanged: (value) {
+                setState(() => _showPartnerPins = value);
+                widget.onPartnerPinsChanged(value);
+              },
+            ),
+            _LayerToggleRow(
+              icon: Icons.check_circle_rounded,
+              color: const Color(0xFF4CAF50),
+              label: isTh ? 'ข้อมูลการท่องเที่ยว' : 'Travel Info',
+              value: _zoneVisibility['safe'] ?? true,
+              onChanged: (value) {
+                setState(() => _zoneVisibility['safe'] = value);
+                widget.onZoneVisibilityChanged('safe', value);
+              },
+            ),
+            _LayerToggleRow(
+              icon: Icons.error_rounded,
+              color: const Color(0xFFFF9800),
+              label: isTh ? 'พื้นที่คำแนะนำ' : 'Advisory',
+              value: _zoneVisibility['caution'] ?? true,
+              onChanged: (value) {
+                setState(() => _zoneVisibility['caution'] = value);
+                widget.onZoneVisibilityChanged('caution', value);
+              },
+            ),
+            _LayerToggleRow(
+              icon: Icons.cancel_rounded,
+              color: const Color(0xFFEF5350),
+              label: isTh ? 'พื้นที่แจ้งเตือน' : 'Alert Zone',
+              value: _zoneVisibility['danger'] ?? true,
+              onChanged: (value) {
+                setState(() => _zoneVisibility['danger'] = value);
+                widget.onZoneVisibilityChanged('danger', value);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LayerToggleRow extends StatelessWidget {
+  const _LayerToggleRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF0D1B2A),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Switch(
+            value: value,
+            activeThumbColor: const Color(0xFF2E7D32),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapSettingsSheet extends StatefulWidget {
+  const _MapSettingsSheet({
+    required this.mapType,
+    required this.onMapTypeChanged,
+  });
+
+  final MapType mapType;
+  final ValueChanged<MapType> onMapTypeChanged;
+
+  @override
+  State<_MapSettingsSheet> createState() => _MapSettingsSheetState();
+}
+
+class _MapSettingsSheetState extends State<_MapSettingsSheet> {
+  late MapType _mapType;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapType = widget.mapType;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTh = Localizations.localeOf(context).languageCode == 'th';
+    final options = <(MapType, IconData, String, String)>[
+      (MapType.normal, Icons.map_rounded, 'Normal', 'ปกติ'),
+      (MapType.satellite, Icons.satellite_alt_rounded, 'Satellite', 'ดาวเทียม'),
+      (MapType.terrain, Icons.terrain_rounded, 'Terrain', 'ภูมิประเทศ'),
+      (MapType.hybrid, Icons.layers_rounded, 'Hybrid', 'แบบผสม'),
+    ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              isTh ? 'รูปแบบแผนที่' : 'Map Type',
+              style: const TextStyle(
+                color: Color(0xFF0D1B2A),
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final option in options)
+              _MapTypeOption(
+                icon: option.$2,
+                label: isTh ? option.$4 : option.$3,
+                selected: _mapType == option.$1,
+                onTap: () {
+                  setState(() => _mapType = option.$1);
+                  widget.onMapTypeChanged(option.$1);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapTypeOption extends StatelessWidget {
+  const _MapTypeOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE8F5E9) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: selected ? const Color(0xFF2E7D32) : Colors.grey[600],
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? const Color(0xFF2E7D32) : const Color(0xFF0D1B2A),
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_rounded, color: Color(0xFF2E7D32), size: 20),
+          ],
+        ),
+      ),
     );
   }
 }

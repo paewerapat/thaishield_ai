@@ -2,10 +2,28 @@
 // Run with:  flutter run -t lib/tools/seed_data.dart -d <device-id>
 // Safe to delete this file after running it once.
 
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../firebase_options.dart';
+
+// Builds an irregular hexagon of GeoPoints around a center point, used to
+// render alert zones as area shapes on the map instead of plain circles.
+List<GeoPoint> _polygonAround(double lat, double lng, double radiusKm) {
+  final latOffset = radiusKm / 111;
+  final lngOffset = radiusKm / (111 * cos(lat * pi / 180));
+  const angles = [90.0, 150.0, 220.0, 270.0, 330.0, 30.0];
+  const mults = [1.0, 0.75, 1.1, 0.85, 1.15, 0.9];
+  return List.generate(angles.length, (i) {
+    final rad = angles[i] * pi / 180;
+    return GeoPoint(
+      lat + latOffset * mults[i] * sin(rad),
+      lng + lngOffset * mults[i] * cos(rad),
+    );
+  });
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +78,7 @@ Future<String> _seed(FirebaseFirestore db) async {
         'center_lat': 13.7244,
         'center_lng': 100.5278,
         'radius_km': 1.0,
+        'polygon': _polygonAround(13.7244, 100.5278, 1.0),
         'risk_level': 'safe',
         'description_en':
             'Business and tourist-friendly area with verified partners.',
@@ -70,6 +89,7 @@ Future<String> _seed(FirebaseFirestore db) async {
         'center_lat': 13.7590,
         'center_lng': 100.4972,
         'radius_km': 0.5,
+        'polygon': _polygonAround(13.7590, 100.4972, 0.5),
         'risk_level': 'caution',
         'description_en':
             'Popular tourist area. Tuk-tuk and tour pricing here may vary significantly from typical rates — compare before booking.',
@@ -81,6 +101,7 @@ Future<String> _seed(FirebaseFirestore db) async {
         'center_lat': 13.7500,
         'center_lng': 100.5200,
         'radius_km': 0.3,
+        'polygon': _polygonAround(13.7500, 100.5200, 0.3),
         'risk_level': 'danger',
         'description_en':
             'Increased community reports in this area. Extra caution is recommended, especially at night.',
