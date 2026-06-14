@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../onboarding/screens/language_selection_screen.dart';
 
@@ -14,9 +15,9 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
+        title: Text(
+          appText(context, 'profile_title'),
+          style: const TextStyle(
             color: Color(0xFF0D1B2A),
             fontWeight: FontWeight.bold,
           ),
@@ -31,7 +32,12 @@ class ProfileScreen extends StatelessWidget {
         children: [
           _buildLanguageTile(context, locale.languageCode),
           const SizedBox(height: 12),
-          _buildInfoTile(Icons.info_outline, 'About ThaiShield AI', 'Version 1.0.0'),
+          _buildInfoTile(
+            context,
+            Icons.info_outline,
+            appText(context, 'profile_about_title'),
+            'Version 1.0.0',
+          ),
         ],
       ),
     );
@@ -55,9 +61,9 @@ class ProfileScreen extends StatelessWidget {
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         leading: Text(flags[langCode] ?? '🌐', style: const TextStyle(fontSize: 24)),
-        title: const Text(
-          'Language',
-          style: TextStyle(color: Color(0xFF0D1B2A), fontWeight: FontWeight.w600),
+        title: Text(
+          appText(context, 'profile_language'),
+          style: const TextStyle(color: Color(0xFF0D1B2A), fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           langCode.toUpperCase(),
@@ -80,7 +86,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String title, String subtitle) {
+  Widget _buildInfoTile(BuildContext context, IconData icon, String title, String subtitle) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
 
 class HomeTab extends StatelessWidget {
@@ -17,7 +18,7 @@ class HomeTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              _buildHeader(locale.languageCode.toUpperCase()),
+              _buildHeader(context, locale.languageCode.toUpperCase()),
               const SizedBox(height: 32),
               _buildFeatureCards(context),
             ],
@@ -27,7 +28,7 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(String lang) {
+  Widget _buildHeader(BuildContext context, String lang) {
     return Row(
       children: [
         ClipRRect(
@@ -40,10 +41,10 @@ class HomeTab extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'ThaiShield',
               style: TextStyle(
                 color: Color(0xFF0D1B2A),
@@ -52,8 +53,8 @@ class HomeTab extends StatelessWidget {
               ),
             ),
             Text(
-              'Travel Safe · Stay Smart',
-              style: TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
+              appText(context, 'home_tagline'),
+              style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
             ),
           ],
         ),
@@ -82,21 +83,21 @@ class HomeTab extends StatelessWidget {
       _FeatureCard(
         icon: Icons.document_scanner_outlined,
         title: 'AI Price Scanner',
-        subtitle: 'สแกนเมนู ตรวจสอบราคา',
+        subtitle: appText(context, 'feature_scanner_subtitle'),
         color: const Color(0xFF4FC3F7),
         phase: 'Phase 3',
       ),
       _FeatureCard(
         icon: Icons.map_outlined,
         title: 'Smart Map',
-        subtitle: 'แผนที่พาร์ทเนอร์ & โซนเตือนภัย',
+        subtitle: appText(context, 'feature_map_subtitle'),
         color: const Color(0xFF2E7D32),
         phase: 'Phase 2',
       ),
       _FeatureCard(
         icon: Icons.record_voice_over_outlined,
         title: 'AI Voice SOS',
-        subtitle: 'พูดภาษาอังกฤษ สื่อสารทันที',
+        subtitle: appText(context, 'feature_sos_subtitle'),
         color: const Color(0xFFEF5350),
         phase: 'Phase 4',
       ),

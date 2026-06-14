@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_text.dart';
 
 class MainBottomNav extends StatelessWidget {
   const MainBottomNav({
@@ -11,11 +12,11 @@ class MainBottomNav extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   static const _tabs = [
-    _TabConfig(Icons.home_outlined, Icons.home_rounded, 'Home', Color(0xFF4FC3F7)),
-    _TabConfig(Icons.document_scanner_outlined, Icons.document_scanner_rounded, 'Scan', Color(0xFF4FC3F7)),
-    _TabConfig(Icons.map_outlined, Icons.map_rounded, 'Map', Color(0xFF66BB6A)),
-    _TabConfig(Icons.sos_outlined, Icons.sos_rounded, 'SOS', Color(0xFFEF5350)),
-    _TabConfig(Icons.person_outline_rounded, Icons.person_rounded, 'Profile', Color(0xFF4FC3F7)),
+    _TabConfig(Icons.home_outlined, Icons.home_rounded, 'nav_home', Color(0xFF4FC3F7)),
+    _TabConfig(Icons.document_scanner_outlined, Icons.document_scanner_rounded, 'nav_scan', Color(0xFF4FC3F7)),
+    _TabConfig(Icons.map_outlined, Icons.map_rounded, 'nav_map', Color(0xFF66BB6A)),
+    _TabConfig(Icons.sos_outlined, Icons.sos_rounded, 'nav_sos', Color(0xFFEF5350)),
+    _TabConfig(Icons.person_outline_rounded, Icons.person_rounded, 'nav_profile', Color(0xFF4FC3F7)),
   ];
 
   static const _textShadow = [
@@ -41,16 +42,17 @@ class MainBottomNav extends StatelessWidget {
         child: SizedBox(
           height: 64,
           child: Row(
-            children: List.generate(_tabs.length, (i) => _buildTab(i)),
+            children: List.generate(_tabs.length, (i) => _buildTab(context, i)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTab(int index) {
+  Widget _buildTab(BuildContext context, int index) {
     final tab = _tabs[index];
     final isActive = currentIndex == index;
+    final label = appText(context, tab.label);
 
     return Expanded(
       child: InkWell(
@@ -78,7 +80,7 @@ class MainBottomNav extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              tab.label,
+              label,
               style: TextStyle(
                 color: isActive ? tab.color : Colors.white,
                 fontSize: 10,

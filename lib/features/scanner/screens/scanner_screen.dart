@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/localization/app_text.dart';
 
 class ScannerScreen extends StatelessWidget {
   const ScannerScreen({super.key});
@@ -11,14 +12,14 @@ class ScannerScreen extends StatelessWidget {
         child: Column(
           children: [
             _ScannerHeader(),
-            const Expanded(
+            Expanded(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _PlaceholderIcon(),
-                    SizedBox(height: 16),
-                    Text(
+                    const _PlaceholderIcon(),
+                    const SizedBox(height: 16),
+                    const Text(
                       'AI Price Scanner',
                       style: TextStyle(
                         color: Color(0xFF0D1B2A),
@@ -26,10 +27,10 @@ class ScannerScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Phase 3 — Coming Soon',
-                      style: TextStyle(color: Color(0xFF90A4AE), fontSize: 13),
+                      appText(context, 'scanner_coming_soon'),
+                      style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 13),
                     ),
                   ],
                 ),
