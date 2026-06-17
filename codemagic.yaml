@@ -6,13 +6,11 @@ workflows:
 
     environment:
       flutter: stable
+      groups:
+        - app_store_connect
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.thaishield.thaishieldAi
-      vars:
-        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
-        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
 
     scripts:
       - name: Get Flutter packages
