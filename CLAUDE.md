@@ -188,3 +188,42 @@ AI-generated (Gemini/OpenAI) responses shown to users.
 The app's goal is to **inform** tourists to help them make decisions — never to **judge
 or accuse** any specific shop, person, or area. Apply this standard to every new
 feature and copy change.
+
+## 7. UI Theme & Color Guide (MANDATORY — applies to every screen, current and future)
+
+ThaiShield AI uses one consistent dark-green "ranger" theme for the top header and the
+bottom navigation bar on every screen, so the user never sees a jarring color seam
+between the header, the page body, and the bottom nav. This was fixed once already
+(bottom nav was tinted navy `0xFF0D1B2A` while headers used green `0xFF0A1810` —
+do not reintroduce that mismatch).
+
+### Core palette
+
+| Role | Color | Hex |
+|---|---|---|
+| Header background / bottom nav tint (primary brand color) | dark green | `#0A1810` |
+| Page body background | light grey | `#F3F5F7` |
+| Card / heading text on white cards | dark navy | `#0D1B2A` |
+| Accent gold (brand title, active highlights) | gold | `#FFB300` |
+| Accent blue (info, scan, profile icons) | sky blue | `#4FC3F7` |
+| Accent green (safe/verified/success) | green | `#2E7D32` |
+| Accent red (alerts/SOS/danger) | red | `#EF5350` / `#D32F2F` |
+| Secondary muted text | grey | `#90A4AE` |
+
+### Rules
+- Any screen with a top header bar **must** use `#0A1810` as the header background
+  (see `_buildHeader` in `home_tab.dart` / `profile_screen.dart` for the canonical
+  pattern: logo + "ThaiShield AI" gold title + page title + subtitle).
+- The bottom navigation bar (`lib/features/home/widgets/main_bottom_nav.dart`) tints
+  its skyline background image with the **same** `#0A1810` green — never navy
+  (`#0D1B2A`) or any other color. If the header color ever changes, update the bottom
+  nav tint in the same change.
+- `#0D1B2A` (dark navy) is reserved for **text/icons on white cards**, not for any
+  full-screen or header background — keep these two dark colors visually distinct in
+  their roles.
+- Page body background outside of cards should default to `#F3F5F7` unless a screen's
+  approved mockup specifies otherwise (e.g. Smart Map's white toolbar is an
+  intentional, already-approved exception — don't "fix" it without being asked).
+- When building a new screen or redesigning an existing one (Scan, SOS, Map, etc.),
+  default to this same header + bottom-nav treatment unless the user's mockup
+  explicitly shows something different.

@@ -16,25 +16,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  static const _screens = [
-    HomeTab(),
-    ScannerScreen(),
-    MapScreen(),
-    SosScreen(),
-    ProfileScreen(),
-  ];
+  void _goToTab(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      HomeTab(onNavigateToTab: _goToTab),
+      const ScannerScreen(),
+      const MapScreen(),
+      const SosScreen(),
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: MainBottomNav(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _goToTab,
       ),
     );
   }

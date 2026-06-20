@@ -26,25 +26,29 @@ class MainBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/images/menu-bg.png'),
-          fit: BoxFit.fill,
-          alignment: Alignment.center,
-          colorFilter: ColorFilter.mode(
-            Color(0xCC0D1B2A),
-            BlendMode.srcOver,
+      color: const Color(0xFF0A1810),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.18,
+              child: Image.asset(
+                'assets/images/menu-bg.png',
+                fit: BoxFit.fill,
+                alignment: Alignment.center,
+              ),
+            ),
           ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: List.generate(_tabs.length, (i) => _buildTab(context, i)),
+          SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: List.generate(_tabs.length, (i) => _buildTab(context, i)),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

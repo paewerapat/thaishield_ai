@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/localization/app_text.dart';
 import '../../../core/models/alert_zone.dart';
 import '../../../core/models/partner_location.dart';
 import '../../../core/services/firestore_service.dart';
+
+const _mapSearchSuggestions = ['Bangkok', 'Sukhumvit', 'Phuket Airport', 'Chiang Mai', 'Pattaya'];
 
 const _bangkok = LatLng(13.7563, 100.5018);
 
@@ -215,11 +219,49 @@ class _MapScreenState extends State<MapScreen> {
     'caution': true,
     'danger': true,
   };
+  final _searchController = TextEditingController();
+  bool _searching = false;
 
   @override
   void initState() {
     super.initState();
     _loadMapData();
+  }
+
+  Future<void> _searchLocation(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    final notFoundMessage = appText(context, 'map_search_not_found');
+    FocusScope.of(context).unfocus();
+    setState(() => _searching = true);
+    try {
+      final lower = trimmed.toLowerCase();
+      final biased = lower.contains('thailand') || lower.contains('ไทย') ? trimmed : '$trimmed, Thailand';
+      final results = await locationFromAddress(biased);
+      if (results.isEmpty) {
+        _showSearchMessage(notFoundMessage);
+      } else {
+        final loc = results.first;
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 13),
+        );
+      }
+    } catch (_) {
+      _showSearchMessage(notFoundMessage);
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _showSearchMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF0D1B2A),
+      ),
+    );
   }
 
   Future<void> _loadMapData() async {
@@ -316,6 +358,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _mapController?.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -420,9 +463,25 @@ class _MapScreenState extends State<MapScreen> {
                               onMapCreated: (c) => _mapController = c,
                               onTap: (_) => setState(() => _selectedZone = null),
                             ),
+                            Positioned(
+                              top: 12,
+                              left: 16,
+                              right: 16,
+                              child: _MapSearchBar(
+                                controller: _searchController,
+                                searching: _searching,
+                                onSubmitted: _searchLocation,
+                                onClear: () => setState(() => _searchController.clear()),
+                                onChanged: (_) => setState(() {}),
+                                onSuggestionTap: (suggestion) {
+                                  _searchController.text = suggestion;
+                                  _searchLocation(suggestion);
+                                },
+                              ),
+                            ),
                             if (_selectedZone != null)
                               Positioned(
-                                top: 12,
+                                top: 92,
                                 left: 16,
                                 right: 16,
                                 child: _ZonePopup(
@@ -454,6 +513,119 @@ class _MapScreenState extends State<MapScreen> {
                     : null,
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapSearchBar extends StatelessWidget {
+  const _MapSearchBar({
+    required this.controller,
+    required this.searching,
+    required this.onSubmitted,
+    required this.onClear,
+    required this.onChanged,
+    required this.onSuggestionTap,
+  });
+
+  final TextEditingController controller;
+  final bool searching;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onClear;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSuggestionTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          elevation: 4,
+          borderRadius: BorderRadius.circular(30),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+            child: Row(
+              children: [
+                Icon(Icons.search, color: Colors.grey[500], size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: onSubmitted,
+                    onChanged: onChanged,
+                    decoration: InputDecoration(
+                      isCollapsed: true,
+                      border: InputBorder.none,
+                      hintText: appText(context, 'map_search_hint'),
+                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
+                    ),
+                    style: const TextStyle(fontSize: 13.5, color: Color(0xFF0D1B2A)),
+                  ),
+                ),
+                if (searching)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32)),
+                    ),
+                  )
+                else if (controller.text.isNotEmpty)
+                  InkWell(
+                    onTap: onClear,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(Icons.close_rounded, color: Colors.grey[500], size: 18),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 32,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _mapSearchSuggestions.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, i) => _SuggestionChip(
+              label: _mapSearchSuggestions[i],
+              onTap: () => onSuggestionTap(_mapSearchSuggestions[i]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SuggestionChip extends StatelessWidget {
+  const _SuggestionChip({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF0D1B2A), fontWeight: FontWeight.w500),
+          ),
         ),
       ),
     );
