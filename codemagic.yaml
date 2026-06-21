@@ -8,6 +8,9 @@ workflows:
       flutter: stable
       groups:
         - app_store_connect
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.thaishieldai.app
 
     scripts:
       - name: Get Flutter packages
@@ -16,16 +19,6 @@ workflows:
       - name: Build iOS release
         script: |
           flutter build ios --release --no-codesign
-
-      - name: Set up code signing
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files \
-            com.thaishieldai.app \
-            --type IOS_APP_STORE \
-            --create
-          keychain add-certificates
-          xcode-project use-profiles
 
       - name: Build IPA
         script: |
