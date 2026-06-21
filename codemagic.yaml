@@ -10,7 +10,7 @@ workflows:
         - app_store_connect
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.thaishield.thaishieldAi
+        bundle_identifier: com.thaishieldai.app
 
     scripts:
       - name: Get Flutter packages
@@ -24,7 +24,7 @@ workflows:
         script: |
           keychain initialize
           app-store-connect fetch-signing-files \
-            com.thaishield.thaishieldAi \
+            com.thaishieldai.app \
             --type IOS_APP_STORE \
             --create
           keychain add-certificates

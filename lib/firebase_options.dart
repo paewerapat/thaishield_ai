@@ -38,7 +38,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '479467305669',
     projectId: 'thaishield-ai-790eb',
     storageBucket: 'thaishield-ai-790eb.firebasestorage.app',
-    iosBundleId: 'com.thaishield.thaishieldAi',
+    iosBundleId: 'com.thaishieldai.app',
   );
   static const FirebaseOptions web = FirebaseOptions(
     apiKey:            'YOUR_WEB_API_KEY',
