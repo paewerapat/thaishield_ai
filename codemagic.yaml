@@ -29,7 +29,7 @@ workflows:
 
       - name: Build IPA
         script: |
-          xcode-build-ipa \
+          xcode-project build-ipa \
             --workspace ios/Runner.xcworkspace \
             --scheme Runner
 
