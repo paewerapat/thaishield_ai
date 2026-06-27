@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ThaiShield AI uses your location to show it in your profile and for safety features.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ThaiShield AI uses your camera to scan menu prices for the AI Price Scanner.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
