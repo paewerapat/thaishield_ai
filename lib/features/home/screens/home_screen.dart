@@ -15,15 +15,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  MapFocusRequest? _mapFocusRequest;
 
   void _goToTab(int index) => setState(() => _currentIndex = index);
+
+  void _viewOnMap(double latitude, double longitude) {
+    setState(() {
+      _currentIndex = 2;
+      _mapFocusRequest = MapFocusRequest(latitude, longitude);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final screens = [
       HomeTab(onNavigateToTab: _goToTab),
-      const ScannerScreen(),
-      const MapScreen(),
+      ScannerScreen(onViewOnMap: _viewOnMap),
+      MapScreen(focusRequest: _mapFocusRequest),
       const SosScreen(),
       const ProfileScreen(),
     ];

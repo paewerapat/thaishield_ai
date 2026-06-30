@@ -7,11 +7,11 @@ class SosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF3F5F7),
       body: SafeArea(
         child: Column(
           children: [
-            _SosHeader(),
+            const _SosHeader(),
             Expanded(
               child: Center(
                 child: Column(
@@ -44,25 +44,31 @@ class SosScreen extends StatelessWidget {
 }
 
 class _SosHeader extends StatelessWidget {
+  const _SosHeader();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A1810),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.sos_rounded, color: Color(0xFFEF5350), size: 22),
-          const SizedBox(width: 8),
+          const Icon(Icons.sos_rounded, color: Color(0xFFEF5350), size: 24),
+          const SizedBox(width: 10),
           const Text(
             'AI Voice SOS',
             style: TextStyle(
-              color: Color(0xFF0D1B2A),
-              fontSize: 18,
+              color: Colors.white,
+              fontSize: 19,
               fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
-          Icon(Icons.help_outline_rounded, color: Colors.grey[400], size: 22),
+          Icon(Icons.help_outline_rounded, color: Colors.white.withValues(alpha: 0.7), size: 22),
         ],
       ),
     );

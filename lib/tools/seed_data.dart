@@ -39,6 +39,16 @@ Future<String> _seed(FirebaseFirestore db) async {
   try {
     final batch = db.batch();
 
+    // Free-to-use stock photos (Pexels License — free for commercial use, no
+    // attribution required) used as placeholder imagery per partner type
+    // until a real photo pipeline (see CLAUDE.md "Phase 5: Web CMS") exists.
+    const hotelImage =
+        'https://images.pexels.com/photos/14580368/pexels-photo-14580368.jpeg?auto=compress&cs=tinysrgb&w=800';
+    const restaurantImage =
+        'https://images.pexels.com/photos/776538/pexels-photo-776538.jpeg?auto=compress&cs=tinysrgb&w=800';
+    const transportImage =
+        'https://images.pexels.com/photos/29817094/pexels-photo-29817094.jpeg?auto=compress&cs=tinysrgb&w=800';
+
     final partners = {
       'landmark_bangkok': {
         'name': 'The Landmark Bangkok',
@@ -48,7 +58,7 @@ Future<String> _seed(FirebaseFirestore db) async {
         'rating': 4.8,
         'is_verified': true,
         'price_tier': 'fair',
-        'image_url': 'https://example.com/landmark.jpg',
+        'image_url': hotelImage,
       },
       'chatuchak_restaurant_01': {
         'name': 'Chatuchak Local Kitchen',
@@ -58,7 +68,7 @@ Future<String> _seed(FirebaseFirestore db) async {
         'rating': 4.2,
         'is_verified': true,
         'price_tier': 'fair',
-        'image_url': 'https://example.com/chatuchak.jpg',
+        'image_url': restaurantImage,
       },
       'siam_tuk_tuk_stand': {
         'name': 'Siam Tuk Tuk Stand',
@@ -68,7 +78,7 @@ Future<String> _seed(FirebaseFirestore db) async {
         'rating': 3.6,
         'is_verified': false,
         'price_tier': 'caution',
-        'image_url': 'https://example.com/tuktuk.jpg',
+        'image_url': transportImage,
       },
     };
 

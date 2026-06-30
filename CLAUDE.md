@@ -78,21 +78,61 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
 ### Phase 2: Fair Price & Travel Alert Map
 - Integrated via official `google_maps_flutter` plugin.
 - **Backend Data:** Fetch from Cloud Firestore (`partner_locations`, `alert_zones`).
-- **Out of Scope:** NO local Admin Panel / CMS. All data populated directly in Firebase Console.
+- **Out of Scope for MVP:** NO local Admin Panel / CMS. Data populated directly in Firebase
+  Console or via the seed scripts (`tools/seed_firestore.js`, `lib/tools/seed_data.dart`).
+  A web-based CMS to manage this data is planned post-MVP — see **Phase 5** below.
+- **Partner images:** `partner_locations.image_url` currently points to free-to-use
+  stock photos (Pexels License — free for commercial use, no attribution required),
+  used as generic per-type placeholders (hotel/restaurant/transport) until real partner
+  photos exist. Rendered via `_PartnerThumbnail` in `map_screen.dart` with an icon
+  fallback if the URL is empty or fails to load.
 - **Interaction:** Tapping pins shows Custom Pop-up with Partner Name, Rating, Verified Badge.
 - Color zones: green (safe) / amber (caution) / red (danger) overlays on map.
 
-### Phase 3: AI Price Scanner
-- Activate native camera to capture text/numbers from menus or transit signs.
-- **Mockup Logic:** Match scanned text against `price_standards` in Firestore, calculate variance %.
-- **Visual Output:** Colored variance bar (e.g., "+15% from standard price").
-- **CRITICAL LEGAL BOUNDARY:** Output UI **MUST NEVER** display specific restaurant names, exact locations, or brands. Show only pure statistical variance to avoid defamation issues.
+### Phase 3: AI Price Scanner ✅ IMPLEMENTED
+- Native camera (`image_picker`) captures a photo. Two-stage matching:
+  1. **OCR first** (`google_mlkit_text_recognition`, on-device): reads printed text/numbers
+     from menus or price tags, matches against `price_standards` in Firestore, calculates
+     variance %.
+  2. **Gemini Vision fallback**: if OCR finds no readable text or no matching item (e.g. the
+     photo is just a plate of food with no visible price), the photo is sent to Gemini
+     (`gemini-2.5-flash`, see `lib/features/scanner/services/gemini_vision_service.dart`)
+     to identify the dish name. The device's current GPS coordinates are passed along only
+     as disambiguation context for regional dish names — never stored, never used for
+     location-specific pricing (the `price_standards` schema has no location dimension).
+     The identified name is looked up in `price_standards` and shown as a **typical price
+     range only** (no variance bar, since no price was actually scanned from the image).
+- **Visual Output:** Colored variance bar (e.g., "+15% from standard price") for OCR matches;
+  a plain typical-range card with an "AI Identified" badge for Gemini-Vision matches.
+- **CRITICAL LEGAL BOUNDARY:** Output UI **MUST NEVER** display specific restaurant names,
+  exact locations, or brands — applies to both the OCR and Gemini Vision paths. Show only
+  pure statistical variance/range to avoid defamation issues.
 
 ### Phase 4: AI Voice SOS (STT to TTS Mode)
 - Tap and hold to record English speech → Native STT → string.
 - Call Gemini or OpenAI API via structured JSON payload.
 - **PROMPT COMPLIANCE:** Returned Thai string MUST always end with polite particles ("ครับ" or "ค่ะ").
 - Convert returned Thai string to audio via Native TTS.
+
+### Phase 5: Web CMS (Planned — Post-MVP)
+A separate web-based admin dashboard for non-technical staff to manage Firestore content
+without touching the Firebase Console directly:
+- **Manages:** `price_standards` (add/edit dishes + price ranges), `partner_locations`
+  (add/edit partners, **upload real partner photos** to replace today's Pexels
+  placeholders), `alert_zones` (add/edit advisory areas + polygons).
+- **Out of scope for the Flutter app itself:** this is a *separate* project (e.g. a small
+  Next.js or Firebase-Hosted admin site). The Flutter app already reads generically from
+  Firestore via `FirestoreService`, so it needs **no changes** to consume data written by
+  a future CMS — the CMS just needs to write to the same collections/fields documented
+  above.
+- **Auth & write access:** Firestore rules (`firestore.rules`) currently allow public
+  **read-only** access to `price_standards`/`partner_locations`/`alert_zones` and deny
+  all client writes (see Section 6 below). The CMS must write either via the **Firebase
+  Admin SDK with a service account** (bypasses security rules — simplest) or via an
+  **authenticated admin role** added to the rules. Never weaken the public rules to allow
+  open writes from the Flutter app to make this work.
+- **Image storage:** once built, the CMS should upload partner photos to **Firebase
+  Storage** (not hotlinked third-party stock photos) so partners own their own images.
 
 ## 3. Strict Out of Scope (DO NOT CODE)
 - NO User Registration / Authentication / Login screens (Firebase Auth completely omitted for MVP).
@@ -125,7 +165,25 @@ After running `flutterfire configure`, select the Firebase project and enable An
 - Android Bundle:   `flutter build appbundle --release`
 - iOS (CI only):    handled by Codemagic pipeline
 
-## 6. Legal Safe Wording Guide (MANDATORY — applies to ALL user-facing text)
+## 6. Firestore Security Rules
+
+Rules live in `firestore.rules` in this repo (kept as a backup/reference — the live
+rules are edited directly in Firebase Console → Firestore Database → Rules, the same
+place all collection data is populated, since there is no CMS yet per Phase 5 above).
+
+- `price_standards`, `partner_locations`, `alert_zones` are **public read, no write**
+  (`allow read: if true; allow write: if false;`). The app has no Firebase Auth, so reads
+  must stay open for the Map and Scanner features to work at all.
+- **Never use Firebase's default "test mode" rule** (`allow read, write: if request.time <
+  timestamp.date(...)`) for anything beyond initial local testing — it has an expiry date
+  and **silently denies all reads once it passes**, breaking the Map and Scanner with no
+  code change required to trigger it. This has happened once already; if Map/Scanner
+  suddenly fail in production with no related code or dependency change, check the Rules
+  tab in Firebase Console first before suspecting Google Maps API keys/billing.
+- Any future authenticated write access (e.g. for the Phase 5 CMS) must be scoped to that
+  specific use case — don't broaden the public rule to allow writes from the Flutter app.
+
+## 7. Legal Safe Wording Guide (MANDATORY — applies to ALL user-facing text)
 
 ThaiShield AI displays pricing and travel-safety information. To minimize legal risk
 (defamation, accusation, or damages claims against shops, individuals, or areas),
@@ -189,7 +247,7 @@ The app's goal is to **inform** tourists to help them make decisions — never t
 or accuse** any specific shop, person, or area. Apply this standard to every new
 feature and copy change.
 
-## 7. UI Theme & Color Guide (MANDATORY — applies to every screen, current and future)
+## 8. UI Theme & Color Guide (MANDATORY — applies to every screen, current and future)
 
 ThaiShield AI uses one consistent dark-green "ranger" theme for the top header and the
 bottom navigation bar on every screen, so the user never sees a jarring color seam

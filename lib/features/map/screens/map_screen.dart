@@ -194,8 +194,19 @@ String _typeDescription(String type, bool isTh) {
   }
 }
 
+/// A request to recenter the map on a specific point — e.g. from the
+/// Scanner's "View on Map" link. Each instance is distinct (no value
+/// equality) so the same coordinates can be focused more than once in a row.
+class MapFocusRequest {
+  const MapFocusRequest(this.latitude, this.longitude);
+  final double latitude;
+  final double longitude;
+}
+
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({super.key, this.focusRequest});
+
+  final MapFocusRequest? focusRequest;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -226,6 +237,17 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadMapData();
+  }
+
+  @override
+  void didUpdateWidget(covariant MapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final request = widget.focusRequest;
+    if (request != null && !identical(request, oldWidget.focusRequest)) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(request.latitude, request.longitude), 16),
+      );
+    }
   }
 
   Future<void> _searchLocation(String query) async {
@@ -438,9 +460,11 @@ class _MapScreenState extends State<MapScreen> {
                       : Stack(
                           children: [
                             GoogleMap(
-                              initialCameraPosition: const CameraPosition(
-                                target: _bangkok,
-                                zoom: 12,
+                              initialCameraPosition: CameraPosition(
+                                target: widget.focusRequest != null
+                                    ? LatLng(widget.focusRequest!.latitude, widget.focusRequest!.longitude)
+                                    : _bangkok,
+                                zoom: widget.focusRequest != null ? 16 : 12,
                               ),
                               mapType: _mapType,
                               markers: _showPartnerPins ? _markers : const {},
@@ -1034,18 +1058,12 @@ class _PartnerCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
+        _PartnerThumbnail(
+          imageUrl: partner.imageUrl,
+          fallbackIcon: _typeIcon(partner.type),
+          width: 88,
+          height: 80,
           borderRadius: BorderRadius.circular(14),
-          child: Container(
-            width: 88,
-            height: 80,
-            color: const Color(0xFFE8F5E9),
-            child: const Icon(
-              Icons.image_outlined,
-              color: Color(0xFF4CAF50),
-              size: 32,
-            ),
-          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -1115,6 +1133,62 @@ class _PartnerCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PartnerThumbnail extends StatelessWidget {
+  const _PartnerThumbnail({
+    required this.imageUrl,
+    required this.fallbackIcon,
+    required this.width,
+    required this.height,
+    required this.borderRadius,
+    this.iconSize = 32,
+  });
+
+  final String imageUrl;
+  final IconData fallbackIcon;
+  final double width;
+  final double height;
+  final BorderRadius borderRadius;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: imageUrl.isEmpty
+            ? _fallback()
+            : Image.network(
+                imageUrl,
+                width: width,
+                height: height,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _fallback(),
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return _fallback(loading: true);
+                },
+              ),
+      ),
+    );
+  }
+
+  Widget _fallback({bool loading = false}) {
+    return Container(
+      color: const Color(0xFFE8F5E9),
+      alignment: Alignment.center,
+      child: loading
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4CAF50)),
+            )
+          : Icon(fallbackIcon, color: const Color(0xFF4CAF50), size: iconSize),
     );
   }
 }
@@ -1316,18 +1390,13 @@ class _PartnerDetailSheet extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Container(
+                child: _PartnerThumbnail(
+                  imageUrl: partner.imageUrl,
+                  fallbackIcon: _typeIcon(partner.type),
+                  width: double.infinity,
                   height: 160,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    _typeIcon(partner.type),
-                    color: const Color(0xFF4CAF50),
-                    size: 56,
-                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  iconSize: 56,
                 ),
               ),
               Padding(

@@ -6,17 +6,42 @@ enum VarianceLevel { below, within, above, significant }
 class ScanResult {
   const ScanResult({
     required this.standard,
-    required this.detectedPrice,
-    required this.variancePercent,
-    required this.level,
+    this.detectedPrice,
+    this.variancePercent,
+    this.level,
+    this.latitude,
+    this.longitude,
   });
 
   final PriceStandard standard;
-  final double detectedPrice;
-  final double variancePercent;
-  final VarianceLevel level;
+  final double? detectedPrice;
+  final double? variancePercent;
+  final VarianceLevel? level;
 
-  static ScanResult fromDetection(PriceStandard standard, double detectedPrice) {
+  /// Where the photo was taken (device GPS), so the user can revisit their
+  /// own scan location on a map. This is the user's own location reading —
+  /// never a business identity or address — so it does not conflict with
+  /// the "never display shop names/locations" rule for scan results.
+  final double? latitude;
+  final double? longitude;
+
+  bool get hasLocation => latitude != null && longitude != null;
+
+  /// True when this result only identifies the dish (e.g. via Gemini Vision
+  /// from a food photo) with no price actually read from the image — so we
+  /// show the typical reference range instead of a variance comparison.
+  bool get isReferenceOnly => detectedPrice == null;
+
+  static ScanResult referenceOnly(PriceStandard standard, {double? latitude, double? longitude}) {
+    return ScanResult(standard: standard, latitude: latitude, longitude: longitude);
+  }
+
+  static ScanResult fromDetection(
+    PriceStandard standard,
+    double detectedPrice, {
+    double? latitude,
+    double? longitude,
+  }) {
     final avg = standard.avgPrice;
     final pct = avg == 0 ? 0.0 : ((detectedPrice - avg) / avg) * 100;
 
@@ -36,6 +61,8 @@ class ScanResult {
       detectedPrice: detectedPrice,
       variancePercent: pct,
       level: level,
+      latitude: latitude,
+      longitude: longitude,
     );
   }
 }

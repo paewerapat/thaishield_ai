@@ -8,6 +8,7 @@ workflows:
       flutter: stable
       groups:
         - app_store_connect
+        - secrets
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.thaishieldai.app
@@ -25,6 +26,7 @@ workflows:
       - name: Build IPA
         script: |
           flutter build ipa --release \
+            --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
