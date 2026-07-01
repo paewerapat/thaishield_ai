@@ -18,8 +18,7 @@ class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key, this.onViewOnMap});
 
   /// Called when the user taps "View on Map" on a scan result, with the
-  /// latitude/longitude where the photo was taken. The host screen should
-  /// switch to the Map tab and recenter on that point.
+  /// latitude/longitude where the photo was taken.
   final void Function(double latitude, double longitude)? onViewOnMap;
 
   @override
@@ -29,6 +28,7 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   _ScanState _state = _ScanState.idle;
   List<ScanResult> _results = const [];
+  File? _capturedImage;
 
   Future<void> _captureAndScan() async {
     final picked = await ImagePicker().pickImage(
@@ -39,7 +39,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
     if (picked == null) return;
 
     final imageFile = File(picked.path);
-    setState(() => _state = _ScanState.processing);
+    setState(() {
+      _state = _ScanState.processing;
+      _capturedImage = imageFile;
+    });
 
     try {
       final positionFuture = _currentPositionOrNull();
@@ -64,8 +67,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
         }
       }
 
-      // No readable price text matched — fall back to Gemini Vision to
-      // identify the dish directly from the photo.
       if (!mounted) return;
       setState(() => _state = _ScanState.identifying);
 
@@ -82,7 +83,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
         return;
       }
 
-      final standard = PriceScanService.instance.findStandardByName(dishName, standards);
+      final standard =
+          PriceScanService.instance.findStandardByName(dishName, standards);
       if (!mounted) return;
       if (standard == null) {
         setState(() => _state = _ScanState.noMatch);
@@ -90,7 +92,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
         setState(() {
           _state = _ScanState.results;
           _results = [
-            ScanResult.referenceOnly(standard, latitude: position?.latitude, longitude: position?.longitude),
+            ScanResult.referenceOnly(
+              standard,
+              latitude: position?.latitude,
+              longitude: position?.longitude,
+            ),
           ];
         });
       }
@@ -107,16 +113,21 @@ class _ScannerScreenState extends State<ScannerScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return null;
       }
-      return await Geolocator.getCurrentPosition().timeout(const Duration(seconds: 5));
+      return await Geolocator.getCurrentPosition()
+          .timeout(const Duration(seconds: 5));
     } catch (_) {
       return null;
     }
   }
 
-  void _reset() => setState(() => _state = _ScanState.idle);
+  void _reset() => setState(() {
+        _state = _ScanState.idle;
+        _capturedImage = null;
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -137,13 +148,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
     switch (_state) {
       case _ScanState.processing:
         return _StatusView(
-          icon: null,
           loading: true,
           message: appText(context, 'scanner_processing'),
         );
       case _ScanState.identifying:
         return _StatusView(
-          icon: null,
           loading: true,
           message: appText(context, 'scanner_identifying'),
         );
@@ -160,12 +169,21 @@ class _ScannerScreenState extends State<ScannerScreen> {
           onRetry: _reset,
         );
       case _ScanState.results:
-        return _ResultsView(results: _results, onScanAgain: _reset, onViewOnMap: widget.onViewOnMap);
+        return _ResultsView(
+          results: _results,
+          capturedImage: _capturedImage,
+          onScanAgain: _reset,
+          onViewOnMap: widget.onViewOnMap,
+        );
       case _ScanState.idle:
         return _IdleView(onCapture: _captureAndScan);
     }
   }
 }
+
+// ═══════════════════════════════════════════════════
+// Header
+// ═══════════════════════════════════════════════════
 
 class _ScannerHeader extends StatelessWidget {
   const _ScannerHeader();
@@ -181,7 +199,8 @@ class _ScannerHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.document_scanner_rounded, color: Color(0xFFFFB300), size: 24),
+          const Icon(Icons.document_scanner_rounded,
+              color: Color(0xFFFFB300), size: 24),
           const SizedBox(width: 10),
           const Text(
             'AI Price Scanner',
@@ -192,12 +211,17 @@ class _ScannerHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Icon(Icons.help_outline_rounded, color: Colors.white.withValues(alpha: 0.7), size: 22),
+          Icon(Icons.help_outline_rounded,
+              color: Colors.white.withValues(alpha: 0.7), size: 22),
         ],
       ),
     );
   }
 }
+
+// ═══════════════════════════════════════════════════
+// Idle
+// ═══════════════════════════════════════════════════
 
 class _IdleView extends StatelessWidget {
   const _IdleView({required this.onCapture});
@@ -211,18 +235,34 @@ class _IdleView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const _PlaceholderIcon(),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F7FD),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.document_scanner_outlined,
+                color: Color(0xFF4FC3F7),
+                size: 52,
+              ),
+            ),
             const SizedBox(height: 20),
             Text(
               appText(context, 'scanner_instructions_title'),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF0D1B2A), fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Color(0xFF0D1B2A),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               appText(context, 'scanner_instructions_subtitle'),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 13),
+              style:
+                  const TextStyle(color: Color(0xFF90A4AE), fontSize: 13),
             ),
             const SizedBox(height: 28),
             SizedBox(
@@ -234,12 +274,14 @@ class _IdleView extends StatelessWidget {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28)),
                 ),
                 icon: const Icon(Icons.camera_alt_rounded, size: 20),
                 label: Text(
                   appText(context, 'scanner_capture_button'),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -250,29 +292,17 @@ class _IdleView extends StatelessWidget {
   }
 }
 
-class _PlaceholderIcon extends StatelessWidget {
-  const _PlaceholderIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      height: 96,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE3F7FD),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const Icon(
-        Icons.document_scanner_outlined,
-        color: Color(0xFF4FC3F7),
-        size: 52,
-      ),
-    );
-  }
-}
+// ═══════════════════════════════════════════════════
+// Status (loading / no-match / error)
+// ═══════════════════════════════════════════════════
 
 class _StatusView extends StatelessWidget {
-  const _StatusView({this.icon, this.loading = false, required this.message, this.onRetry});
+  const _StatusView({
+    this.icon,
+    this.loading = false,
+    required this.message,
+    this.onRetry,
+  });
   final IconData? icon;
   final bool loading;
   final String message;
@@ -294,7 +324,8 @@ class _StatusView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF0D1B2A), fontSize: 14),
+              style:
+                  const TextStyle(color: Color(0xFF0D1B2A), fontSize: 14),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 24),
@@ -303,8 +334,10 @@ class _StatusView extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF4FC3F7),
                   side: const BorderSide(color: Color(0xFF4FC3F7)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24)),
                 ),
                 icon: const Icon(Icons.camera_alt_outlined, size: 18),
                 label: Text(appText(context, 'scanner_scan_again')),
@@ -317,222 +350,296 @@ class _StatusView extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════
+// Results — full-screen hero layout
+// ═══════════════════════════════════════════════════
+
 class _ResultsView extends StatelessWidget {
-  const _ResultsView({required this.results, required this.onScanAgain, this.onViewOnMap});
+  const _ResultsView({
+    required this.results,
+    required this.onScanAgain,
+    this.capturedImage,
+    this.onViewOnMap,
+  });
+
   final List<ScanResult> results;
+  final File? capturedImage;
   final VoidCallback onScanAgain;
-  final void Function(double latitude, double longitude)? onViewOnMap;
+  final void Function(double, double)? onViewOnMap;
 
   @override
   Widget build(BuildContext context) {
-    final locale = context.watch<LocaleProvider>().locale;
+    final langCode =
+        context.watch<LocaleProvider>().locale.languageCode;
+    final primary = results.first;
+
     return Column(
       children: [
+        _HeroSection(
+          result: primary,
+          langCode: langCode,
+          capturedImage: capturedImage,
+        ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            itemCount: results.length,
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ResultCard(
-                result: results[index],
-                langCode: locale.languageCode,
-                onViewOnMap: onViewOnMap,
-              ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(24)),
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Text(
-            appText(context, 'scanner_disclaimer'),
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[500], fontSize: 11),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onScanAgain,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF4FC3F7),
-                side: const BorderSide(color: Color(0xFF4FC3F7)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              ),
-              icon: const Icon(Icons.camera_alt_outlined, size: 18),
-              label: Text(appText(context, 'scanner_scan_again')),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ResultCard extends StatelessWidget {
-  const _ResultCard({required this.result, required this.langCode, this.onViewOnMap});
-  final ScanResult result;
-  final String langCode;
-  final void Function(double latitude, double longitude)? onViewOnMap;
-
-  String _fmt(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-      ),
-      child: result.isReferenceOnly ? _buildReferenceOnly(context) : _buildDetected(context),
-    );
-  }
-
-  Widget _buildDetected(BuildContext context) {
-    final color = varianceColors[result.level]!;
-    final pct = result.variancePercent!;
-    final pctLabel = '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(0)}%';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                result.standard.localizedName(langCode),
-                style: const TextStyle(color: Color(0xFF0D1B2A), fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                pctLabel,
-                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _PriceLabel(
-                label: appText(context, 'scanner_detected_price'),
-                value: '฿${_fmt(result.detectedPrice!)}',
-                valueColor: const Color(0xFF0D1B2A),
-              ),
-            ),
-            Expanded(
-              child: _PriceLabel(
-                label: appText(context, 'scanner_typical_range'),
-                value: '฿${_fmt(result.standard.minPrice)} - ฿${_fmt(result.standard.maxPrice)}',
-                valueColor: const Color(0xFF90A4AE),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _VarianceBar(result: result, color: color),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.circle, size: 8, color: color),
-            const SizedBox(width: 6),
-            Text(
-              appText(context, varianceTextKey[result.level]!),
-              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        if (result.hasLocation) ...[
-          const SizedBox(height: 10),
-          _ViewLocationLink(
-            onTap: onViewOnMap == null ? null : () => onViewOnMap!(result.latitude!, result.longitude!),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildReferenceOnly(BuildContext context) {
-    const color = Color(0xFFFFB300);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                result.standard.localizedName(langCode),
-                style: const TextStyle(color: Color(0xFF0D1B2A), fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.auto_awesome_rounded, color: color, size: 12),
-                  const SizedBox(width: 4),
+                  _CategoryChip(category: primary.standard.category),
+                  const SizedBox(height: 16),
+                  _PriceDisplay(result: primary),
+                  if (!primary.isReferenceOnly) ...[
+                    const SizedBox(height: 20),
+                    _VarianceSection(result: primary),
+                  ],
+                  if (results.length > 1) ...[
+                    const SizedBox(height: 20),
+                    const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                    const SizedBox(height: 14),
+                    Text(
+                      appText(context, 'scanner_other_matches'),
+                      style: const TextStyle(
+                        color: Color(0xFF90A4AE),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...results.skip(1).map(
+                          (r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _CompactResultRow(
+                                result: r, langCode: langCode),
+                          ),
+                        ),
+                  ],
+                  if (primary.hasLocation) ...[
+                    const SizedBox(height: 20),
+                    _LocationCard(
+                        result: primary, onViewOnMap: onViewOnMap),
+                  ],
+                  const SizedBox(height: 20),
                   Text(
-                    appText(context, 'scanner_ai_identified'),
-                    style: const TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                    appText(context, 'scanner_disclaimer'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: Colors.grey[400], fontSize: 11, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: onScanAgain,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF4FC3F7),
+                        side: const BorderSide(color: Color(0xFF4FC3F7)),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28)),
+                      ),
+                      icon:
+                          const Icon(Icons.camera_alt_outlined, size: 18),
+                      label: Text(
+                        appText(context, 'scanner_scan_again'),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _PriceLabel(
-          label: appText(context, 'scanner_reference_range'),
-          value: '฿${_fmt(result.standard.minPrice)} - ฿${_fmt(result.standard.maxPrice)}',
-          valueColor: const Color(0xFF0D1B2A),
-        ),
-        if (result.hasLocation) ...[
-          const SizedBox(height: 10),
-          _ViewLocationLink(
-            onTap: onViewOnMap == null ? null : () => onViewOnMap!(result.latitude!, result.longitude!),
           ),
-        ],
+        ),
       ],
     );
   }
 }
 
-class _ViewLocationLink extends StatelessWidget {
-  const _ViewLocationLink({this.onTap});
-  final VoidCallback? onTap;
+// ═══════════════════════════════════════════════════
+// Hero section — food photo + dish name
+// ═══════════════════════════════════════════════════
+
+class _HeroSection extends StatelessWidget {
+  const _HeroSection({
+    required this.result,
+    required this.langCode,
+    this.capturedImage,
+  });
+
+  final ScanResult result;
+  final String langCode;
+  final File? capturedImage;
 
   @override
   Widget build(BuildContext context) {
-    if (onTap == null) return const SizedBox.shrink();
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+    final imageUrl = result.standard.imageUrl;
+    final hasRefImage = imageUrl.isNotEmpty;
+
+    return SizedBox(
+      height: 230,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Background: reference dish photo or captured fallback ──
+          if (hasRefImage)
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, err, st) => _capturedOrPlaceholder(),
+              loadingBuilder: (_, child, progress) =>
+                  progress == null ? child : _capturedOrPlaceholder(),
+            )
+          else
+            _capturedOrPlaceholder(),
+
+          // ── Gradient overlay ──
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.3, 1.0],
+                colors: [Colors.transparent, Color(0xE6000000)],
+              ),
+            ),
+          ),
+
+          // ── Captured photo thumbnail (when ref image is the hero) ──
+          if (capturedImage != null && hasRefImage)
+            Positioned(
+              right: 16,
+              bottom: 52,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white, width: 2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Image.file(capturedImage!, fit: BoxFit.cover),
+                ),
+              ),
+            ),
+
+          // ── Dish name + AI badge ──
+          Positioned(
+            left: 20,
+            right: (capturedImage != null && hasRefImage) ? 84 : 20,
+            bottom: 18,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (result.isReferenceOnly) ...[
+                  const _AiBadge(),
+                  const SizedBox(height: 6),
+                ],
+                Text(
+                  result.standard.localizedName(langCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                    shadows: [
+                      Shadow(blurRadius: 10, color: Colors.black87)
+                    ],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _capturedOrPlaceholder() {
+    if (capturedImage != null) {
+      return Image.file(capturedImage!, fit: BoxFit.cover);
+    }
+    return _CategoryBackground(category: result.standard.category);
+  }
+}
+
+class _CategoryBackground extends StatelessWidget {
+  const _CategoryBackground({required this.category});
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, c1, c2) = switch (category) {
+      'transport' => (
+          Icons.directions_car_rounded,
+          const Color(0xFF0D3352),
+          const Color(0xFF1565C0),
+        ),
+      'attraction' => (
+          Icons.account_balance_rounded,
+          const Color(0xFF1A3A20),
+          const Color(0xFF2E7D32),
+        ),
+      _ => (
+          Icons.restaurant_rounded,
+          const Color(0xFF3A1428),
+          const Color(0xFF880E4F),
+        ),
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [c1, c2],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Icon(icon,
+            color: Colors.white.withValues(alpha: 0.15), size: 100),
+      ),
+    );
+  }
+}
+
+class _AiBadge extends StatelessWidget {
+  const _AiBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFB300).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.map_outlined, size: 14, color: Color(0xFF4FC3F7)),
+          const Icon(Icons.auto_awesome_rounded,
+              color: Colors.white, size: 12),
           const SizedBox(width: 4),
           Text(
-            appText(context, 'scanner_view_location'),
-            style: const TextStyle(color: Color(0xFF4FC3F7), fontSize: 12, fontWeight: FontWeight.w600),
+            appText(context, 'scanner_ai_identified'),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -540,20 +647,186 @@ class _ViewLocationLink extends StatelessWidget {
   }
 }
 
-class _PriceLabel extends StatelessWidget {
-  const _PriceLabel({required this.label, required this.value, required this.valueColor});
-  final String label;
-  final String value;
-  final Color valueColor;
+// ═══════════════════════════════════════════════════
+// Category chip
+// ═══════════════════════════════════════════════════
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.category});
+  final String category;
 
   @override
   Widget build(BuildContext context) {
+    final (icon, color, labelKey) = switch (category) {
+      'transport' => (
+          Icons.directions_car_rounded,
+          const Color(0xFF4FC3F7),
+          'scanner_category_transport',
+        ),
+      'attraction' => (
+          Icons.account_balance_rounded,
+          const Color(0xFF2E7D32),
+          'scanner_category_attraction',
+        ),
+      _ => (
+          Icons.restaurant_rounded,
+          const Color(0xFFFFB300),
+          'scanner_category_food',
+        ),
+    };
+
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            appText(context, labelKey),
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Price display
+// ═══════════════════════════════════════════════════
+
+class _PriceDisplay extends StatelessWidget {
+  const _PriceDisplay({required this.result});
+  final ScanResult result;
+
+  String _fmt(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.isReferenceOnly) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            appText(context, 'scanner_reference_range'),
+            style: const TextStyle(
+                color: Color(0xFF90A4AE), fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '฿${_fmt(result.standard.minPrice)} – ฿${_fmt(result.standard.maxPrice)}',
+            style: const TextStyle(
+              color: Color(0xFF0D1B2A),
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final color = varianceColors[result.level]!;
+    final pct = result.variancePercent!;
+    final pctLabel =
+        '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(0)}%';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 11)),
-        const SizedBox(height: 2),
-        Text(value, style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(
+          appText(context, 'scanner_detected_price'),
+          style: const TextStyle(
+              color: Color(0xFF90A4AE), fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '฿${_fmt(result.detectedPrice!)}',
+              style: const TextStyle(
+                color: Color(0xFF0D1B2A),
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  pctLabel,
+                  style: TextStyle(
+                      color: color,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${appText(context, 'scanner_typical_range')}: ฿${_fmt(result.standard.minPrice)} – ฿${_fmt(result.standard.maxPrice)}',
+          style: const TextStyle(
+              color: Color(0xFF90A4AE), fontSize: 13),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Variance bar + status label
+// ═══════════════════════════════════════════════════
+
+class _VarianceSection extends StatelessWidget {
+  const _VarianceSection({required this.result});
+  final ScanResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = varianceColors[result.level]!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _VarianceBar(result: result, color: color),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              appText(context, varianceTextKey[result.level]!),
+              style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -568,11 +841,16 @@ class _VarianceBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final standard = result.standard;
     final detectedPrice = result.detectedPrice!;
-    final scaleMax = [standard.maxPrice * 1.5, detectedPrice * 1.1, 1.0].reduce((a, b) => a > b ? a : b);
+    final scaleMax =
+        [standard.maxPrice * 1.5, detectedPrice * 1.1, 1.0]
+            .reduce((a, b) => a > b ? a : b);
 
-    final minFraction = (standard.minPrice / scaleMax).clamp(0.0, 1.0);
-    final maxFraction = (standard.maxPrice / scaleMax).clamp(0.0, 1.0);
-    final markerFraction = (detectedPrice / scaleMax).clamp(0.0, 1.0);
+    final minFraction =
+        (standard.minPrice / scaleMax).clamp(0.0, 1.0);
+    final maxFraction =
+        (standard.maxPrice / scaleMax).clamp(0.0, 1.0);
+    final markerFraction =
+        (detectedPrice / scaleMax).clamp(0.0, 1.0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -585,26 +863,39 @@ class _VarianceBar extends StatelessWidget {
               Container(
                 height: 6,
                 width: width,
-                decoration: BoxDecoration(color: const Color(0xFFEFF2F4), borderRadius: BorderRadius.circular(3)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF2F4),
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
               Positioned(
                 left: width * minFraction,
                 child: Container(
                   height: 6,
                   width: width * (maxFraction - minFraction),
-                  decoration: BoxDecoration(color: const Color(0xFF2E7D32).withValues(alpha: 0.35), borderRadius: BorderRadius.circular(3)),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32)
+                        .withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
               Positioned(
-                left: (width * markerFraction - 7).clamp(0.0, width - 14),
+                left: (width * markerFraction - 7)
+                    .clamp(0.0, width - 14),
                 child: Container(
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 4)],
+                    border:
+                        Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                          color: color.withValues(alpha: 0.4),
+                          blurRadius: 4),
+                    ],
                   ),
                 ),
               ),
@@ -612,6 +903,151 @@ class _VarianceBar extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Location card
+// ═══════════════════════════════════════════════════
+
+class _LocationCard extends StatelessWidget {
+  const _LocationCard({required this.result, this.onViewOnMap});
+  final ScanResult result;
+  final void Function(double, double)? onViewOnMap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F5F7),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFF4FC3F7).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.location_on_rounded,
+                color: Color(0xFF4FC3F7), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appText(context, 'scanner_scan_location'),
+                  style: const TextStyle(
+                    color: Color(0xFF0D1B2A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${result.latitude!.toStringAsFixed(4)}, '
+                  '${result.longitude!.toStringAsFixed(4)}',
+                  style: const TextStyle(
+                      color: Color(0xFF90A4AE), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          if (onViewOnMap != null)
+            TextButton(
+              onPressed: () =>
+                  onViewOnMap!(result.latitude!, result.longitude!),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4FC3F7),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    appText(context, 'scanner_view_location'),
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.arrow_forward_rounded, size: 14),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Compact row for secondary OCR matches
+// ═══════════════════════════════════════════════════
+
+class _CompactResultRow extends StatelessWidget {
+  const _CompactResultRow(
+      {required this.result, required this.langCode});
+  final ScanResult result;
+  final String langCode;
+
+  String _fmt(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = result.isReferenceOnly
+        ? const Color(0xFFFFB300)
+        : varianceColors[result.level]!;
+    final label = result.isReferenceOnly
+        ? '฿${_fmt(result.standard.minPrice)}–฿${_fmt(result.standard.maxPrice)}'
+        : '${result.variancePercent! >= 0 ? '+' : ''}'
+            '${result.variancePercent!.toStringAsFixed(0)}%';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              result.standard.localizedName(langCode),
+              style: const TextStyle(
+                color: Color(0xFF0D1B2A),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

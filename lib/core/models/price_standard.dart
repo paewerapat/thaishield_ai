@@ -13,6 +13,7 @@ class PriceStandard {
     required this.maxPrice,
     required this.category,
     required this.updatedAt,
+    this.imageUrl = '',
   });
 
   final String id;
@@ -26,6 +27,7 @@ class PriceStandard {
   final double maxPrice;
   final String category;
   final DateTime updatedAt;
+  final String imageUrl;
 
   double get avgPrice => (minPrice + maxPrice) / 2;
 
@@ -54,6 +56,7 @@ class PriceStandard {
       maxPrice:   (d['max_price'] as num?)?.toDouble() ?? 0,
       category:   d['category'] ?? 'food',
       updatedAt:  (d['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      imageUrl:   d['image_url'] ?? '',
     );
   }
 }
