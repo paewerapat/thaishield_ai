@@ -147,15 +147,25 @@ class _ScannerScreenState extends State<ScannerScreen> {
   Widget _buildBody(BuildContext context) {
     switch (_state) {
       case _ScanState.processing:
-        return _StatusView(
-          loading: true,
-          message: appText(context, 'scanner_processing'),
-        );
+        return _capturedImage != null
+            ? _PhotoScanningView(
+                imageFile: _capturedImage!,
+                message: appText(context, 'scanner_processing'),
+              )
+            : _StatusView(
+                loading: true,
+                message: appText(context, 'scanner_processing'),
+              );
       case _ScanState.identifying:
-        return _StatusView(
-          loading: true,
-          message: appText(context, 'scanner_identifying'),
-        );
+        return _capturedImage != null
+            ? _PhotoScanningView(
+                imageFile: _capturedImage!,
+                message: appText(context, 'scanner_identifying'),
+              )
+            : _StatusView(
+                loading: true,
+                message: appText(context, 'scanner_identifying'),
+              );
       case _ScanState.noMatch:
         return _StatusView(
           icon: Icons.search_off_rounded,
@@ -905,6 +915,163 @@ class _VarianceBar extends StatelessWidget {
       },
     );
   }
+}
+
+// ═══════════════════════════════════════════════════
+// Photo scanning animation
+// ═══════════════════════════════════════════════════
+
+class _PhotoScanningView extends StatefulWidget {
+  const _PhotoScanningView({
+    required this.imageFile,
+    required this.message,
+  });
+  final File imageFile;
+  final String message;
+
+  @override
+  State<_PhotoScanningView> createState() => _PhotoScanningViewState();
+}
+
+class _PhotoScanningViewState extends State<_PhotoScanningView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scanAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _scanAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.file(widget.imageFile, fit: BoxFit.cover),
+        Container(color: Colors.black.withValues(alpha: 0.5)),
+        AnimatedBuilder(
+          animation: _scanAnim,
+          builder: (context, _) => CustomPaint(
+            painter: _ScanOverlayPainter(scanProgress: _scanAnim.value),
+          ),
+        ),
+        Positioned(
+          bottom: 48,
+          left: 0,
+          right: 0,
+          child: Column(
+            children: [
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  color: Color(0xFF4FC3F7),
+                  strokeWidth: 2.5,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                widget.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  shadows: [Shadow(blurRadius: 6, color: Colors.black87)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScanOverlayPainter extends CustomPainter {
+  const _ScanOverlayPainter({required this.scanProgress});
+  final double scanProgress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const accent = Color(0xFF4FC3F7);
+
+    final frameRect = Rect.fromLTRB(
+      size.width * 0.08,
+      size.height * 0.08,
+      size.width * 0.92,
+      size.height * 0.68,
+    );
+    const cornerLen = 28.0;
+
+    final cornerPaint = Paint()
+      ..color = accent
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Corner brackets
+    canvas.drawLine(frameRect.topLeft,
+        frameRect.topLeft.translate(cornerLen, 0), cornerPaint);
+    canvas.drawLine(frameRect.topLeft,
+        frameRect.topLeft.translate(0, cornerLen), cornerPaint);
+    canvas.drawLine(frameRect.topRight,
+        frameRect.topRight.translate(-cornerLen, 0), cornerPaint);
+    canvas.drawLine(frameRect.topRight,
+        frameRect.topRight.translate(0, cornerLen), cornerPaint);
+    canvas.drawLine(frameRect.bottomLeft,
+        frameRect.bottomLeft.translate(cornerLen, 0), cornerPaint);
+    canvas.drawLine(frameRect.bottomLeft,
+        frameRect.bottomLeft.translate(0, -cornerLen), cornerPaint);
+    canvas.drawLine(frameRect.bottomRight,
+        frameRect.bottomRight.translate(-cornerLen, 0), cornerPaint);
+    canvas.drawLine(frameRect.bottomRight,
+        frameRect.bottomRight.translate(0, -cornerLen), cornerPaint);
+
+    final scanY = frameRect.top + scanProgress * frameRect.height;
+
+    // Glow
+    canvas.drawRect(
+      Rect.fromLTRB(
+          frameRect.left, scanY - 8, frameRect.right, scanY + 8),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.transparent,
+            accent.withValues(alpha: 0.25),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromLTRB(
+            frameRect.left, scanY - 8, frameRect.right, scanY + 8)),
+    );
+
+    // Scan line
+    canvas.drawRect(
+      Rect.fromLTRB(
+          frameRect.left, scanY - 1, frameRect.right, scanY + 1),
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Colors.transparent, accent, Colors.transparent],
+        ).createShader(Rect.fromLTRB(
+            frameRect.left, scanY - 1, frameRect.right, scanY + 1)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScanOverlayPainter old) =>
+      old.scanProgress != scanProgress;
 }
 
 // ═══════════════════════════════════════════════════
