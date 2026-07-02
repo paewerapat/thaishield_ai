@@ -15,11 +15,9 @@ import '../services/price_scan_service.dart';
 enum _ScanState { idle, processing, identifying, noMatch, error, results }
 
 class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({super.key, this.onViewOnMap});
+  const ScannerScreen({super.key, this.onViewNearbyPartners});
 
-  /// Called when the user taps "View on Map" on a scan result, with the
-  /// latitude/longitude where the photo was taken.
-  final void Function(double latitude, double longitude)? onViewOnMap;
+  final VoidCallback? onViewNearbyPartners;
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -183,7 +181,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           results: _results,
           capturedImage: _capturedImage,
           onScanAgain: _reset,
-          onViewOnMap: widget.onViewOnMap,
+          onViewNearbyPartners: widget.onViewNearbyPartners,
         );
       case _ScanState.idle:
         return _IdleView(onCapture: _captureAndScan);
@@ -369,13 +367,13 @@ class _ResultsView extends StatelessWidget {
     required this.results,
     required this.onScanAgain,
     this.capturedImage,
-    this.onViewOnMap,
+    this.onViewNearbyPartners,
   });
 
   final List<ScanResult> results;
   final File? capturedImage;
   final VoidCallback onScanAgain;
-  final void Function(double, double)? onViewOnMap;
+  final VoidCallback? onViewNearbyPartners;
 
   @override
   Widget build(BuildContext context) {
@@ -431,11 +429,10 @@ class _ResultsView extends StatelessWidget {
                           ),
                         ),
                   ],
-                  if (primary.hasLocation) ...[
-                    const SizedBox(height: 20),
-                    _LocationCard(
-                        result: primary, onViewOnMap: onViewOnMap),
-                  ],
+                  const SizedBox(height: 20),
+                  _TipForYouCard(result: primary),
+                  const SizedBox(height: 16),
+                  _ViewNearbyPartnersButton(onTap: onViewNearbyPartners),
                   const SizedBox(height: 20),
                   Text(
                     appText(context, 'scanner_disclaimer'),
@@ -1075,83 +1072,102 @@ class _ScanOverlayPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════
-// Location card
+// Tip for You card
 // ═══════════════════════════════════════════════════
 
-class _LocationCard extends StatelessWidget {
-  const _LocationCard({required this.result, this.onViewOnMap});
+class _TipForYouCard extends StatelessWidget {
+  const _TipForYouCard({required this.result});
   final ScanResult result;
-  final void Function(double, double)? onViewOnMap;
+
+  String _tipKey() {
+    if (result.isReferenceOnly) return 'scanner_tip_reference';
+    return switch (result.level!) {
+      VarianceLevel.within => 'scanner_tip_within',
+      VarianceLevel.below => 'scanner_tip_below',
+      VarianceLevel.above => 'scanner_tip_above',
+      VarianceLevel.significant => 'scanner_tip_significant',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F7),
+        color: const Color(0xFFFFFDE7),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFB300).withValues(alpha: 0.3)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4FC3F7).withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.location_on_rounded,
-                color: Color(0xFF4FC3F7), size: 20),
-          ),
-          const SizedBox(width: 12),
+          const Icon(Icons.lightbulb_rounded, color: Color(0xFFFFB300), size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  appText(context, 'scanner_scan_location'),
+                  appText(context, 'scanner_tip_for_you'),
                   style: const TextStyle(
                     color: Color(0xFF0D1B2A),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  '${result.latitude!.toStringAsFixed(4)}, '
-                  '${result.longitude!.toStringAsFixed(4)}',
+                  appText(context, _tipKey()),
                   style: const TextStyle(
-                      color: Color(0xFF90A4AE), fontSize: 11),
+                      color: Color(0xFF5D6E7F), fontSize: 13, height: 1.4),
                 ),
               ],
             ),
           ),
-          if (onViewOnMap != null)
-            TextButton(
-              onPressed: () =>
-                  onViewOnMap!(result.latitude!, result.longitude!),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF4FC3F7),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    appText(context, 'scanner_view_location'),
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(Icons.arrow_forward_rounded, size: 14),
-                ],
-              ),
-            ),
         ],
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// View Nearby Partners button
+// ═══════════════════════════════════════════════════
+
+class _ViewNearbyPartnersButton extends StatelessWidget {
+  const _ViewNearbyPartnersButton({this.onTap});
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0A1810),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28)),
+            ),
+            icon: const Icon(Icons.location_on_rounded, size: 20),
+            label: Text(
+              appText(context, 'scanner_view_nearby_partners'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          appText(context, 'scanner_nearby_partners_subtitle'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
+        ),
+      ],
     );
   }
 }
