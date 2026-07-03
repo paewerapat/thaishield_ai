@@ -232,6 +232,29 @@ class _MapScreenState extends State<MapScreen> {
   };
   final _searchController = TextEditingController();
   bool _searching = false;
+  LatLng _mapCenter = _bangkok;
+
+  double _distanceSq(LatLng a, LatLng b) {
+    final dlat = a.latitude - b.latitude;
+    final dlng = a.longitude - b.longitude;
+    return dlat * dlat + dlng * dlng;
+  }
+
+  PartnerLocation? _findNearestPartner(LatLng center) {
+    if (_partnersById.isEmpty) return null;
+    return _partnersById.values.reduce((a, b) =>
+        _distanceSq(center, LatLng(a.lat, a.lng)) <=
+                _distanceSq(center, LatLng(b.lat, b.lng))
+            ? a
+            : b);
+  }
+
+  void _updateNearestPartner() {
+    final nearest = _findNearestPartner(_mapCenter);
+    if (nearest != null && nearest != _selectedPartner) {
+      setState(() => _selectedPartner = nearest);
+    }
+  }
 
   @override
   void initState() {
@@ -264,9 +287,12 @@ class _MapScreenState extends State<MapScreen> {
         _showSearchMessage(notFoundMessage);
       } else {
         final loc = results.first;
+        final newCenter = LatLng(loc.latitude, loc.longitude);
         _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 13),
+          CameraUpdate.newLatLngZoom(newCenter, 13),
         );
+        setState(() => _mapCenter = newCenter);
+        _updateNearestPartner();
       }
     } catch (_) {
       _showSearchMessage(notFoundMessage);
@@ -355,8 +381,7 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!mounted) return;
       setState(() {
-        _selectedPartner =
-            partners.where((p) => p.isVerified).firstOrNull ?? partners.firstOrNull;
+        _selectedPartner = _findNearestPartner(_mapCenter);
         _markers
           ..clear()
           ..addAll(markers);
@@ -486,6 +511,18 @@ class _MapScreenState extends State<MapScreen> {
                               tiltGesturesEnabled: true,
                               onMapCreated: (c) => _mapController = c,
                               onTap: (_) => setState(() => _selectedZone = null),
+                              onCameraIdle: () async {
+                                final ctrl = _mapController;
+                                if (ctrl == null || !mounted) return;
+                                final region = await ctrl.getVisibleRegion();
+                                final center = LatLng(
+                                  (region.northeast.latitude + region.southwest.latitude) / 2,
+                                  (region.northeast.longitude + region.southwest.longitude) / 2,
+                                );
+                                if (!mounted) return;
+                                setState(() => _mapCenter = center);
+                                _updateNearestPartner();
+                              },
                             ),
                             Positioned(
                               top: 12,
