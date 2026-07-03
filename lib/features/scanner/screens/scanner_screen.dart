@@ -129,8 +129,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isShowingPhoto = _capturedImage != null &&
+        (_state == _ScanState.processing || _state == _ScanState.identifying);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5F7),
+      backgroundColor:
+          isShowingPhoto ? Colors.black : const Color(0xFFF3F5F7),
       body: SafeArea(
         child: Column(
           children: [
@@ -1007,9 +1011,9 @@ class _ScanOverlayPainter extends CustomPainter {
 
     final frameRect = Rect.fromLTRB(
       size.width * 0.08,
-      size.height * 0.08,
+      size.height * 0.20,
       size.width * 0.92,
-      size.height * 0.68,
+      size.height * 0.80,
     );
     const cornerLen = 28.0;
 
