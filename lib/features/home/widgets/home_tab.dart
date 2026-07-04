@@ -62,7 +62,7 @@ class HomeTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'ThaiShield',
+                'ThaiShield AI',
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
               Text(
