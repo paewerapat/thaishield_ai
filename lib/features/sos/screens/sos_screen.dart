@@ -272,7 +272,7 @@ class _SosHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       decoration: const BoxDecoration(
         color: Color(0xFF0A1810),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
