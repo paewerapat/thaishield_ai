@@ -204,23 +204,38 @@ class _ScannerHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       decoration: const BoxDecoration(
         color: Color(0xFF0A1810),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.document_scanner_rounded,
-              color: Color(0xFFFFB300), size: 24),
-          const SizedBox(width: 10),
-          const Text(
-            'AI Price Scanner',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/logo.jpg',
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
             ),
+          ),
+          const SizedBox(width: 12),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ThaiShield AI',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'AI Price Scanner',
+                style: TextStyle(color: Color(0xFFFFB300), fontSize: 12),
+              ),
+            ],
           ),
           const Spacer(),
           Icon(Icons.help_outline_rounded,

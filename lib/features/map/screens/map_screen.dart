@@ -649,11 +649,13 @@ class _MapSearchBar extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         SizedBox(
-          height: 32,
+          height: 44,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.fromLTRB(2, 4, 8, 6),
             itemCount: _mapSearchSuggestions.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) => _SuggestionChip(
