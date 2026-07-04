@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -42,17 +43,6 @@ class _SosScreenState extends State<SosScreen>
   }
 
   Future<void> _initServices() async {
-    _sttAvailable = await _stt.initialize(
-      onError: (_) {
-        if (mounted && _state == _SosState.listening) {
-          setState(() {
-            _state = _SosState.error;
-            _errorKey = 'sos_error_mic';
-          });
-        }
-      },
-    );
-
     await _tts.setLanguage('th-TH');
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1.0);
@@ -63,8 +53,44 @@ class _SosScreenState extends State<SosScreen>
     });
   }
 
+  Future<bool> _ensureMicPermission() async {
+    var status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
+      return false;
+    }
+    status = await Permission.microphone.request();
+    return status.isGranted;
+  }
+
   Future<void> _startListening() async {
     if (_state != _SosState.idle) return;
+
+    final granted = await _ensureMicPermission();
+    if (!granted) {
+      if (mounted) {
+        setState(() {
+          _state = _SosState.error;
+          _errorKey = 'sos_error_mic';
+        });
+      }
+      return;
+    }
+
+    if (!_sttAvailable) {
+      _sttAvailable = await _stt.initialize(
+        onError: (_) {
+          if (mounted && _state == _SosState.listening) {
+            setState(() {
+              _state = _SosState.error;
+              _errorKey = 'sos_error_mic';
+            });
+          }
+        },
+      );
+    }
+
     if (!_sttAvailable) {
       setState(() {
         _state = _SosState.error;
@@ -72,6 +98,7 @@ class _SosScreenState extends State<SosScreen>
       });
       return;
     }
+
     setState(() {
       _state = _SosState.listening;
       _spokenText = '';
