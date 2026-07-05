@@ -17,7 +17,7 @@ enum _ScanState { idle, processing, identifying, noMatch, error, results }
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key, this.onViewNearbyPartners});
 
-  final VoidCallback? onViewNearbyPartners;
+  final ValueChanged<String>? onViewNearbyPartners;
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -392,7 +392,7 @@ class _ResultsView extends StatelessWidget {
   final List<ScanResult> results;
   final File? capturedImage;
   final VoidCallback onScanAgain;
-  final VoidCallback? onViewNearbyPartners;
+  final ValueChanged<String>? onViewNearbyPartners;
 
   @override
   Widget build(BuildContext context) {
@@ -451,7 +451,11 @@ class _ResultsView extends StatelessWidget {
                   const SizedBox(height: 20),
                   _TipForYouCard(result: primary),
                   const SizedBox(height: 16),
-                  _ViewNearbyPartnersButton(onTap: onViewNearbyPartners),
+                  _ViewNearbyPartnersButton(
+                    onTap: onViewNearbyPartners == null
+                        ? null
+                        : () => onViewNearbyPartners!(primary.standard.category),
+                  ),
                   const SizedBox(height: 20),
                   Text(
                     appText(context, 'scanner_disclaimer'),

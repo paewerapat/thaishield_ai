@@ -204,9 +204,13 @@ class MapFocusRequest {
 }
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key, this.focusRequest});
+  const MapScreen({super.key, this.focusRequest, this.partnerTypeFilter});
 
   final MapFocusRequest? focusRequest;
+
+  /// When set, the bottom panel shows only the nearest partner of this type.
+  /// Values match Firestore `partner_locations.type`: "restaurant" | "hotel" | "transport"
+  final String? partnerTypeFilter;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -240,9 +244,12 @@ class _MapScreenState extends State<MapScreen> {
     return dlat * dlat + dlng * dlng;
   }
 
-  PartnerLocation? _findNearestPartner(LatLng center) {
-    if (_partnersById.isEmpty) return null;
-    return _partnersById.values.reduce((a, b) =>
+  PartnerLocation? _findNearestPartner(LatLng center, {String? typeFilter}) {
+    final candidates = typeFilter == null
+        ? _partnersById.values
+        : _partnersById.values.where((p) => p.type == typeFilter);
+    if (candidates.isEmpty) return null;
+    return candidates.reduce((a, b) =>
         _distanceSq(center, LatLng(a.lat, a.lng)) <=
                 _distanceSq(center, LatLng(b.lat, b.lng))
             ? a
@@ -250,7 +257,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _updateNearestPartner() {
-    final nearest = _findNearestPartner(_mapCenter);
+    final nearest = _findNearestPartner(_mapCenter, typeFilter: widget.partnerTypeFilter);
     if (nearest != null && nearest != _selectedPartner) {
       setState(() => _selectedPartner = nearest);
     }
@@ -270,6 +277,9 @@ class _MapScreenState extends State<MapScreen> {
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(LatLng(request.latitude, request.longitude), 16),
       );
+    }
+    if (widget.partnerTypeFilter != oldWidget.partnerTypeFilter) {
+      _updateNearestPartner();
     }
   }
 
@@ -381,7 +391,7 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!mounted) return;
       setState(() {
-        _selectedPartner = _findNearestPartner(_mapCenter);
+        _selectedPartner = _findNearestPartner(_mapCenter, typeFilter: widget.partnerTypeFilter);
         _markers
           ..clear()
           ..addAll(markers);

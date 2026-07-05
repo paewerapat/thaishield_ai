@@ -15,14 +15,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  String? _mapPartnerTypeFilter;
+
   void _goToTab(int index) => setState(() => _currentIndex = index);
+
+  String _scanCategoryToPartnerType(String category) {
+    switch (category) {
+      case 'transport':
+        return 'transport';
+      case 'attraction':
+        return 'hotel';
+      default:
+        return 'restaurant';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screens = [
       HomeTab(onNavigateToTab: _goToTab),
-      ScannerScreen(onViewNearbyPartners: () => _goToTab(2)),
-      const MapScreen(),
+      ScannerScreen(
+        onViewNearbyPartners: (category) {
+          setState(() => _mapPartnerTypeFilter = _scanCategoryToPartnerType(category));
+          _goToTab(2);
+        },
+      ),
+      MapScreen(partnerTypeFilter: _mapPartnerTypeFilter),
       const SosScreen(),
       const ProfileScreen(),
     ];
