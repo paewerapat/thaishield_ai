@@ -177,6 +177,8 @@ class _SosScreenState extends State<SosScreen>
       'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 200},
     });
 
+    if (ApiKeys.gemini.isEmpty) return null;
+
     final response = await http
         .post(
           Uri.parse('$endpoint?key=${ApiKeys.gemini}'),
@@ -185,7 +187,11 @@ class _SosScreenState extends State<SosScreen>
         )
         .timeout(const Duration(seconds: 20));
 
-    if (response.statusCode != 200) return null;
+    debugPrint('[SOS] Gemini status: ${response.statusCode}');
+    if (response.statusCode != 200) {
+      debugPrint('[SOS] Gemini error body: ${response.body}');
+      return null;
+    }
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final candidates = decoded['candidates'] as List?;
