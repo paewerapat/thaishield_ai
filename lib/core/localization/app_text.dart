@@ -92,6 +92,22 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Язык',
     'ja': '言語',
   },
+  'profile_feedback': {
+    'th': 'ส่งความคิดเห็น',
+    'en': 'Send Feedback',
+    'zh': '发送反馈',
+    'ko': '피드백 보내기',
+    'ru': 'Отправить отзыв',
+    'ja': 'フィードバックを送る',
+  },
+  'profile_feedback_subtitle': {
+    'th': 'แจ้งปัญหาหรือข้อเสนอแนะ',
+    'en': 'Report issues or share suggestions',
+    'zh': '反馈问题或提出建议',
+    'ko': '문제 신고 또는 제안 공유',
+    'ru': 'Сообщить о проблеме или поделиться предложениями',
+    'ja': '問題の報告や提案を共有',
+  },
   'profile_about_title': {
     'th': 'เกี่ยวกับ ThaiShield AI',
     'en': 'About ThaiShield AI',

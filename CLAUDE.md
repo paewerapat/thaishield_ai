@@ -108,11 +108,16 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
   exact locations, or brands — applies to both the OCR and Gemini Vision paths. Show only
   pure statistical variance/range to avoid defamation issues.
 
-### Phase 4: AI Voice SOS (STT to TTS Mode)
-- Tap and hold to record English speech → Native STT → string.
-- Call Gemini or OpenAI API via structured JSON payload.
+### Phase 4: AI Voice SOS (STT to TTS Mode) ✅ IMPLEMENTED
+- Tap and hold to record speech → Native STT → Gemini translation → Thai TTS playback.
+- **Multi-language STT:** STT locale follows the user's app language (`LocaleProvider`).
+  Mapping: `en→en_US`, `zh→zh_CN`, `ko→ko_KR`, `ru→ru_RU`, `ja→ja_JP`, `th→th_TH`.
+  The Gemini prompt is dynamically constructed as "The tourist said in [Language]: …"
+  so Gemini always receives the correct source language regardless of what was spoken.
 - **PROMPT COMPLIANCE:** Returned Thai string MUST always end with polite particles ("ครับ" or "ค่ะ").
-- Convert returned Thai string to audio via Native TTS.
+- **Model:** `gemini-2.5-flash` via HTTP REST (`--dart-define=GEMINI_API_KEY`).
+- **Emergency numbers** (`profile_screen.dart`): dialed with `LaunchMode.externalApplication`
+  to force the phone dialer — prevents extra digits or browser intercept on iOS/Android.
 
 ### Phase 5: Web CMS (Planned — Post-MVP)
 A separate web-based admin dashboard for non-technical staff to manage Firestore content

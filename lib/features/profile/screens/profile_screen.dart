@@ -28,21 +28,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) throw Exception('service_disabled');
+      if (!serviceEnabled) {
+        if (mounted) setState(() { _locationError = appText(context, 'profile_location_error'); _loadingLocation = false; });
+        return;
+      }
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        setState(() {
-          _locationError = appText(context, 'profile_location_denied');
-          _loadingLocation = false;
-        });
+        if (mounted) setState(() { _locationError = appText(context, 'profile_location_denied'); _loadingLocation = false; });
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition();
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+
       var address = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
       try {
         final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
@@ -53,20 +59,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .toList();
           if (parts.isNotEmpty) address = parts.join(', ');
         }
-      } catch (_) {
-        // Fall back to coordinates if reverse geocoding is unavailable.
-      }
+      } catch (_) {}
 
-      setState(() {
-        _address = address;
-        _loadingLocation = false;
-      });
+      if (mounted) setState(() { _address = address; _loadingLocation = false; });
     } catch (_) {
-      setState(() {
-        _locationError = appText(context, 'profile_location_error');
-        _loadingLocation = false;
-      });
+      if (mounted) setState(() { _locationError = appText(context, 'profile_location_error'); _loadingLocation = false; });
     }
+  }
+
+  Future<void> _sendFeedback() async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'dev@thaishieldapp.com',
+      queryParameters: {
+        'subject': 'ThaiShield AI – Feedback',
+        'body': 'App version: 1.0.0\n\n[Please describe your feedback, issue, or suggestion here]',
+      },
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -88,6 +98,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildEmergencyCard(context),
                     const SizedBox(height: 16),
                     _buildLanguageTile(context, locale.languageCode),
+                    const SizedBox(height: 12),
+                    _buildFeedbackTile(context),
                     const SizedBox(height: 12),
                     _buildInfoTile(
                       context,
@@ -311,6 +323,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildFeedbackTile(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: const Icon(Icons.feedback_outlined, color: Color(0xFFFFB300)),
+        title: Text(
+          appText(context, 'profile_feedback'),
+          style: const TextStyle(color: Color(0xFF0D1B2A), fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          appText(context, 'profile_feedback_subtitle'),
+          style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
+        onTap: _sendFeedback,
+      ),
+    );
+  }
+
   Widget _buildInfoTile(BuildContext context, IconData icon, String title, String subtitle) {
     return Container(
       decoration: BoxDecoration(
@@ -369,7 +405,7 @@ class _EmergencyRow extends StatelessWidget {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () => launchUrl(Uri.parse('tel:$number')),
+            onPressed: () => launchUrl(Uri.parse('tel:$number'), mode: LaunchMode.externalApplication),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: color,

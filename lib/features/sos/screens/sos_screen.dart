@@ -7,8 +7,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import 'package:provider/provider.dart';
+
 import '../../../core/config/api_keys.dart';
 import '../../../core/localization/app_text.dart';
+import '../../../core/providers/locale_provider.dart';
 
 enum _SosState { idle, listening, processing, speaking, error }
 
@@ -29,6 +32,29 @@ class _SosScreenState extends State<SosScreen>
   String _thaiText = '';
   String _errorKey = 'sos_error_translation';
   bool _sttAvailable = false;
+  String _sourceLangName = 'English';
+
+  static String _sttLocale(String langCode) {
+    switch (langCode) {
+      case 'zh': return 'zh_CN';
+      case 'ko': return 'ko_KR';
+      case 'ru': return 'ru_RU';
+      case 'ja': return 'ja_JP';
+      case 'th': return 'th_TH';
+      default:   return 'en_US';
+    }
+  }
+
+  static String _langName(String langCode) {
+    switch (langCode) {
+      case 'zh': return 'Chinese';
+      case 'ko': return 'Korean';
+      case 'ru': return 'Russian';
+      case 'ja': return 'Japanese';
+      case 'th': return 'Thai';
+      default:   return 'English';
+    }
+  }
 
   late final AnimationController _pulseCtrl;
 
@@ -67,6 +93,7 @@ class _SosScreenState extends State<SosScreen>
   Future<void> _startListening() async {
     if (_state != _SosState.idle) return;
 
+    final langCode = context.read<LocaleProvider>().locale.languageCode;
     final granted = await _ensureMicPermission();
     if (!granted) {
       if (mounted) {
@@ -103,13 +130,14 @@ class _SosScreenState extends State<SosScreen>
       _state = _SosState.listening;
       _spokenText = '';
       _thaiText = '';
+      _sourceLangName = _langName(langCode);
     });
     await _stt.listen(
       onResult: (SpeechRecognitionResult r) {
         if (mounted) setState(() => _spokenText = r.recognizedWords);
       },
       listenOptions: SpeechListenOptions(
-        localeId: 'en_US',
+        localeId: _sttLocale(langCode),
         pauseFor: const Duration(seconds: 3),
         listenMode: ListenMode.confirmation,
         cancelOnError: true,
@@ -160,7 +188,7 @@ class _SosScreenState extends State<SosScreen>
 
     final prompt =
         'You are an emergency communication assistant for foreign tourists in Thailand. '
-        'The tourist said in English: "$english"\n'
+        'The tourist said in $_sourceLangName: "$english"\n'
         'Translate this into natural, concise spoken Thai (1–2 sentences) so a local '
         'Thai person can understand immediately. '
         'The response MUST end with "ครับ". '
