@@ -405,7 +405,7 @@ class _EmergencyRow extends StatelessWidget {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () => launchUrl(Uri.parse('tel:$number'), mode: LaunchMode.externalApplication),
+            onPressed: () => launchUrl(Uri.parse('tel:$number'), mode: LaunchMode.externalNonBrowserApplication),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: color,

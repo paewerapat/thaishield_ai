@@ -7,7 +7,20 @@ import '../../../core/models/alert_zone.dart';
 import '../../../core/models/partner_location.dart';
 import '../../../core/services/firestore_service.dart';
 
-const _mapSearchSuggestions = ['Bangkok', 'Sukhumvit', 'Phuket Airport', 'Chiang Mai', 'Pattaya'];
+class _Suggestion {
+  const _Suggestion(this.label, this.coords, [this.zoom = 13.0]);
+  final String label;
+  final LatLng coords;
+  final double zoom;
+}
+
+const _mapSearchSuggestions = <_Suggestion>[
+  _Suggestion('Bangkok', LatLng(13.7563, 100.5018), 12),
+  _Suggestion('Sukhumvit', LatLng(13.7400, 100.5639), 14),
+  _Suggestion('Phuket Airport', LatLng(8.1132, 98.3019), 13),
+  _Suggestion('Chiang Mai', LatLng(18.7883, 98.9853), 13),
+  _Suggestion('Pattaya', LatLng(12.9236, 100.8824), 13),
+];
 
 const _bangkok = LatLng(13.7563, 100.5018);
 
@@ -257,10 +270,21 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _updateNearestPartner() {
+    if (widget.partnerTypeFilter == null) return;
     final nearest = _findNearestPartner(_mapCenter, typeFilter: widget.partnerTypeFilter);
     if (nearest != null && nearest != _selectedPartner) {
       setState(() => _selectedPartner = nearest);
     }
+  }
+
+  void _onSuggestionTap(_Suggestion suggestion) {
+    _searchController.text = suggestion.label;
+    FocusScope.of(context).unfocus();
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(suggestion.coords, suggestion.zoom),
+    );
+    setState(() => _mapCenter = suggestion.coords);
+    _updateNearestPartner();
   }
 
   @override
@@ -339,13 +363,10 @@ class _MapScreenState extends State<MapScreen> {
                   ? BitmapDescriptor.hueAzure
                   : BitmapDescriptor.hueOrange,
             ),
-            onTap: () {
-              setState(() {
-                _selectedPartner = partner;
-                _selectedZone = null;
-              });
-              _openPartnerDetail(partner);
-            },
+            onTap: () => setState(() {
+              _selectedPartner = partner;
+              _selectedZone = null;
+            }),
           ),
         );
       }
@@ -391,7 +412,9 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!mounted) return;
       setState(() {
-        _selectedPartner = _findNearestPartner(_mapCenter, typeFilter: widget.partnerTypeFilter);
+        _selectedPartner = widget.partnerTypeFilter != null
+            ? _findNearestPartner(_mapCenter, typeFilter: widget.partnerTypeFilter)
+            : null;
         _markers
           ..clear()
           ..addAll(markers);
@@ -520,7 +543,10 @@ class _MapScreenState extends State<MapScreen> {
                               rotateGesturesEnabled: true,
                               tiltGesturesEnabled: true,
                               onMapCreated: (c) => _mapController = c,
-                              onTap: (_) => setState(() => _selectedZone = null),
+                              onTap: (_) => setState(() {
+                                _selectedZone = null;
+                                _selectedPartner = null;
+                              }),
                               onCameraIdle: () async {
                                 final ctrl = _mapController;
                                 if (ctrl == null || !mounted) return;
@@ -544,10 +570,7 @@ class _MapScreenState extends State<MapScreen> {
                                 onSubmitted: _searchLocation,
                                 onClear: () => setState(() => _searchController.clear()),
                                 onChanged: (_) => setState(() {}),
-                                onSuggestionTap: (suggestion) {
-                                  _searchController.text = suggestion;
-                                  _searchLocation(suggestion);
-                                },
+                                onSuggestionTap: _onSuggestionTap,
                               ),
                             ),
                             if (_selectedZone != null)
@@ -576,12 +599,11 @@ class _MapScreenState extends State<MapScreen> {
                           ],
                         ),
             ),
-            if (!_loading && _error == null)
+            if (!_loading && _error == null && _selectedPartner != null)
               _PartnerBottomPanel(
-                partner: _selectedPartner,
-                onViewDetails: _selectedPartner != null
-                    ? () => _openPartnerDetail(_selectedPartner!)
-                    : null,
+                partner: _selectedPartner!,
+                onViewDetails: () => _openPartnerDetail(_selectedPartner!),
+                onClose: () => setState(() => _selectedPartner = null),
               ),
           ],
         ),
@@ -605,7 +627,7 @@ class _MapSearchBar extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
   final ValueChanged<String> onChanged;
-  final ValueChanged<String> onSuggestionTap;
+  final ValueChanged<_Suggestion> onSuggestionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -669,7 +691,7 @@ class _MapSearchBar extends StatelessWidget {
             itemCount: _mapSearchSuggestions.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) => _SuggestionChip(
-              label: _mapSearchSuggestions[i],
+              label: _mapSearchSuggestions[i].label,
               onTap: () => onSuggestionTap(_mapSearchSuggestions[i]),
             ),
           ),
@@ -1018,9 +1040,14 @@ class _FabButton extends StatelessWidget {
 }
 
 class _PartnerBottomPanel extends StatelessWidget {
-  const _PartnerBottomPanel({required this.partner, this.onViewDetails});
-  final PartnerLocation? partner;
-  final VoidCallback? onViewDetails;
+  const _PartnerBottomPanel({
+    required this.partner,
+    required this.onViewDetails,
+    required this.onClose,
+  });
+  final PartnerLocation partner;
+  final VoidCallback onViewDetails;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -1036,7 +1063,7 @@ class _PartnerBottomPanel extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1051,43 +1078,37 @@ class _PartnerBottomPanel extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              InkWell(
-                onTap: onViewDetails,
-                borderRadius: BorderRadius.circular(20),
-                child: const Padding(
-                  padding: EdgeInsets.all(2),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF2E7D32),
-                    size: 22,
+              Row(
+                children: [
+                  InkWell(
+                    onTap: onViewDetails,
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.chevron_right_rounded, color: Color(0xFF2E7D32), size: 22),
+                    ),
                   ),
-                ),
+                  InkWell(
+                    onTap: onClose,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.close_rounded, color: Colors.grey[400], size: 20),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 14),
-          if (partner == null)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'แตะหมุดบนแผนที่เพื่อดูข้อมูลพาร์ทเนอร์',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            )
-          else ...[
-            _PartnerCard(partner: partner!),
-            const SizedBox(height: 10),
-            Text(
-              Localizations.localeOf(context).languageCode == 'th'
-                  ? 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้'
-                  : 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 10,
-                height: 1.3,
-              ),
-            ),
-          ],
+          _PartnerCard(partner: partner),
+          const SizedBox(height: 10),
+          Text(
+            Localizations.localeOf(context).languageCode == 'th'
+                ? 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้'
+                : 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
+            style: TextStyle(color: Colors.grey[500], fontSize: 10, height: 1.3),
+          ),
         ],
       ),
     );
