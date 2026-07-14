@@ -557,7 +557,10 @@ class _MapScreenState extends State<MapScreen> {
                                 );
                                 if (!mounted) return;
                                 setState(() => _mapCenter = center);
-                                _updateNearestPartner();
+                                // Do NOT call _updateNearestPartner() here — it would
+                                // override an explicit marker tap with the type filter.
+                                // Auto-select runs only once at load (partnerTypeFilter)
+                                // or when the filter itself changes (didUpdateWidget).
                               },
                             ),
                             Positioned(
