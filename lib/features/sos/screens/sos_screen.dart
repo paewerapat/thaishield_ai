@@ -182,7 +182,7 @@ class _SosScreenState extends State<SosScreen>
   }
 
   Future<String?> _translateToThai(String english) async {
-    const model = 'gemini-2.0-flash';
+    const model = 'gemini-2.5-flash';
     const endpoint =
         'https://generativelanguage.googleapis.com/v1/models/$model:generateContent';
 
