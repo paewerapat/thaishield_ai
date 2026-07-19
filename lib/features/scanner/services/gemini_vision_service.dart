@@ -9,7 +9,7 @@ class GeminiVisionService {
   GeminiVisionService._();
   static final instance = GeminiVisionService._();
 
-  static const _model = 'gemini-2.5-flash';
+  static const _model = 'gemini-3.5-flash';
   static const _endpoint =
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
 

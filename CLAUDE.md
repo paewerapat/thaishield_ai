@@ -115,7 +115,7 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
   The Gemini prompt is dynamically constructed as "The tourist said in [Language]: …"
   so Gemini always receives the correct source language regardless of what was spoken.
 - **PROMPT COMPLIANCE:** Returned Thai string MUST always end with polite particles ("ครับ" or "ค่ะ").
-- **Model:** `gemini-2.5-flash` via HTTP REST (`--dart-define=GEMINI_API_KEY`). Endpoint: `v1beta` (not `v1` — newer models require v1beta).
+- **Model:** `gemini-3.5-flash` via HTTP REST (`--dart-define=GEMINI_API_KEY`). Endpoint: `v1beta`. (`gemini-2.5-flash` and all 2.x variants return 404 "not available to new users" for this API key — `gemini-3.5-flash` is the confirmed working model as of 2026-07).
 - **Emergency numbers** (`profile_screen.dart`): dialed with `LaunchMode.externalApplication`
   to force the phone dialer — prevents extra digits or browser intercept on iOS/Android.
 
