@@ -9,9 +9,9 @@ class GeminiVisionService {
   GeminiVisionService._();
   static final instance = GeminiVisionService._();
 
-  static const _model = 'gemini-2.0-flash-001';
+  static const _model = 'gemini-2.5-flash';
   static const _endpoint =
-      'https://generativelanguage.googleapis.com/v1/models/$_model:generateContent';
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
 
   /// Identifies the dish shown in [imageFile] by matching it against
   /// [knownDishNames] (the English names already in our `price_standards`

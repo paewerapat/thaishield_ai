@@ -182,9 +182,9 @@ class _SosScreenState extends State<SosScreen>
   }
 
   Future<String?> _translateToThai(String english) async {
-    const model = 'gemini-2.0-flash-001';
+    const model = 'gemini-2.5-flash';
     const endpoint =
-        'https://generativelanguage.googleapis.com/v1/models/$model:generateContent';
+        'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
 
     final prompt =
         'You are an emergency communication assistant for foreign tourists in Thailand. '
