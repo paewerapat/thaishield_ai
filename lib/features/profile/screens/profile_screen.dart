@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -405,7 +407,12 @@ class _EmergencyRow extends StatelessWidget {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () => launchUrl(Uri.parse('tel:$number'), mode: LaunchMode.externalNonBrowserApplication),
+            onPressed: () => launchUrl(
+              Uri.parse('tel:$number'),
+              mode: Platform.isIOS
+                  ? LaunchMode.externalApplication
+                  : LaunchMode.externalNonBrowserApplication,
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: color,
