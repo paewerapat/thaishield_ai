@@ -408,7 +408,9 @@ class _EmergencyRow extends StatelessWidget {
           ),
           ElevatedButton.icon(
             onPressed: () => launchUrl(
-              Uri.parse('tel:+66$number'),
+              // iOS: plain short code — iOS dialer handles it without NANP formatting
+              // Android: +66 prefix prevents Android from applying NANP (1669→1(669))
+              Uri.parse(Platform.isIOS ? 'tel:$number' : 'tel:+66$number'),
               mode: Platform.isIOS
                   ? LaunchMode.externalApplication
                   : LaunchMode.externalNonBrowserApplication,
