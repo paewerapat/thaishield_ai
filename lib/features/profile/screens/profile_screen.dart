@@ -408,7 +408,7 @@ class _EmergencyRow extends StatelessWidget {
           ),
           ElevatedButton.icon(
             onPressed: () => launchUrl(
-              Uri.parse('tel:$number'),
+              Uri.parse('tel:+66$number'),
               mode: Platform.isIOS
                   ? LaunchMode.externalApplication
                   : LaunchMode.externalNonBrowserApplication,
