@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/models/alert_zone.dart';
@@ -474,6 +475,28 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Future<void> _centerOnUser() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _mapController?.animateCamera(CameraUpdate.newLatLng(_bangkok));
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 15),
+      );
+    } catch (_) {
+      _mapController?.animateCamera(CameraUpdate.newLatLng(_bangkok));
+    }
+  }
+
   void _openPartnerDetail(PartnerLocation partner) {
     showModalBottomSheet(
       context: context,
@@ -578,7 +601,7 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                             if (_selectedZone != null)
                               Positioned(
-                                top: 92,
+                                top: 120,
                                 left: 16,
                                 right: 16,
                                 child: _ZonePopup(
@@ -593,9 +616,7 @@ class _MapScreenState extends State<MapScreen> {
                               right: 12,
                               bottom: 12,
                               child: _FloatingButtons(
-                                onCenter: () => _mapController?.animateCamera(
-                                  CameraUpdate.newLatLng(_bangkok),
-                                ),
+                                onCenter: _centerOnUser,
                                 onLayers: _openLayersSheet,
                               ),
                             ),
@@ -982,7 +1003,7 @@ class _ZonePopup extends StatelessWidget {
                         ),
                       ),
                       child: const Text(
-                        'ดูรายละเอียด',
+                        'Close',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -1073,9 +1094,9 @@ class _PartnerBottomPanel extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Verified Partner',
-                style: TextStyle(
+              Text(
+                partner.isVerified ? 'Verified Partner' : 'Partner Business',
+                style: const TextStyle(
                   color: Color(0xFF0D1B2A),
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
