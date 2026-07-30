@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 enum AlertCategory { flood, fire, storm, earthquake, accident, other }
@@ -19,14 +20,18 @@ class TravelAlert {
   final String sourceName;
   final DateTime publishedAt;
 
-  factory TravelAlert.fromGNewsJson(Map<String, dynamic> json) {
+  /// Built from a `travel_alerts_cache` document, which the scheduled
+  /// `syncTravelAlerts` Cloud Function refreshes from GNews every 15
+  /// minutes — the app never calls GNews directly.
+  factory TravelAlert.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
     return TravelAlert(
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      url: json['url'] as String? ?? '',
-      imageUrl: json['image'] as String?,
-      sourceName: (json['source'] as Map<String, dynamic>?)?['name'] as String? ?? '',
-      publishedAt: DateTime.tryParse(json['publishedAt'] as String? ?? '') ?? DateTime.now(),
+      title: data['title'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      url: data['url'] as String? ?? '',
+      imageUrl: data['image'] as String?,
+      sourceName: data['source_name'] as String? ?? '',
+      publishedAt: (data['published_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

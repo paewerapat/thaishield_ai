@@ -75,6 +75,21 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
 }
 ```
 
+**Collection: `travel_alerts_cache`** (written only by the `syncTravelAlerts`
+Cloud Function — see Phase 2b below)
+```
+{
+  id:            string,   // md5 of the article url, used as the doc id for idempotent upserts
+  title:         string,
+  description:   string,
+  url:           string,
+  image:         string | null,
+  source_name:   string,
+  published_at:  timestamp,
+  fetched_at:    timestamp   // server timestamp of the sync run that wrote/refreshed this doc
+}
+```
+
 ### Phase 2: Fair Price & Travel Alert Map
 - Integrated via official `google_maps_flutter` plugin.
 - **Backend Data:** Fetch from Cloud Firestore (`partner_locations`, `alert_zones`).
@@ -88,6 +103,39 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
   fallback if the URL is empty or fails to load.
 - **Interaction:** Tapping pins shows Custom Pop-up with Partner Name, Rating, Verified Badge.
 - Color zones: green (safe) / amber (caution) / red (danger) overlays on map.
+
+### Phase 2b: Home Travel Alerts (GNews) ✅ IMPLEMENTED
+- Shows Thailand travel-disruption news (floods, storms, fires, road closures, major
+  accidents, etc.) on the Home tab and a full list screen — sourced from the
+  [GNews API](https://gnews.io/docs/v4) (`https://gnews.io/api/v4/search`).
+- **Server-side shared cache — the Flutter app never calls GNews directly.** A scheduled
+  Firebase Cloud Function, `syncTravelAlerts` (`functions/index.js`, `asia-southeast1`),
+  polls GNews **every 15 minutes**, filters results to items mentioning
+  "Thailand"/"Bangkok" plus a travel-disruption keyword, and upserts them into the
+  `travel_alerts_cache` Firestore collection (doc id = md5 of the article url, so re-runs
+  update in place instead of duplicating; docs no longer returned by GNews are deleted
+  from the collection in the same batch).
+  - **Why:** `shared_preferences` is per-device local storage. With a client-side fetch,
+    every device runs its own refresh timer against the *same* GNews API key, so total
+    request volume scales with install count and can blow through the 100
+    requests/day free-tier quota. Fetching once server-side and having every client read
+    the same Firestore collection keeps usage constant (24h × 4/hr = 96 requests/day)
+    regardless of user count.
+  - The Flutter app (`lib/features/home/services/travel_alert_service.dart`) just does a
+    plain Firestore read of `travel_alerts_cache`, ordered by `published_at desc` — see
+    `FirestoreService` for the equivalent pattern used by the Map/Scanner collections.
+  - The GNews API key is **not** embedded in the client. It's stored as a Firebase
+    Functions secret (`GNEWS_API_KEY`), set once via
+    `firebase functions:secrets:set GNEWS_API_KEY` and injected only into the Cloud
+    Function's execution environment.
+  - **Deploying/updating the function:** `cd functions && npm install`, then
+    `firebase deploy --only functions:syncTravelAlerts` from the repo root. Requires the
+    Firebase project to be on the **Blaze (pay-as-you-go) plan** — Cloud Functions cannot
+    deploy on the free Spark plan even though actual usage stays inside Blaze's free
+    tier. Check the plan at
+    `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
+  - Keep `SEARCH_TERMS` in `functions/index.js` in sync with the (client-side, display-only)
+    category-keyword list in `lib/features/home/models/travel_alert.dart` if either changes.
 
 ### Phase 3: AI Price Scanner ✅ IMPLEMENTED
 - Native camera (`image_picker`) captures a photo. Two-stage matching:
@@ -119,25 +167,39 @@ You are an expert Flutter & Firebase developer helper. You are assisting a devel
 - **Emergency numbers** (`profile_screen.dart`): dialed with `LaunchMode.externalApplication`
   to force the phone dialer — prevents extra digits or browser intercept on iOS/Android.
 
-### Phase 5: Web CMS (Planned — Post-MVP)
+### Phase 5: Web CMS (Quoted — Post-MVP)
 A separate web-based admin dashboard for non-technical staff to manage Firestore content
-without touching the Firebase Console directly:
-- **Manages:** `price_standards` (add/edit dishes + price ranges), `partner_locations`
-  (add/edit partners, **upload real partner photos** to replace today's Pexels
-  placeholders), `alert_zones` (add/edit advisory areas + polygons).
-- **Out of scope for the Flutter app itself:** this is a *separate* project (e.g. a small
-  Next.js or Firebase-Hosted admin site). The Flutter app already reads generically from
-  Firestore via `FirestoreService`, so it needs **no changes** to consume data written by
-  a future CMS — the CMS just needs to write to the same collections/fields documented
-  above.
-- **Auth & write access:** Firestore rules (`firestore.rules`) currently allow public
-  **read-only** access to `price_standards`/`partner_locations`/`alert_zones` and deny
-  all client writes (see Section 6 below). The CMS must write either via the **Firebase
-  Admin SDK with a service account** (bypasses security rules — simplest) or via an
-  **authenticated admin role** added to the rules. Never weaken the public rules to allow
-  open writes from the Flutter app to make this work.
-- **Image storage:** once built, the CMS should upload partner photos to **Firebase
-  Storage** (not hotlinked third-party stock photos) so partners own their own images.
+without touching the Firebase Console directly. Quoted 20/07/2026 as its own 5-item,
+**9,000 THB** engagement — separate from the 45,000 THB app budget in Section 2's header
+(software development only — excludes ongoing domain/cloud hosting costs), paid in 3
+installments (30% on system init, 40% on data-management + mapping completion, 30% on
+verification/delivery/deploy):
+- **Stack (confirmed, not just illustrative):** **Next.js 14** + **Firebase Admin SDK**,
+  deployed to **Firebase Hosting**.
+- **Admin login:** the CMS has its own login screen for staff, using **Firebase
+  Authentication** (Admin Auth). This is a property of the *separate* CMS project only —
+  it does not contradict Section 3's "Firebase Auth completely omitted for MVP," which
+  refers to the Flutter app, not this admin site.
+- **Manages:** `price_standards` (CRUD, multi-language fields, image preview),
+  `partner_locations` (CRUD, **upload real partner photos to Firebase Storage** —
+  not hotlinked third-party stock photos — replacing today's Pexels placeholders),
+  `alert_zones` (CRUD via an **interactive polygon editor built on the Google Maps
+  API**, for drawing/editing the advisory-area boundary points instead of hand-editing
+  GeoPoint arrays).
+- **Out of scope for the Flutter app itself:** this is a *separate* project. The Flutter
+  app already reads generically from Firestore via `FirestoreService`, so it needs **no
+  changes** to consume data written by the CMS — the CMS just needs to write to the same
+  collections/fields documented above.
+- **Auth & write access to Firestore data:** Firestore rules (`firestore.rules`)
+  currently allow public **read-only** access to `price_standards`/`partner_locations`/
+  `alert_zones` and deny all client writes (see Section 6 below). The CMS must write
+  either via the **Firebase Admin SDK with a service account** (bypasses security
+  rules — simplest) or via an **authenticated admin role** added to the rules. Never
+  weaken the public rules to allow open writes from the Flutter app to make this work.
+- **Pre-launch QA step:** the quote's testing phase includes a legal-wording review pass
+  — any copy entered/edited through the CMS (e.g. `alert_zones` descriptions) must still
+  follow the Section 7 wording rules, since CMS staff can write free-text fields that
+  bypass the Flutter app's own copy.
 
 ## 3. Strict Out of Scope (DO NOT CODE)
 - NO User Registration / Authentication / Login screens (Firebase Auth completely omitted for MVP).
@@ -160,6 +222,19 @@ firebase login
 flutterfire configure
 ```
 After running `flutterfire configure`, select the Firebase project and enable Android + iOS platforms.
+
+### Cloud Functions (GNews sync — see Phase 2b)
+```bash
+# 1. Install function dependencies (once, and after editing functions/package.json)
+cd functions && npm install
+
+# 2. Set the GNews key as a Functions secret (once, or when the key rotates)
+firebase functions:secrets:set GNEWS_API_KEY
+
+# 3. Deploy just this function
+firebase deploy --only functions:syncTravelAlerts
+```
+Requires the Firebase project to be on the **Blaze plan** (Section 2b explains why).
 
 ## 5. Useful Project Commands
 - Run app:          `flutter run`
@@ -187,6 +262,9 @@ place all collection data is populated, since there is no CMS yet per Phase 5 ab
   tab in Firebase Console first before suspecting Google Maps API keys/billing.
 - Any future authenticated write access (e.g. for the Phase 5 CMS) must be scoped to that
   specific use case — don't broaden the public rule to allow writes from the Flutter app.
+- `travel_alerts_cache` (Phase 2b) is also **public read, no write** — it's written only
+  by the `syncTravelAlerts` Cloud Function via the Admin SDK, which bypasses these rules
+  entirely, so the `allow write: if false` here is solely to block writes from clients.
 
 ## 7. Legal Safe Wording Guide (MANDATORY — applies to ALL user-facing text)
 

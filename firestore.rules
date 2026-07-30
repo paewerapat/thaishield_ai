@@ -18,6 +18,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Written only by the scheduled Cloud Function (syncTravelAlerts, via
+    // the Admin SDK, which bypasses these rules) — never by app clients.
+    match /travel_alerts_cache/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

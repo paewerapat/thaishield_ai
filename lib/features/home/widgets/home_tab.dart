@@ -251,7 +251,7 @@ class _ActiveAlertsAndNewsState extends State<_ActiveAlertsAndNews> {
             else if (alerts.isEmpty)
               _MessageBox(text: appText(context, 'travel_alerts_empty'))
             else
-              _TopNewsGrid(alerts: alerts),
+              _TopNewsCard(alert: alerts.first, height: 200),
             const SizedBox(height: 10),
             Text(
               appText(context, 'travel_alerts_disclaimer'),
@@ -332,30 +332,6 @@ class _MessageBox extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12)),
-    );
-  }
-}
-
-class _TopNewsGrid extends StatelessWidget {
-  const _TopNewsGrid({required this.alerts});
-  final List<TravelAlert> alerts;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _TopNewsCard(alert: alerts[0], height: 200),
-        if (alerts.length > 1) const SizedBox(height: 12),
-        if (alerts.length > 1)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _TopNewsCard(alert: alerts[1], height: 170)),
-              if (alerts.length > 2) const SizedBox(width: 12),
-              if (alerts.length > 2) Expanded(child: _TopNewsCard(alert: alerts[2], height: 170)),
-            ],
-          ),
-      ],
     );
   }
 }
