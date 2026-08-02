@@ -18,8 +18,12 @@ class TravelAlertService {
   static const _collection = 'travel_alerts_cache';
 
   Future<List<TravelAlert>> fetchAlerts() async {
+    final cutoff = Timestamp.fromDate(
+      DateTime.now().subtract(const Duration(days: 30)),
+    );
     final snap = await FirebaseFirestore.instance
         .collection(_collection)
+        .where('published_at', isGreaterThan: cutoff)
         .orderBy('published_at', descending: true)
         .get();
     return snap.docs.map(TravelAlert.fromFirestore).toList();

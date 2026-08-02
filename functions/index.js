@@ -30,6 +30,14 @@ function looksTravelRelevant(article) {
   return SEARCH_TERMS.some((term) => text.includes(term.toLowerCase()));
 }
 
+const MAX_AGE_DAYS = 7;
+
+function daysAgoISO(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 function buildGNewsUrl(apiKey) {
   const keywords = SEARCH_TERMS.map((t) => (t.includes(' ') ? `"${t}"` : t)).join(' OR ');
   const query = `Thailand AND (${keywords})`;
@@ -38,6 +46,7 @@ function buildGNewsUrl(apiKey) {
   url.searchParams.set('lang', 'en');
   url.searchParams.set('max', '10');
   url.searchParams.set('sortby', 'publishedAt');
+  url.searchParams.set('from', daysAgoISO(MAX_AGE_DAYS));
   url.searchParams.set('apikey', apiKey);
   return url;
 }
@@ -64,9 +73,12 @@ exports.syncTravelAlerts = onSchedule(
 
     const keepIds = new Set();
     const batch = db.batch();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - MAX_AGE_DAYS);
 
     for (const article of articles) {
       if (!article.url) continue;
+      if (article.publishedAt && new Date(article.publishedAt) < cutoff) continue;
       const id = crypto.createHash('md5').update(article.url).digest('hex');
       keepIds.add(id);
       batch.set(collection.doc(id), {
