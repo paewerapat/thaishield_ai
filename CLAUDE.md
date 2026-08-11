@@ -1,281 +1,466 @@
-# ThaiShield AI - Project Blueprint & Developer Rules (MVP Version)
+# ThaiShield AI — Project Blueprint & Developer Rules
 
-You are an expert Flutter & Firebase developer helper. You are assisting a developer working on a Windows/Linux environment (NO LOCAL MAC MACHINE AVAILABLE). Follow these specifications strictly.
+> **Revision 2026-08-11.** This file is now the **single source of truth** for the
+> Flutter app. `FLUTTER_INTEGRATION.md` has been merged into §3 below and should be
+> deleted — do not keep two copies of the data contract.
+>
+> **What changed in this revision:**
+> 1. Quotation **Phase 1 (Web Admin Dashboard) is complete, delivered and billed** — it
+>    is no longer an active work phase. What survives from it is the data contract in §3.
+> 2. The old **Phase 2 (Smart Map Premium V2)** has been split into **three smaller
+>    delivery phases — 2A / 2B / 2C** — so that no single payment installment exceeds
+>    **10,000 THB** (client bank/transfer limit). See §5.
+
+You are an expert Flutter & Firebase developer helper. You are assisting a developer
+working on a Windows/Linux environment (**NO LOCAL MAC MACHINE AVAILABLE**). Follow
+these specifications strictly.
+
+---
 
 ## 1. Environment & Architecture Constraints
+
 - **Framework:** Pure Flutter (Stable channel).
-- **Local Dev OS:** Windows/Linux. **NEVER** command the user to run Mac-specific steps locally (e.g., `pod install`, `open ios/Runner.xcworkspace`, `xcodebuild`).
-- **Local Testing:** Target **Android physical devices** via USB debugging for features requiring Camera and Microphone (STT).
-- **iOS Strategy:** iOS builds will be handled via Cloud CI/CD (Codemagic/GitHub Actions) in the final phase. Write portable, cross-platform Flutter code.
-- **State Management:** Provider or Riverpod (Keep business logic strictly decoupled from UI widgets).
-- **Architecture:** Feature-First Structure. Create folders under `lib/features/` (e.g., `lib/features/onboarding/`, `lib/features/scanner/`, `lib/features/map/`, `lib/features/sos/`).
+- **Local Dev OS:** Windows/Linux. **NEVER** command the user to run Mac-specific steps
+  locally (e.g. `pod install`, `open ios/Runner.xcworkspace`, `xcodebuild`).
+- **Local Testing:** Target **Android physical devices** via USB debugging for features
+  requiring Camera, Microphone (STT), GPS and billing sandbox.
+- **iOS Strategy:** iOS builds are handled via Cloud CI/CD (Codemagic / GitHub Actions)
+  in the final phase. Write portable, cross-platform Flutter code.
+- **State Management:** Provider or Riverpod (business logic strictly decoupled from UI).
+- **Architecture:** Feature-First. Folders under `lib/features/` (e.g.
+  `lib/features/onboarding/`, `lib/features/scanner/`, `lib/features/map/`,
+  `lib/features/sos/`, and for the new work `lib/features/radar/`,
+  `lib/features/premium/`).
 
-## 2. Core Features Scope & Logic (Budget 45,000 THB)
+---
 
-### Phase 1: Language Onboarding ✅ COMPLETE
-- [x] First-launch screen to choose language: TH, EN, ZH, KO, RU, JA (6 languages incl. Thai per mockup).
-- [x] Save global selection in Local App State using `shared_preferences` via `LocaleProvider`.
-- [x] App labels localize automatically via ARB files + flutter_localizations.
-- [x] Bottom navigation: 5 tabs — Home, Scan, Map, SOS, Profile.
-- [x] Language can be changed anytime from Profile → Language tile (bottom sheet).
-- [x] Android release build configured (keystore signing + Play Store AAB upload).
+## 2. Delivered Baseline — งานที่ส่งมอบแล้ว (DO NOT RE-QUOTE, DO NOT REBUILD)
 
-### Phase 1: Firebase Backend Setup ← IN PROGRESS
-- [ ] Install FlutterFire CLI and run `flutterfire configure` to generate `firebase_options.dart`.
-- [ ] Add `firebase_core` and `cloud_firestore` packages.
-- [ ] Initialize Firebase in `main.dart`.
-- [ ] Populate Firestore seed data via Firebase Console (price_standards, partner_locations, alert_zones).
+Everything in this section is **finished and paid for**. Treat it as the existing
+codebase. Change it only when a task in §4 explicitly requires it, and run a regression
+check (§4, Phase 2C) if you do.
 
-#### Firestore Schema
+| # | Feature | Status |
+|---|---|---|
+| B1 | **Language Onboarding** — first-launch language picker (TH, EN, ZH, KO, RU, JA), `shared_preferences` + `LocaleProvider`, ARB + `flutter_localizations`, 5-tab bottom nav (Home / Scan / Map / SOS / Profile), language switch from Profile, Android release signing + Play AAB upload | ✅ Complete |
+| B2 | **Firebase Backend Setup** — `flutterfire configure`, `firebase_core` + `cloud_firestore`, `Firebase.initializeApp()` in `main.dart`, `FirestoreService` reading the three content collections | ✅ Complete |
+| B3 | **Fair Price & Travel Alert Map v1** — `google_maps_flutter`, partner pins from `partner_locations`, custom pop-up (name, rating, verified badge), colored `alert_zones` overlays: green (safe) / amber (caution) / red (danger) | ✅ Complete |
+| B4 | **Home Travel Alerts (GNews)** — see §2.1 below | ✅ Complete |
+| B5 | **AI Price Scanner** — see §2.2 below | ✅ Complete |
+| B6 | **AI Voice SOS (STT → Gemini → Thai TTS)** — see §2.3 below | ✅ Complete |
+| B7 | **Web CMS / Admin Dashboard** (separate repo, quotation Phase 1) — see §2.4 below | ✅ Delivered & deployed |
 
-**Collection: `price_standards`**
-```
-{
-  id:         string,          // e.g. "pad_thai"
-  name_en:    string,
-  name_th:    string,
-  name_zh:    string,
-  name_ko:    string,
-  name_ru:    string,
-  name_ja:    string,
-  min_price:  number,          // THB
-  max_price:  number,          // THB
-  category:   string,          // "food" | "transport" | "attraction"
-  updated_at: timestamp
-}
-```
+> ⚠️ **Seed data is obsolete.** "Populate Firestore via Firebase Console / seed scripts"
+> is no longer the workflow. Content now comes from the CMS (B7). `tools/seed_firestore.js`
+> and `lib/tools/seed_data.dart` still work against an **empty/local** project, but they
+> are **not** the source of truth and **will overwrite staff edits if run against
+> production**.
 
-**Collection: `partner_locations`**
-```
-{
-  id:           string,
-  name:         string,
-  lat:          number,
-  lng:          number,
-  type:         string,        // "restaurant" | "hotel" | "transport"
-  rating:       number,        // 0.0 - 5.0
-  is_verified:  boolean,
-  price_tier:   string,        // "fair" | "caution" | "high"
-  image_url:    string
-}
-```
+### 2.1 Home Travel Alerts (GNews) — implementation notes
 
-**Collection: `alert_zones`**
-```
-{
-  id:             string,
-  name:           string,
-  center_lat:     number,
-  center_lng:     number,
-  radius_km:      number,
-  polygon:        array<GeoPoint>,  // area boundary points for map overlay (replaces circle radius display)
-  risk_level:     string,      // "safe" | "caution" | "danger"
-  description_en: string,
-  description_th: string
-}
-```
-
-**Collection: `travel_alerts_cache`** (written only by the `syncTravelAlerts`
-Cloud Function — see Phase 2b below)
-```
-{
-  id:            string,   // md5 of the article url, used as the doc id for idempotent upserts
-  title:         string,
-  description:   string,
-  url:           string,
-  image:         string | null,
-  source_name:   string,
-  published_at:  timestamp,
-  fetched_at:    timestamp   // server timestamp of the sync run that wrote/refreshed this doc
-}
-```
-
-### Phase 2: Fair Price & Travel Alert Map
-- Integrated via official `google_maps_flutter` plugin.
-- **Backend Data:** Fetch from Cloud Firestore (`partner_locations`, `alert_zones`).
-- **Out of Scope for MVP:** NO local Admin Panel / CMS. Data populated directly in Firebase
-  Console or via the seed scripts (`tools/seed_firestore.js`, `lib/tools/seed_data.dart`).
-  A web-based CMS to manage this data is planned post-MVP — see **Phase 5** below.
-- **Partner images:** `partner_locations.image_url` currently points to free-to-use
-  stock photos (Pexels License — free for commercial use, no attribution required),
-  used as generic per-type placeholders (hotel/restaurant/transport) until real partner
-  photos exist. Rendered via `_PartnerThumbnail` in `map_screen.dart` with an icon
-  fallback if the URL is empty or fails to load.
-- **Interaction:** Tapping pins shows Custom Pop-up with Partner Name, Rating, Verified Badge.
-- Color zones: green (safe) / amber (caution) / red (danger) overlays on map.
-
-### Phase 2b: Home Travel Alerts (GNews) ✅ IMPLEMENTED
 - Shows Thailand travel-disruption news (floods, storms, fires, road closures, major
-  accidents, etc.) on the Home tab and a full list screen — sourced from the
-  [GNews API](https://gnews.io/docs/v4) (`https://gnews.io/api/v4/search`).
-- **Server-side shared cache — the Flutter app never calls GNews directly.** A scheduled
-  Firebase Cloud Function, `syncTravelAlerts` (`functions/index.js`, `asia-southeast1`),
-  polls GNews **every 15 minutes**, filters results to items mentioning
-  "Thailand"/"Bangkok" plus a travel-disruption keyword, and upserts them into the
-  `travel_alerts_cache` Firestore collection (doc id = md5 of the article url, so re-runs
-  update in place instead of duplicating; docs no longer returned by GNews are deleted
-  from the collection in the same batch).
-  - **Why:** `shared_preferences` is per-device local storage. With a client-side fetch,
-    every device runs its own refresh timer against the *same* GNews API key, so total
-    request volume scales with install count and can blow through the 100
-    requests/day free-tier quota. Fetching once server-side and having every client read
-    the same Firestore collection keeps usage constant (24h × 4/hr = 96 requests/day)
-    regardless of user count.
-  - The Flutter app (`lib/features/home/services/travel_alert_service.dart`) just does a
-    plain Firestore read of `travel_alerts_cache`, ordered by `published_at desc` — see
-    `FirestoreService` for the equivalent pattern used by the Map/Scanner collections.
-  - The GNews API key is **not** embedded in the client. It's stored as a Firebase
-    Functions secret (`GNEWS_API_KEY`), set once via
-    `firebase functions:secrets:set GNEWS_API_KEY` and injected only into the Cloud
-    Function's execution environment.
-  - **Deploying/updating the function:** `cd functions && npm install`, then
-    `firebase deploy --only functions:syncTravelAlerts` from the repo root. Requires the
-    Firebase project to be on the **Blaze (pay-as-you-go) plan** — Cloud Functions cannot
-    deploy on the free Spark plan even though actual usage stays inside Blaze's free
-    tier. Check the plan at
-    `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
-  - Keep `SEARCH_TERMS` in `functions/index.js` in sync with the (client-side, display-only)
-    category-keyword list in `lib/features/home/models/travel_alert.dart` if either changes.
+  accidents) on the Home tab and a full list screen, sourced from the
+  [GNews API](https://gnews.io/docs/v4).
+- **Server-side shared cache — the Flutter app never calls GNews directly.** The scheduled
+  Cloud Function `syncTravelAlerts` (`functions/index.js`, `asia-southeast1`) polls GNews
+  **every 15 minutes**, filters to items mentioning "Thailand"/"Bangkok" plus a
+  travel-disruption keyword, and upserts into `travel_alerts_cache` (doc id = md5 of the
+  article URL, so re-runs update in place; docs no longer returned by GNews are deleted in
+  the same batch).
+- **Why server-side:** `shared_preferences` is per-device. A client-side fetch means every
+  install runs its own timer against the *same* API key, so volume scales with install
+  count and blows the 100 req/day free tier. One server-side fetch keeps usage constant
+  (24h × 4/hr = 96 req/day) regardless of user count.
+- The app (`lib/features/home/services/travel_alert_service.dart`) does a plain Firestore
+  read ordered by `published_at desc`.
+- The GNews key is **not** in the client — it is a Functions secret (`GNEWS_API_KEY`).
+- Keep `SEARCH_TERMS` in `functions/index.js` in sync with the display-only category
+  keyword list in `lib/features/home/models/travel_alert.dart`.
 
-### Phase 3: AI Price Scanner ✅ IMPLEMENTED
-- Native camera (`image_picker`) captures a photo. Two-stage matching:
-  1. **OCR first** (`google_mlkit_text_recognition`, on-device): reads printed text/numbers
-     from menus or price tags, matches against `price_standards` in Firestore, calculates
-     variance %.
-  2. **Gemini Vision fallback**: if OCR finds no readable text or no matching item (e.g. the
-     photo is just a plate of food with no visible price), the photo is sent to Gemini
-     (`gemini-2.5-flash`, see `lib/features/scanner/services/gemini_vision_service.dart`)
-     to identify the dish name. The device's current GPS coordinates are passed along only
-     as disambiguation context for regional dish names — never stored, never used for
-     location-specific pricing (the `price_standards` schema has no location dimension).
-     The identified name is looked up in `price_standards` and shown as a **typical price
-     range only** (no variance bar, since no price was actually scanned from the image).
-- **Visual Output:** Colored variance bar (e.g., "+15% from standard price") for OCR matches;
-  a plain typical-range card with an "AI Identified" badge for Gemini-Vision matches.
-- **CRITICAL LEGAL BOUNDARY:** Output UI **MUST NEVER** display specific restaurant names,
-  exact locations, or brands — applies to both the OCR and Gemini Vision paths. Show only
-  pure statistical variance/range to avoid defamation issues.
+### 2.2 AI Price Scanner — implementation notes
 
-### Phase 4: AI Voice SOS (STT to TTS Mode) ✅ IMPLEMENTED
-- Tap and hold to record speech → Native STT → Gemini translation → Thai TTS playback.
-- **Multi-language STT:** STT locale follows the user's app language (`LocaleProvider`).
-  Mapping: `en→en_US`, `zh→zh_CN`, `ko→ko_KR`, `ru→ru_RU`, `ja→ja_JP`, `th→th_TH`.
-  The Gemini prompt is dynamically constructed as "The tourist said in [Language]: …"
-  so Gemini always receives the correct source language regardless of what was spoken.
-- **PROMPT COMPLIANCE:** Returned Thai string MUST always end with polite particles ("ครับ" or "ค่ะ").
-- **Model:** `gemini-3.5-flash` via HTTP REST (`--dart-define=GEMINI_API_KEY`). Endpoint: `v1beta`. (`gemini-2.5-flash` and all 2.x variants return 404 "not available to new users" for this API key — `gemini-3.5-flash` is the confirmed working model as of 2026-07).
-- **Emergency numbers** (`profile_screen.dart`): dialed with `LaunchMode.externalApplication`
+Two-stage matching from a native camera capture (`image_picker`):
+
+1. **OCR first** (`google_mlkit_text_recognition`, on-device): reads printed text/numbers
+   from menus or price tags, matches against `price_standards`, calculates variance %.
+2. **Gemini Vision fallback**: if OCR finds no readable text or no matching item, the photo
+   goes to Gemini (`lib/features/scanner/services/gemini_vision_service.dart`) to identify
+   the dish name. GPS coordinates are passed **only** as disambiguation context for regional
+   dish names — never stored, never used for location-specific pricing (`price_standards`
+   has no location dimension). The identified name is looked up and shown as a **typical
+   price range only** (no variance bar — no price was actually scanned).
+
+- **Visual output:** colored variance bar (e.g. "+15% from standard price") for OCR
+  matches; a plain typical-range card with an "AI Identified" badge for Vision matches.
+- ⚠️ **Model version — verify before touching this code.** The scanner service was written
+  against `gemini-2.5-flash`, but §2.3 records that all 2.x variants now return
+  404 "not available to new users" for this API key and that `gemini-3.5-flash` is the
+  confirmed working model. If the Vision path fails, this is the first thing to check —
+  align both services on the same model string.
+- 🚨 **CRITICAL LEGAL BOUNDARY:** the output UI **MUST NEVER** display specific restaurant
+  names, exact locations, or brands — on **either** path. Statistical variance/range only.
+
+### 2.3 AI Voice SOS — implementation notes
+
+- Tap and hold to record → native STT → Gemini translation → Thai TTS playback.
+- **Multi-language STT:** locale follows `LocaleProvider` — `en→en_US`, `zh→zh_CN`,
+  `ko→ko_KR`, `ru→ru_RU`, `ja→ja_JP`, `th→th_TH`. The prompt is built as
+  "The tourist said in [Language]: …" so Gemini always gets the correct source language.
+- **PROMPT COMPLIANCE:** the returned Thai string MUST always end with a polite particle
+  ("ครับ" / "ค่ะ").
+- **Model:** `gemini-3.5-flash` via HTTP REST (`--dart-define=GEMINI_API_KEY`), endpoint
+  `v1beta`. (`gemini-2.5-flash` and all 2.x variants return 404 "not available to new
+  users" for this key — confirmed 2026-07.)
+- **Emergency numbers** (`profile_screen.dart`): dial with `LaunchMode.externalApplication`
   to force the phone dialer — prevents extra digits or browser intercept on iOS/Android.
 
-### Phase 5: Web CMS (Quoted — Post-MVP)
-A separate web-based admin dashboard for non-technical staff to manage Firestore content
-without touching the Firebase Console directly. Quoted 20/07/2026 as its own 5-item,
-**9,000 THB** engagement — separate from the 45,000 THB app budget in Section 2's header
-(software development only — excludes ongoing domain/cloud hosting costs), paid in 3
-installments (30% on system init, 40% on data-management + mapping completion, 30% on
-verification/delivery/deploy):
-- **Stack (confirmed, not just illustrative):** **Next.js 14** + **Firebase Admin SDK**,
-  deployed to **Firebase Hosting**.
-- **Admin login:** the CMS has its own login screen for staff, using **Firebase
-  Authentication** (Admin Auth). This is a property of the *separate* CMS project only —
-  it does not contradict Section 3's "Firebase Auth completely omitted for MVP," which
-  refers to the Flutter app, not this admin site.
-- **Manages:** `price_standards` (CRUD, multi-language fields, image preview),
-  `partner_locations` (CRUD, **upload real partner photos to Firebase Storage** —
-  not hotlinked third-party stock photos — replacing today's Pexels placeholders),
-  `alert_zones` (CRUD via an **interactive polygon editor built on the Google Maps
-  API**, for drawing/editing the advisory-area boundary points instead of hand-editing
-  GeoPoint arrays).
-- **Out of scope for the Flutter app itself:** this is a *separate* project. The Flutter
-  app already reads generically from Firestore via `FirestoreService`, so it needs **no
-  changes** to consume data written by the CMS — the CMS just needs to write to the same
-  collections/fields documented above.
-- **Auth & write access to Firestore data:** Firestore rules (`firestore.rules`)
-  currently allow public **read-only** access to `price_standards`/`partner_locations`/
-  `alert_zones` and deny all client writes (see Section 6 below). The CMS must write
-  either via the **Firebase Admin SDK with a service account** (bypasses security
-  rules — simplest) or via an **authenticated admin role** added to the rules. Never
-  weaken the public rules to allow open writes from the Flutter app to make this work.
-- **Pre-launch QA step:** the quote's testing phase includes a legal-wording review pass
-  — any copy entered/edited through the CMS (e.g. `alert_zones` descriptions) must still
-  follow the Section 7 wording rules, since CMS staff can write free-text fields that
-  bypass the Flutter app's own copy.
+### 2.4 Web CMS / Admin Dashboard (quotation Phase 1 — CLOSED)
 
-## 3. Strict Out of Scope (DO NOT CODE)
-- NO User Registration / Authentication / Login screens (Firebase Auth completely omitted for MVP).
-- NO User Scan History logs or personal profile tracking databases.
-- NO Rating Forms or Community comment inputs.
-- NO Live Chat or Premium Support layout simulators.
+A separate web app, in a **different repository**, letting non-technical staff manage
+Firestore content without the Firebase Console.
 
-## 4. Firebase Setup Instructions
-```bash
-# 1. Install FlutterFire CLI (run once)
-dart pub global activate flutterfire_cli
+| | |
+|---|---|
+| Stack | Next.js 14 + Firebase Admin SDK (Server Actions) |
+| Deploy target | **Firebase App Hosting** (not plain Firebase Hosting — it cannot run Server Actions, and its `webframeworks` support is legacy) |
+| CMS URL | `https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app` |
+| Staff auth | Google Sign-In with domain restriction, Firebase Auth — **CMS only** |
+| Manages | `price_standards`, `partner_locations` (with real photo upload to Firebase Storage), `alert_zones` (interactive Google Maps polygon editor) |
 
-# 2. Install Firebase CLI (run once)
-npm install -g firebase-tools
+- Staff auth in the CMS **does not contradict** §6 "no Firebase Auth in the app" — that
+  rule is about the Flutter app, which still reads anonymously.
+- The CMS writes through the **Admin SDK**, which bypasses Firestore rules entirely.
+- Known open items on the CMS side (tracked in that repo's `STATUS.md`, **not blocking**
+  Flutter work): partner photo upload never yet observed to succeed end-to-end, and a
+  hands-on pass over the polygon editor.
 
-# 3. Login to Firebase
-firebase login
+---
 
-# 4. Configure project (generates lib/firebase_options.dart)
-flutterfire configure
+## 3. Firestore Data Contract — READ THIS BEFORE WRITING ANY READ LAYER
+
+*(Merged from the former `FLUTTER_INTEGRATION.md`. These shapes were read off the CMS's
+actual write path — `lib/actions/*.ts`, `lib/schemas/*.ts` in the web-admin repo — not off
+a spec. Where anything else disagrees, **this section is what is really in Firestore**.)*
+
+| | |
+|---|---|
+| Firebase project | `thaishield-ai-790eb` |
+| Region (Firestore, Storage, Functions, CMS backend) | `asia-southeast1` |
+| Firestore rules | public read, **no client writes** (see §7) |
+| App auth | none — the app reads anonymously |
+
+### `price_standards`
+
 ```
-After running `flutterfire configure`, select the Firebase project and enable Android + iOS platforms.
+id          string    // == document ID. lowercase / digits / underscore only
+name_en     string
+name_th     string
+name_zh     string
+name_ko     string
+name_ru     string
+name_ja     string
+min_price   number     // THB
+max_price   number     // THB
+category    string     // "food" | "transport" | "attraction"
+updated_at  timestamp  // server timestamp, rewritten on every save
+```
 
-### Cloud Functions (GNews sync — see Phase 2b)
+The document ID **equals** the `id` field — the CMS writes with `.doc(parsed.id).set(…)`,
+so a dish can be addressed directly by id (`pad_thai`) instead of querying.
+
+### `partner_locations`
+
+```
+id           string    // == document ID
+name         string
+lat          number
+lng          number
+type         string    // "restaurant" | "hotel" | "transport"  ← still 3 values
+rating       number    // 0.0–5.0
+is_verified  bool
+price_tier   string    // "fair" | "caution" | "high"
+image_url    string    // may be "" — see below
+```
+
+- ⚠️ **No `updated_at` on this collection.** `price_standards` has one; this does not.
+  Don't write a shared "last updated" widget that assumes the field exists.
+- ⚠️ **`type` is still the 3-value enum.** Expanding it to 11 categories is **task 2.3 in
+  Phase 2A** (§4). The 11 values are **not specified anywhere yet** — they must be defined
+  as the first step of that task. When the Flutter side defines the list, update
+  `lib/schemas/partner-locations.ts` **and its tests in the web-admin repo in the same
+  change**, or staff will be unable to enter the new types.
+
+### `alert_zones`
+
+```
+id              string
+name            string
+risk_level      string           // "safe" | "caution" | "danger"
+description_en  string
+description_th  string
+polygon         array<GeoPoint>  // ← GeoPoint, NOT {lat,lng} maps
+center_lat      number           // derived
+center_lng      number           // derived
+radius_km       number           // derived
+```
+
+- ⚠️ **`polygon` is an array of Firestore `GeoPoint`**, which deserializes in Dart to
+  `List<GeoPoint>` — read `p.latitude` / `p.longitude`:
+
+  ```dart
+  final polygon = (data['polygon'] as List<dynamic>)
+      .cast<GeoPoint>()
+      .map((p) => LatLng(p.latitude, p.longitude))
+      .toList();
+  ```
+
+- `center_lat`, `center_lng`, `radius_km` are **derived** — the CMS computes the centroid
+  and bounding radius from the polygon on every save and stores them alongside it. Treat
+  them as read-only convenience values: draw the overlay from `polygon`, and use
+  `center_*` / `radius_km` only for cheap proximity pre-checks (e.g. deciding whether a
+  zone is near the user before drawing it). **Phase 2A task 2.2 depends on exactly this.**
+
+### `travel_alerts_cache` (written only by `syncTravelAlerts`)
+
+```
+id            string     // md5 of the article url == doc id, for idempotent upserts
+title         string
+description   string
+url           string
+image         string | null
+source_name   string
+published_at  timestamp
+fetched_at    timestamp  // server timestamp of the sync run that wrote/refreshed this doc
+```
+
+The CMS neither reads nor writes this collection.
+
+### Partner images — the part most likely to surprise you
+
+`image_url` used to be a hotlinked Pexels URL. It is now a **Firebase Storage download URL
+with an access token**:
+
+```
+https://firebasestorage.googleapis.com/v0/b/<bucket>/o/partner_locations%2F<id>%2F<uuid>.jpg?alt=media&token=<uuid>
+```
+
+- It is still just an HTTPS URL. `Image.network` / `CachedNetworkImage` work unchanged, and
+  **no Firebase Storage SDK is needed** in the app.
+- These URLs **bypass Storage security rules** and need no authentication — by design,
+  since the app has no auth and shows these to anonymous tourists.
+- The token does not expire. A URL stops working only if someone revokes it from the
+  Firebase Console, which is the intended way to pull a photo.
+- **`image_url` can be an empty string** — the schema explicitly allows `""`. Keep the icon
+  fallback in `_PartnerThumbnail` (`map_screen.dart`) rather than assuming a URL exists.
+- Do **not** hardcode the `storage.googleapis.com/...` form. An earlier CMS build produced
+  those; they cannot work, because the bucket uses uniform bucket-level access and the org
+  enforces public-access prevention. Any such URL still in the data is stale.
+
+### Things the CMS relies on — don't break them
+
+- **Firestore rules stay public-read / no-client-write.** Never widen client rules to make
+  something in the app work; that would let any install write to the documents staff
+  maintain.
+- **Document IDs match `^[a-z0-9_]+$`** and are immutable after creation in the CMS. If the
+  app ever generates documents, follow the same convention.
+- **§8 wording rules apply to CMS-entered text too.** `alert_zones` descriptions run through
+  an automated linter in the CMS, but it only recognises **English** terms — **Thai copy is
+  unchecked** and still needs human review. Anything the app displays verbatim from
+  `description_th` carries that risk.
+
+---
+
+## 4. Remaining Scope — Smart Map Premium V2 (Option A, In-App Purchase)
+
+Split into **three delivery phases**. Each ends in a demo-able build, which is what
+triggers the corresponding invoice in §5.
+
+### Phase 2A — Safety Radar & Filter (9,000 THB of work)
+
+| Task | Description | Est. |
+|---|---|---|
+| 2.1 | **Safety Radar core** — "What's Around Me" on-demand radius search, returning cards for Safe Area / Advisory / Alert Zone / Verified Partners / Emergency Services / Transport | 1 week |
+| 2.2 | **Alert Zone proximity card** — foreground, on-open check; reuses the existing `alert_zones` polygon data (use `center_*` + `radius_km` for the cheap pre-check, `polygon` for the precise test) | 2–3 days |
+| 2.3 | **Filter panel UI** + `partner_locations.type` schema expansion (**3 → 11 categories**) + seed data update | 3–4 days |
+
+**Definition of done (2A):**
+- Radar returns results within the selected radius from `partner_locations` + `alert_zones`
+  with no extra Firestore collections and no client writes.
+- The 11 category values are **written down in this file** and applied in the same change
+  to (a) the Flutter model/filter UI, (b) `lib/schemas/partner-locations.ts` in the
+  web-admin repo, (c) that repo's schema tests, (d) the seed scripts.
+- Radar/proximity copy passes §8 wording rules.
+- No regression on the existing Map screen.
+
+### Phase 2B — Route Suggestion & Paywall UI (6,000 THB of work)
+
+| Task | Description | Est. |
+|---|---|---|
+| 2.4 | **Route Suggestion** — Google Directions API integration, route preview UI, travel-mode toggle, "Open in Google Maps" deep link | 1 week |
+| 2.5 | **Paywall / plan-comparison screen** (Monthly / Yearly / Lifetime) + client-side feature gating for Radar details, Filter and Route Suggestion | 3–4 days |
+
+**Definition of done (2B):**
+- Directions API key restricted per-platform and injected via `--dart-define`, never
+  committed. Watch the Directions quota — it bills per request.
+- The paywall gates features **client-side only** at this stage; purchases are not yet live.
+  A debug/override flag must let QA unlock without paying.
+- Store account setup (Play Console products, App Store Connect agreements/banking) is
+  **started during this phase** even though 2.8 lands in 2C — review and banking approval
+  have multi-day lead times and are the usual cause of slippage.
+
+### Phase 2C — In-App Purchase, Legal Wording & Release (8,000 THB of work)
+
+| Task | Description | Est. |
+|---|---|---|
+| 2.8 | **In-App Purchase integration** — Google Play Billing + Apple StoreKit, receipt validation, "Restore Purchases" | 3 weeks (partly parallel — see 2B) |
+| 2.6 | **Legal-wording revision pass** on all new copy across all 6 language ARB files | 2 days |
+| 2.7 | **QA** — regression test on existing Map / Scanner / SOS features, release build | 2–3 days |
+
+**Definition of done (2C):**
+- Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on
+  iOS via cloud CI.
+- Receipt validation does not require adding Firebase Auth to the app (§6) — if a
+  server-side check is used, it goes through a Cloud Function, not client rules.
+- Every new string in all 6 ARB files passes §8.
+- Android AAB + iOS build produced from CI; §9 commands still work from a clean checkout.
+
+**Not included in this quotation:** Google/Apple revenue share (15–30% per transaction),
+domain and annual cloud/server costs, and any post-release feature work.
+
+---
+
+## 5. เงื่อนไขการชำระเงิน (Payment Terms — ฉบับแก้ไข 11/08/2026)
+
+**เหตุผลที่แก้ไข:** ลูกค้าโอนได้สูงสุด **10,000 บาท/ครั้ง** จึงแบ่งงวดที่เหลือใหม่ให้ทุกงวด
+ไม่เกิน 10,000 บาท และผูกกับการส่งมอบงานจริงของ Phase 2A / 2B / 2C
+
+### สรุปยอด
+
+| รายการ | จำนวนเงิน (THB) |
+|---|---|
+| มูลค่างานตามใบเสนอราคาเดิม (Phase 1 Web Admin 9,000 + Phase 2 Smart Map 23,000) | 32,000.00 |
+| ชำระแล้ว (งวดที่ 1 เดิม 30%) | −9,600.00 |
+| **คงเหลือที่ต้องชำระ** | **22,400.00** |
+
+> เงินที่ชำระมาแล้ว 9,600.00 ครอบคลุมงาน **Phase 1 Web Admin ทั้งก้อน (9,000.00)** และ
+> เหลือเครดิตยกไป Phase 2 อีก **600.00** ซึ่งนำไปหักในงวดถัดไปแล้ว
+
+### ตารางงวดชำระใหม่
+
+| งวด | เงื่อนไข / Milestone | ยอดชำระ (THB) | ยอดคงเหลือหลังชำระ |
+|---|---|---|---|
+| ✅ ชำระแล้ว | เริ่มโครงการ + ส่งมอบ Web Admin Dashboard (Phase 1 เดิม) | 9,600.00 | 22,400.00 |
+| งวดที่ 2 | ส่งมอบ **Phase 2A** — Safety Radar + Alert Zone card + Filter/schema (9,000 − เครดิตยกมา 600) | **8,400.00** | 14,000.00 |
+| งวดที่ 3 | ส่งมอบ **Phase 2B** — Route Suggestion + Paywall UI & feature gating | **6,000.00** | 8,000.00 |
+| งวดที่ 4 | ส่งมอบ **Phase 2C** — IAP + Legal Wording + QA + Release Build (ปิดงาน) | **8,000.00** | 0.00 |
+| | **รวมที่ต้องชำระเพิ่ม** | **22,400.00** | |
+
+- ทุกงวด **ไม่เกิน 10,000.00 บาท** ตามข้อจำกัดของลูกค้า ✔
+- แต่ละงวดเรียกเก็บ **หลังส่งมอบ build ให้ทดสอบ** และลูกค้าตรวจรับตาม *Definition of done*
+  ของเฟสนั้นใน §4
+- ราคานี้เป็น **ค่าพัฒนาซอฟต์แวร์เท่านั้น** ไม่รวมค่าโดเมน / Cloud Server รายปี และไม่รวม
+  ส่วนแบ่งรายได้ Google/Apple (15–30% ต่อรายการ)
+- หากต้องการแบ่งย่อยกว่านี้ ให้แตกจากงวดที่ 4 ก่อน (2C มีงานย่อย 3 ชิ้นที่แยกส่งมอบได้)
+
+---
+
+## 6. แผนการดำเนินงาน (Timeline)
+
+| ลำดับ | Phase | กิจกรรม | กำหนดการ | สถานะ |
+|---|---|---|---|---|
+| 1 | — | Web Admin Dashboard (Phase 1 เดิม ทั้ง 5 รายการ) | 2026-07-20 → 2026-08-07 | ✅ ส่งมอบแล้ว |
+| 2 | 2A | Safety Radar core + geo-radius logic | สัปดาห์ที่ 1 (2026-08-12 → 2026-08-18) | รอดำเนินการ |
+| 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | รอดำเนินการ |
+| 4 | 2B | Route Suggestion (Directions API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | รอดำเนินการ |
+| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | รอดำเนินการ |
+| 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | รอดำเนินการ |
+| 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | รอดำเนินการ |
+
+*ความเสี่ยงหลักด้านเวลา: การอนุมัติบัญชี/สินค้าใน Play Console และ App Store Connect ซึ่ง
+ไม่ได้อยู่ในการควบคุมของผู้พัฒนา — จึงเริ่มดำเนินการตั้งแต่สัปดาห์ที่ 4*
+
+---
+
+## 7. Strict Out of Scope (DO NOT CODE)
+
+- **NO** user registration / authentication / login screens in the Flutter app
+  (Firebase Auth omitted for the app; the CMS's own staff login is separate — §2.4).
+- **NO** user scan-history logs or personal profile tracking databases.
+- **NO** rating forms or community comment inputs.
+- **NO** live chat or premium support layout simulators.
+- **NO** second CMS or admin UI inside the app.
+- **NO** background/geofencing push notifications for alert zones — Phase 2A task 2.2 is a
+  **foreground, on-open** check only.
+
+---
+
+## 8. Firebase / Build Commands
+
 ```bash
-# 1. Install function dependencies (once, and after editing functions/package.json)
-cd functions && npm install
+# Flutter + Firebase (once)
+dart pub global activate flutterfire_cli
+npm install -g firebase-tools
+firebase login
+flutterfire configure          # generates lib/firebase_options.dart (Android + iOS)
+```
 
-# 2. Set the GNews key as a Functions secret (once, or when the key rotates)
-firebase functions:secrets:set GNEWS_API_KEY
-
-# 3. Deploy just this function
+```bash
+# Cloud Functions (GNews sync — §2.1)
+cd functions && npm install                       # once, and after editing package.json
+firebase functions:secrets:set GNEWS_API_KEY      # once, or when the key rotates
 firebase deploy --only functions:syncTravelAlerts
 ```
-Requires the Firebase project to be on the **Blaze plan** (Section 2b explains why).
 
-## 5. Useful Project Commands
-- Run app:          `flutter run`
-- Fetch plugins:    `flutter pub get`
-- Clean caches:     `flutter clean`
-- Analyze code:     `flutter analyze lib/`
-- Android APK:      `flutter build apk --split-per-abi --release`
-- Android Bundle:   `flutter build appbundle --release`
-- iOS (CI only):    handled by Codemagic pipeline
+Cloud Functions require the Firebase project to be on the **Blaze (pay-as-you-go) plan** —
+they cannot deploy on Spark even though actual usage stays inside Blaze's free tier. Check
+at `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
 
-## 6. Firestore Security Rules
+**Project commands**
 
-Rules live in `firestore.rules` in this repo (kept as a backup/reference — the live
-rules are edited directly in Firebase Console → Firestore Database → Rules, the same
-place all collection data is populated, since there is no CMS yet per Phase 5 above).
+| | |
+|---|---|
+| Run app | `flutter run` |
+| Fetch plugins | `flutter pub get` |
+| Clean caches | `flutter clean` |
+| Analyze | `flutter analyze lib/` |
+| Android APK | `flutter build apk --split-per-abi --release` |
+| Android Bundle | `flutter build appbundle --release` |
+| iOS | CI only (Codemagic pipeline) |
+
+---
+
+## 9. Firestore Security Rules
+
+Rules live in `firestore.rules` in this repo as a backup/reference; the live rules are
+edited in Firebase Console → Firestore Database → Rules.
 
 - `price_standards`, `partner_locations`, `alert_zones` are **public read, no write**
   (`allow read: if true; allow write: if false;`). The app has no Firebase Auth, so reads
-  must stay open for the Map and Scanner features to work at all.
-- **Never use Firebase's default "test mode" rule** (`allow read, write: if request.time <
-  timestamp.date(...)`) for anything beyond initial local testing — it has an expiry date
-  and **silently denies all reads once it passes**, breaking the Map and Scanner with no
-  code change required to trigger it. This has happened once already; if Map/Scanner
-  suddenly fail in production with no related code or dependency change, check the Rules
-  tab in Firebase Console first before suspecting Google Maps API keys/billing.
-- Any future authenticated write access (e.g. for the Phase 5 CMS) must be scoped to that
-  specific use case — don't broaden the public rule to allow writes from the Flutter app.
-- `travel_alerts_cache` (Phase 2b) is also **public read, no write** — it's written only
-  by the `syncTravelAlerts` Cloud Function via the Admin SDK, which bypasses these rules
-  entirely, so the `allow write: if false` here is solely to block writes from clients.
+  must stay open or Map/Scanner/Radar stop working entirely.
+- `travel_alerts_cache` is also **public read, no write** — written only by
+  `syncTravelAlerts` through the Admin SDK, which bypasses rules; `allow write: if false`
+  exists solely to block clients.
+- 🚨 **Never use Firebase's default "test mode" rule**
+  (`allow read, write: if request.time < timestamp.date(...)`) beyond initial local
+  testing — it has an expiry date and **silently denies all reads once it passes**, with no
+  code change needed to trigger it. This has already happened once. If Map/Scanner suddenly
+  fail in production with no related code or dependency change, **check the Rules tab
+  first**, before suspecting Maps API keys or billing.
+- The CMS writes via the Admin SDK and needs no rule changes. Any future authenticated
+  write access must be scoped to that specific case — **never** broaden the public rule to
+  allow writes from the Flutter app.
 
-## 7. Legal Safe Wording Guide (MANDATORY — applies to ALL user-facing text)
+---
 
-ThaiShield AI displays pricing and travel-safety information. To minimize legal risk
-(defamation, accusation, or damages claims against shops, individuals, or areas),
-**all UI copy, alerts, scan results, and map screens MUST use neutral, statistical,
-informational wording** — never accusatory or judgmental language.
+## 10. Legal Safe Wording Guide (MANDATORY — ALL user-facing text)
 
-This applies to: widget text, ARB localization strings, Firestore seed data
-(`tools/seed_firestore.js`, `lib/tools/seed_data.dart`), push notifications, and any
-AI-generated (Gemini/OpenAI) responses shown to users.
+ThaiShield AI displays pricing and travel-safety information. To minimise legal risk
+(defamation, accusation, damages claims against shops, individuals or areas), **all UI
+copy, alerts, scan results, radar cards, paywall copy and map screens MUST use neutral,
+statistical, informational wording** — never accusatory or judgmental language.
+
+Applies to: widget text, ARB localization strings, Firestore seed data, **CMS-entered
+content**, push notifications, and any AI-generated (Gemini) response shown to users.
 
 ### Wording replacement table
 
@@ -313,30 +498,34 @@ AI-generated (Gemini/OpenAI) responses shown to users.
 | Fraud Zone | Travel Advisory Zone |
 
 ### Additional rules
-- **Never** display shop names, logos, or other shop-identifying info on the price-scan
-  results screen (see Phase 3 boundary above) — show only statistical variance.
+
+- **Never** display shop names, logos or other shop-identifying info on the price-scan
+  results screen (§2.2) — statistical variance only.
 - **Never** use directly accusatory words: Scam, Fraud, Cheating, Overcharge, Rip-off,
   Dangerous, Unsafe, Blacklist, Exploitation, etc.
 - Frame all price commentary statistically: "Average Price", "Price Variation",
   "Above Typical Range", "Significant Price Variation".
-- Every screen that shows price analysis (Scanner results, Map partner panel, etc.)
+- Every screen showing price analysis (Scanner results, Map partner panel, **Radar cards**)
   **MUST display a disclaimer**:
-  - **EN:** "This information is generated from statistical and community-based data
-    and is intended for informational purposes only. Actual prices may vary."
+  - **EN:** "This information is generated from statistical and community-based data and is
+    intended for informational purposes only. Actual prices may vary."
   - **TH:** "ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น
     ราคาจริงอาจแตกต่างกันได้"
+- The CMS's automated linter checks **English only** — Thai free-text from staff
+  (`description_th`) is unchecked and needs human review before it ships (§3).
 
-The app's goal is to **inform** tourists to help them make decisions — never to **judge
-or accuse** any specific shop, person, or area. Apply this standard to every new
-feature and copy change.
+The app's goal is to **inform** tourists so they can decide for themselves — never to
+**judge or accuse** any specific shop, person or area. Apply this to every new feature and
+copy change, including all Phase 2A/2B/2C work.
 
-## 8. UI Theme & Color Guide (MANDATORY — applies to every screen, current and future)
+---
+
+## 11. UI Theme & Color Guide (MANDATORY — every screen, current and future)
 
 ThaiShield AI uses one consistent dark-green "ranger" theme for the top header and the
-bottom navigation bar on every screen, so the user never sees a jarring color seam
-between the header, the page body, and the bottom nav. This was fixed once already
-(bottom nav was tinted navy `0xFF0D1B2A` while headers used green `0xFF0A1810` —
-do not reintroduce that mismatch).
+bottom navigation bar on every screen, so the user never sees a jarring color seam between
+header, page body and bottom nav. This was fixed once already (bottom nav was tinted navy
+`#0D1B2A` while headers used green `#0A1810`) — do not reintroduce that mismatch.
 
 ### Core palette
 
@@ -347,24 +536,23 @@ do not reintroduce that mismatch).
 | Card / heading text on white cards | dark navy | `#0D1B2A` |
 | Accent gold (brand title, active highlights) | gold | `#FFB300` |
 | Accent blue (info, scan, profile icons) | sky blue | `#4FC3F7` |
-| Accent green (safe/verified/success) | green | `#2E7D32` |
-| Accent red (alerts/SOS/danger) | red | `#EF5350` / `#D32F2F` |
+| Accent green (safe / verified / success) | green | `#2E7D32` |
+| Accent red (alerts / SOS / danger) | red | `#EF5350` / `#D32F2F` |
 | Secondary muted text | grey | `#90A4AE` |
 
 ### Rules
-- Any screen with a top header bar **must** use `#0A1810` as the header background
-  (see `_buildHeader` in `home_tab.dart` / `profile_screen.dart` for the canonical
-  pattern: logo + "ThaiShield AI" gold title + page title + subtitle).
-- The bottom navigation bar (`lib/features/home/widgets/main_bottom_nav.dart`) tints
-  its skyline background image with the **same** `#0A1810` green — never navy
-  (`#0D1B2A`) or any other color. If the header color ever changes, update the bottom
-  nav tint in the same change.
-- `#0D1B2A` (dark navy) is reserved for **text/icons on white cards**, not for any
-  full-screen or header background — keep these two dark colors visually distinct in
-  their roles.
-- Page body background outside of cards should default to `#F3F5F7` unless a screen's
-  approved mockup specifies otherwise (e.g. Smart Map's white toolbar is an
-  intentional, already-approved exception — don't "fix" it without being asked).
-- When building a new screen or redesigning an existing one (Scan, SOS, Map, etc.),
-  default to this same header + bottom-nav treatment unless the user's mockup
-  explicitly shows something different.
+
+- Any screen with a top header bar **must** use `#0A1810` as the header background (see
+  `_buildHeader` in `home_tab.dart` / `profile_screen.dart` for the canonical pattern:
+  logo + "ThaiShield AI" gold title + page title + subtitle).
+- The bottom navigation bar (`lib/features/home/widgets/main_bottom_nav.dart`) tints its
+  skyline background image with the **same** `#0A1810` — never navy or anything else. If
+  the header color changes, update the bottom nav tint in the same change.
+- `#0D1B2A` is reserved for **text/icons on white cards**, never a full-screen or header
+  background — keep the two dark colors distinct in their roles.
+- Page body background outside cards defaults to `#F3F5F7` unless an approved mockup says
+  otherwise (Smart Map's white toolbar is an intentional, already-approved exception —
+  don't "fix" it unasked).
+- New screens from Phase 2A/2B/2C (**Radar sheet, Filter panel, Route preview, Paywall**)
+  default to this same header + bottom-nav treatment, with the risk-level colors reused
+  from the map: green = safe, amber = caution, red = alert.
