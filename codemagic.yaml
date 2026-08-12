@@ -27,6 +27,7 @@ workflows:
         script: |
           flutter build ipa --release \
             --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY \
+            --dart-define=GCS_STT_KEY=$GCS_STT_KEY \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:

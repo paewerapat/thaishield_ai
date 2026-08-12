@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+import 'package:record/record.dart';
 
 import 'package:provider/provider.dart';
 
@@ -24,24 +26,30 @@ class SosScreen extends StatefulWidget {
 
 class _SosScreenState extends State<SosScreen>
     with SingleTickerProviderStateMixin {
-  final _stt = SpeechToText();
+  final _recorder = AudioRecorder();
   final _tts = FlutterTts();
 
   _SosState _state = _SosState.idle;
   String _spokenText = '';
   String _thaiText = '';
   String _errorKey = 'sos_error_translation';
-  bool _sttAvailable = false;
   String _sourceLangName = 'English';
+  String _currentLangCode = 'en';
+  double _soundLevel = 0.0;
+  bool _isRecording = false;
 
-  static String _sttLocale(String langCode) {
+  Timer? _ampTimer;
+  Timer? _maxDurationTimer;
+
+  // BCP-47 codes for Google Cloud Speech-to-Text
+  static String _gcsLocale(String langCode) {
     switch (langCode) {
-      case 'zh': return 'zh_CN';
-      case 'ko': return 'ko_KR';
-      case 'ru': return 'ru_RU';
-      case 'ja': return 'ja_JP';
-      case 'th': return 'th_TH';
-      default:   return 'en_US';
+      case 'zh': return 'zh-CN';
+      case 'ko': return 'ko-KR';
+      case 'ru': return 'ru-RU';
+      case 'ja': return 'ja-JP';
+      case 'th': return 'th-TH';
+      default:   return 'en-US';
     }
   }
 
@@ -105,60 +113,97 @@ class _SosScreenState extends State<SosScreen>
       return;
     }
 
-    if (!_sttAvailable) {
-      _sttAvailable = await _stt.initialize(
-        onError: (_) {
-          if (mounted && _state == _SosState.listening) {
-            setState(() {
-              _state = _SosState.error;
-              _errorKey = 'sos_error_mic';
-            });
-          }
-        },
-      );
-    }
-
-    if (!_sttAvailable) {
-      setState(() {
-        _state = _SosState.error;
-        _errorKey = 'sos_error_mic';
-      });
-      return;
-    }
+    final dir = await getTemporaryDirectory();
+    final audioPath = '${dir.path}/sos_recording.wav';
 
     setState(() {
       _state = _SosState.listening;
       _spokenText = '';
       _thaiText = '';
       _sourceLangName = _langName(langCode);
+      _currentLangCode = langCode;
+      _soundLevel = 0.0;
+      _isRecording = true;
     });
-    await _stt.listen(
-      onResult: (SpeechRecognitionResult r) {
-        if (mounted) setState(() => _spokenText = r.recognizedWords);
-      },
-      listenOptions: SpeechListenOptions(
-        localeId: _sttLocale(langCode),
-        pauseFor: const Duration(seconds: 3),
-        listenMode: ListenMode.confirmation,
-        cancelOnError: true,
+
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.wav,
+        sampleRate: 16000,
+        numChannels: 1,
       ),
+      path: audioPath,
     );
+
+    // Poll amplitude every 120ms for the sound level bar
+    _ampTimer = Timer.periodic(const Duration(milliseconds: 120), (_) async {
+      if (!_isRecording) return;
+      try {
+        final amp = await _recorder.getAmplitude();
+        if (mounted && _isRecording) {
+          // amp.current is dBFS: -40 (silence) to 0 (max) → 0.0–1.0
+          setState(() => _soundLevel = ((amp.current + 40) / 40).clamp(0.0, 1.0));
+        }
+      } catch (_) {}
+    });
+
+    // Safety cap: auto-stop after 30 s to prevent huge uploads
+    _maxDurationTimer = Timer(const Duration(seconds: 30), () {
+      if (_state == _SosState.listening) _stopAndProcess();
+    });
   }
 
   Future<void> _stopAndProcess() async {
     if (_state != _SosState.listening) return;
-    await _stt.stop();
-    final text = _spokenText.trim();
-    if (text.isEmpty) {
-      setState(() {
-        _state = _SosState.error;
-        _errorKey = 'sos_error_no_speech';
-      });
-      return;
-    }
+
+    _ampTimer?.cancel();
+    _maxDurationTimer?.cancel();
+    _isRecording = false;
+
+    final path = await _recorder.stop();
+
     setState(() => _state = _SosState.processing);
+
     try {
-      final thai = await _translateToThai(text);
+      if (path == null) {
+        setState(() {
+          _state = _SosState.error;
+          _errorKey = 'sos_error_no_speech';
+        });
+        return;
+      }
+
+      final audioFile = File(path);
+      // < 1 KB means essentially no audio was captured
+      if (!await audioFile.exists() || await audioFile.length() < 1000) {
+        setState(() {
+          _state = _SosState.error;
+          _errorKey = 'sos_error_no_speech';
+        });
+        try { await audioFile.delete(); } catch (_) {}
+        return;
+      }
+
+      final audioBase64 = base64Encode(await audioFile.readAsBytes());
+      try { await audioFile.delete(); } catch (_) {}
+
+      final transcript = await _transcribeWithGCS(
+        audioBase64,
+        _gcsLocale(_currentLangCode),
+      );
+
+      if (!mounted) return;
+      if (transcript == null || transcript.trim().isEmpty) {
+        setState(() {
+          _state = _SosState.error;
+          _errorKey = 'sos_error_no_speech';
+        });
+        return;
+      }
+
+      setState(() => _spokenText = transcript.trim());
+
+      final thai = await _translateToThai(transcript.trim());
       if (!mounted) return;
       if (thai == null || thai.isEmpty) {
         setState(() {
@@ -167,6 +212,7 @@ class _SosScreenState extends State<SosScreen>
         });
         return;
       }
+
       setState(() {
         _thaiText = thai;
         _state = _SosState.speaking;
@@ -181,28 +227,82 @@ class _SosScreenState extends State<SosScreen>
     }
   }
 
-  Future<String?> _translateToThai(String english) async {
+  /// Calls Google Cloud Speech-to-Text v2 (Chirp model) directly via REST.
+  /// Key is injected at build time: --dart-define=GCS_STT_KEY=...
+  /// Restrict the key in Cloud Console to the Speech-to-Text API only.
+  Future<String?> _transcribeWithGCS(
+    String audioBase64,
+    String languageCode,
+  ) async {
+    const apiKey = String.fromEnvironment('GCS_STT_KEY');
+    if (apiKey.isEmpty) {
+      debugPrint('[STT] GCS_STT_KEY not set');
+      return null;
+    }
+
+    const projectId = 'thaishield-ai-790eb';
+    const endpoint =
+        'https://speech.googleapis.com/v2/projects/$projectId'
+        '/locations/us-central1/recognizers/_:recognize'
+        '?key=$apiKey';
+
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'config': {
+          'autoDecodingConfig': {},
+          'languageCodes': [languageCode],
+          'model': 'chirp',
+          'features': {'enableAutomaticPunctuation': true},
+        },
+        'content': audioBase64,
+      }),
+    ).timeout(const Duration(seconds: 30));
+
+    debugPrint('[STT] GCS status: ${response.statusCode}');
+    if (response.statusCode != 200) {
+      debugPrint('[STT] GCS error: ${response.body}');
+      return null;
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final results = data['results'] as List?;
+    if (results == null || results.isEmpty) return null;
+    final alternatives = results.first['alternatives'] as List?;
+    if (alternatives == null || alternatives.isEmpty) return null;
+    return alternatives.first['transcript'] as String?;
+  }
+
+  Future<String?> _translateToThai(String spokenInput) async {
     const model = 'gemini-3.5-flash';
     const endpoint =
         'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
 
-    final prompt =
-        'You are an emergency communication assistant for foreign tourists in Thailand. '
-        'The tourist said in $_sourceLangName: "$english"\n'
-        'Translate this into natural, concise spoken Thai (1–2 sentences) so a local '
-        'Thai person can understand immediately. '
-        'The response MUST end with "ครับ". '
-        'Reply with ONLY the Thai text — no explanation, no quotes, no transliteration.';
+    const systemInstruction =
+        'You are an emergency translation assistant for tourists in Thailand. '
+        'Your job: translate what the tourist says into clear, natural spoken Thai '
+        'so a local Thai person understands immediately. '
+        'The input may contain speech-recognition errors or incomplete words — '
+        'always infer the most likely emergency meaning and produce a helpful translation. '
+        'Common situations: medical emergency, theft, accident, getting lost, '
+        'feeling unsafe, needing police/ambulance, overcharging, lost passport. '
+        'Output ONLY the Thai translation — no explanation, no quotes, no transliteration. '
+        'Always end with "ครับ".';
+
+    final userMessage =
+        'The tourist said in $_sourceLangName: "$spokenInput"';
 
     final body = jsonEncode({
+      'systemInstruction': {
+        'parts': [{'text': systemInstruction}],
+      },
       'contents': [
         {
-          'parts': [
-            {'text': prompt}
-          ]
+          'parts': [{'text': userMessage}],
         }
       ],
-      'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 200},
+      'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 200},
     });
 
     if (ApiKeys.gemini.isEmpty) return null;
@@ -236,19 +336,25 @@ class _SosScreenState extends State<SosScreen>
   }
 
   void _reset() {
-    _stt.stop();
+    _ampTimer?.cancel();
+    _maxDurationTimer?.cancel();
+    _isRecording = false;
+    _recorder.stop();
     _tts.stop();
     setState(() {
       _state = _SosState.idle;
       _spokenText = '';
       _thaiText = '';
+      _soundLevel = 0.0;
     });
   }
 
   @override
   void dispose() {
+    _ampTimer?.cancel();
+    _maxDurationTimer?.cancel();
     _pulseCtrl.dispose();
-    _stt.stop();
+    _recorder.dispose();
     _tts.stop();
     super.dispose();
   }
@@ -276,9 +382,9 @@ class _SosScreenState extends State<SosScreen>
           pulseCtrl: _pulseCtrl,
         ),
       _SosState.listening => _ListeningView(
-          spokenText: _spokenText,
           onRelease: _stopAndProcess,
           pulseCtrl: _pulseCtrl,
+          soundLevel: _soundLevel,
         ),
       _SosState.processing => _ProcessingView(spokenText: _spokenText),
       _SosState.speaking => _SpeakingView(
@@ -402,18 +508,19 @@ class _IdleView extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════
-// Listening view
+// Listening view — shows sound level bar, no partial text
+// (transcript arrives only after the Cloud Function returns)
 // ═══════════════════════════════════════════════════
 
 class _ListeningView extends StatelessWidget {
   const _ListeningView({
-    required this.spokenText,
     required this.onRelease,
     required this.pulseCtrl,
+    required this.soundLevel,
   });
-  final String spokenText;
   final VoidCallback onRelease;
   final AnimationController pulseCtrl;
+  final double soundLevel;
 
   @override
   Widget build(BuildContext context) {
@@ -429,7 +536,19 @@ class _ListeningView extends StatelessWidget {
                 fontSize: 18,
                 fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
+          // Live microphone level indicator
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: soundLevel,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFFFCDD2),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFFEF5350)),
+            ),
+          ),
+          const SizedBox(height: 20),
           _HoldButton(
             isListening: true,
             pulseCtrl: pulseCtrl,
@@ -437,24 +556,22 @@ class _ListeningView extends StatelessWidget {
             onHoldEnd: onRelease,
           ),
           const SizedBox(height: 28),
-          if (spokenText.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border:
-                    Border.all(color: const Color(0xFFEF5350).withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                '"$spokenText"',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Color(0xFF0D1B2A), fontSize: 15, height: 1.5),
-              ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: const Color(0xFFEF5350).withValues(alpha: 0.3)),
             ),
-          ],
+            child: const Text(
+              '...',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Color(0xFF90A4AE), fontSize: 15, height: 1.5),
+            ),
+          ),
         ],
       ),
     );
@@ -506,7 +623,9 @@ class _ProcessingView extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text('"$spokenText"',
                       style: const TextStyle(
-                          color: Color(0xFF0D1B2A), fontSize: 14, height: 1.4)),
+                          color: Color(0xFF0D1B2A),
+                          fontSize: 14,
+                          height: 1.4)),
                 ],
               ),
             ),
@@ -540,7 +659,7 @@ class _SpeakingView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // English input card
+          // Transcription card (what GCS Chirp heard)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -567,7 +686,9 @@ class _SpeakingView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text('"$spokenText"',
                     style: const TextStyle(
-                        color: Color(0xFF0D1B2A), fontSize: 14, height: 1.5)),
+                        color: Color(0xFF0D1B2A),
+                        fontSize: 14,
+                        height: 1.5)),
               ],
             ),
           ),
@@ -628,8 +749,7 @@ class _SpeakingView extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.replay_rounded, size: 18),
                   label: Text(appText(context, 'sos_replay'),
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w600)),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -646,8 +766,7 @@ class _SpeakingView extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.mic_rounded, size: 18),
                   label: Text(appText(context, 'sos_done'),
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w600)),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ),
             ],
@@ -689,8 +808,8 @@ class _ErrorView extends StatelessWidget {
           Text(
             appText(context, errorKey),
             textAlign: TextAlign.center,
-            style:
-                const TextStyle(color: Color(0xFF0D1B2A), fontSize: 14, height: 1.5),
+            style: const TextStyle(
+                color: Color(0xFF0D1B2A), fontSize: 14, height: 1.5),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
