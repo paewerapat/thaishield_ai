@@ -35,17 +35,62 @@ class TravelAlert {
     );
   }
 
+  /// Idioms that contain a disaster word but describe no disaster. Matched
+  /// before the category words, so "Blackpink's Lisa under fire for…" stops
+  /// being labelled ไฟไหม้ / Fire on the Home tab (INTEGRATION_TEST.md §F7).
+  ///
+  /// Keep in sync with `NON_EVENT_PHRASES` in `functions/index.js`, which
+  /// keeps these stories out of `travel_alerts_cache` in the first place.
+  static const _nonEventPhrases = [
+    'under fire',
+    'fire back',
+    'fires back',
+    'fired back',
+    'firing back',
+    'come under fire',
+    'draws fire',
+    'drew fire',
+    'fired up',
+    'crash course',
+    'storm of criticism',
+    'social media storm',
+    'takes the internet by storm',
+    'flood of comments',
+    'flood of criticism',
+    'flooded with',
+  ];
+
+  /// Matches [word] only as a whole word, so "fire" no longer fires on
+  /// "firearm" or "misfire" and "quake" no longer fires on "quaker".
+  static bool _hasWord(String text, String word) =>
+      RegExp('(?<![a-z])${RegExp.escape(word)}(?![a-z])').hasMatch(text);
+
+  static bool _hasAny(String text, List<String> words) =>
+      words.any((w) => _hasWord(text, w));
+
   AlertCategory get category {
     final text = '$title $description'.toLowerCase();
-    if (text.contains('flood')) return AlertCategory.flood;
-    if (text.contains('fire') || text.contains('wildfire')) return AlertCategory.fire;
-    if (text.contains('storm') || text.contains('typhoon') || text.contains('cyclone')) {
+
+    // A headline using a disaster word figuratively is not a travel event.
+    // Falling through to `other` keeps it in the list but strips the red
+    // hazard badge and the count on the Home banner.
+    if (_nonEventPhrases.any(text.contains)) return AlertCategory.other;
+
+    if (_hasWord(text, 'flood') ||
+        _hasWord(text, 'flooding') ||
+        _hasWord(text, 'floods')) {
+      return AlertCategory.flood;
+    }
+    if (_hasAny(text, ['fire', 'fires', 'wildfire', 'wildfires', 'blaze'])) {
+      return AlertCategory.fire;
+    }
+    if (_hasAny(text, ['storm', 'storms', 'typhoon', 'cyclone', 'monsoon'])) {
       return AlertCategory.storm;
     }
-    if (text.contains('earthquake') || text.contains('quake') || text.contains('tsunami')) {
+    if (_hasAny(text, ['earthquake', 'quake', 'tsunami', 'aftershock'])) {
       return AlertCategory.earthquake;
     }
-    if (text.contains('accident') || text.contains('crash') || text.contains('collision')) {
+    if (_hasAny(text, ['accident', 'crash', 'collision', 'derailment'])) {
       return AlertCategory.accident;
     }
     return AlertCategory.other;

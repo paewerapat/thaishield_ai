@@ -24,10 +24,34 @@ const SEARCH_TERMS = [
 
 const CACHE_COLLECTION = 'travel_alerts_cache';
 
+/**
+ * Idioms that contain a disruption word but describe no disruption.
+ *
+ * Substring matching on 'fire' let "Blackpink's Lisa under fire for…" into the
+ * cache, where the Home tab then badged it ไฟไหม้ and counted it in the red
+ * "N reports" banner — see INTEGRATION_TEST.md §F7. Keep in sync with
+ * `_nonEventPhrases` in lib/features/home/models/travel_alert.dart.
+ */
+const NON_EVENT_PHRASES = [
+  'under fire', 'fire back', 'fires back', 'fired back', 'firing back',
+  'come under fire', 'draws fire', 'drew fire', 'fired up', 'crash course',
+  'storm of criticism', 'social media storm', 'takes the internet by storm',
+  'flood of comments', 'flood of criticism', 'flooded with',
+];
+
+/** Whole-word match, so 'fire' stops matching 'firearm' and 'misfire'. */
+function hasTerm(text, term) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Multi-word terms ("road closed") keep their internal spaces; the guards
+  // only pin the outer edges.
+  return new RegExp(`(?<![a-z])${escaped}(?![a-z])`).test(text);
+}
+
 function looksTravelRelevant(article) {
   const text = `${article.title ?? ''} ${article.description ?? ''}`.toLowerCase();
   if (!text.includes('thailand') && !text.includes('bangkok')) return false;
-  return SEARCH_TERMS.some((term) => text.includes(term.toLowerCase()));
+  if (NON_EVENT_PHRASES.some((phrase) => text.includes(phrase))) return false;
+  return SEARCH_TERMS.some((term) => hasTerm(text, term.toLowerCase()));
 }
 
 const MAX_AGE_DAYS = 7;
