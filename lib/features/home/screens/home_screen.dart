@@ -16,15 +16,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String? _mapPartnerTypeFilter;
+  MapFocusRequest? _mapFocus;
 
   void _goToTab(int index) => setState(() => _currentIndex = index);
 
+  /// Switches to the Map tab and recenters it — used by the Safety Radar and
+  /// the Alert Zone proximity card.
+  void _showOnMap(MapFocusRequest request) {
+    setState(() {
+      _mapFocus = request;
+      _currentIndex = 2;
+    });
+  }
+
+  /// Maps a scanned `price_standards.category` onto a
+  /// `partner_locations.type`. Since the 3→11 category expansion (Phase 2A
+  /// task 2.3) "attraction" has a real counterpart and no longer has to
+  /// borrow "hotel".
   String _scanCategoryToPartnerType(String category) {
     switch (category) {
       case 'transport':
         return 'transport';
       case 'attraction':
-        return 'hotel';
+        return 'attraction';
       default:
         return 'restaurant';
     }
@@ -33,14 +47,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      HomeTab(onNavigateToTab: _goToTab),
+      HomeTab(
+        onNavigateToTab: _goToTab,
+        onShowOnMap: _showOnMap,
+        isActive: _currentIndex == 0,
+      ),
       ScannerScreen(
         onViewNearbyPartners: (category) {
           setState(() => _mapPartnerTypeFilter = _scanCategoryToPartnerType(category));
           _goToTab(2);
         },
       ),
-      MapScreen(partnerTypeFilter: _mapPartnerTypeFilter),
+      MapScreen(
+        partnerTypeFilter: _mapPartnerTypeFilter,
+        focusRequest: _mapFocus,
+      ),
       const SosScreen(),
       const ProfileScreen(),
     ];

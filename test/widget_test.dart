@@ -39,19 +39,21 @@ void main() {
       expect(sttLocale('unknown'), 'en_US');
     });
 
+    // Since the 3 → 11 `type` expansion (Phase 2A task 2.3), "attraction" is a
+    // real partner category and no longer has to borrow "hotel".
     test('scanner category maps to correct partner type', () {
       String? toPartnerType(String category) {
         switch (category) {
           case 'food':       return 'restaurant';
           case 'transport':  return 'transport';
-          case 'attraction': return 'hotel';
+          case 'attraction': return 'attraction';
           default:           return null;
         }
       }
 
       expect(toPartnerType('food'), 'restaurant');
       expect(toPartnerType('transport'), 'transport');
-      expect(toPartnerType('attraction'), 'hotel');
+      expect(toPartnerType('attraction'), 'attraction');
       expect(toPartnerType('unknown'), isNull);
     });
 

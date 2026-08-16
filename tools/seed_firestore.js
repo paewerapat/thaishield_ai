@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, GeoPoint } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, serverTimestamp, GeoPoint } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDWw6C1hHSmuATc_zC6FP545J1gqK36UQE',
@@ -12,6 +12,10 @@ const db = getFirestore(app);
 
 // Builds an irregular hexagon of GeoPoints around a center point, used to
 // render alert zones as area shapes on the map instead of plain circles.
+//
+// Note the multipliers reach 1.15, so `radiusKm` is the *nominal* size of the
+// shape, NOT its bounding radius — never store it as `radius_km`. Derive the
+// stored fields with `derivedZoneFields` below instead.
 function polygonAround(lat, lng, radiusKm) {
   const latOffset = radiusKm / 111;
   const lngOffset = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
@@ -24,6 +28,62 @@ function polygonAround(lat, lng, radiusKm) {
       lng + lngOffset * mults[i] * Math.cos(rad),
     );
   });
+}
+
+const toRadians = (deg) => (deg * Math.PI) / 180;
+
+/** Great-circle distance in km — same formula as the CMS's lib/geo/polygon.ts. */
+function haversineKm(a, b) {
+  const EARTH_RADIUS_KM = 6371;
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(a.lat)) * Math.cos(toRadians(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+}
+
+/** Area-weighted centroid (shoelace), planar — mirrors computePolygonCentroid. */
+function centroidOf(points) {
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < points.length; i++) {
+    const p0 = points[i];
+    const p1 = points[(i + 1) % points.length];
+    const cross = p0.lng * p1.lat - p1.lng * p0.lat;
+    area += cross;
+    cx += (p0.lng + p1.lng) * cross;
+    cy += (p0.lat + p1.lat) * cross;
+  }
+  area /= 2;
+  if (Math.abs(area) < 1e-12) {
+    const sum = points.reduce((a, p) => ({ lat: a.lat + p.lat, lng: a.lng + p.lng }), { lat: 0, lng: 0 });
+    return { lat: sum.lat / points.length, lng: sum.lng / points.length };
+  }
+  return { lat: cy / (6 * area), lng: cx / (6 * area) };
+}
+
+/**
+ * Derives `center_lat` / `center_lng` / `radius_km` FROM the polygon, exactly
+ * as the CMS does on every save (lib/geo/polygon.ts).
+ *
+ * These fields used to be hard-coded next to the polygon, which put all five
+ * seeded zones ~13% short: `radius_km` was the nominal size passed to
+ * `polygonAround`, but that helper pushes vertices out to 1.15× it. Since
+ * `geo_utils.isInsideZone` uses center + radius_km as a bounding-circle
+ * rejection BEFORE the precise polygon test, a tourist standing near a corner
+ * of a zone was thrown out at the first gate — no Radar hit, no proximity
+ * card. See INTEGRATION_TEST.md §F2.
+ */
+function derivedZoneFields(polygon) {
+  const points = polygon.map((p) => ({ lat: p.latitude, lng: p.longitude }));
+  const center = centroidOf(points);
+  return {
+    center_lat: center.lat,
+    center_lng: center.lng,
+    radius_km: points.reduce((max, p) => Math.max(max, haversineKm(center, p)), 0),
+  };
 }
 
 // Free-to-use stock photos (Pexels License — free for commercial use, no
@@ -84,49 +144,114 @@ const partnerLocations = {
     is_verified: true, price_tier: 'fair',
     image_url: placeholderImages.hotel,
   },
+
+  // --- Categories added by the 3 -> 11 `type` expansion (Phase 2A task 2.3).
+  // Sample entries so every Safety Radar group has content to render; they
+  // carry no photo, which the app already handles (`image_url` may be "").
+  silom_community_hospital: {
+    name: 'Silom Community Hospital',
+    lat: 13.7261, lng: 100.5340,
+    type: 'hospital', rating: 4.4,
+    is_verified: true, price_tier: 'fair',
+    image_url: '',
+  },
+  sukhumvit_pharmacy_01: {
+    name: 'Sukhumvit Pharmacy',
+    lat: 13.7321, lng: 100.5665,
+    type: 'pharmacy', rating: 4.0,
+    is_verified: true, price_tier: 'fair',
+    image_url: '',
+  },
+  bangrak_police_station: {
+    name: 'Bang Rak Police Station',
+    lat: 13.7286, lng: 100.5241,
+    type: 'police', rating: 4.0,
+    is_verified: true, price_tier: 'fair',
+    image_url: '',
+  },
+  khaosan_tourist_police: {
+    name: 'Khaosan Tourist Police Point',
+    lat: 13.7585, lng: 100.4980,
+    type: 'tourist_police', rating: 4.3,
+    is_verified: true, price_tier: 'fair',
+    image_url: '',
+  },
+  siam_atm_point: {
+    name: 'Siam Square Bank & ATM Point',
+    lat: 13.7455, lng: 100.5340,
+    type: 'atm_bank', rating: 4.1,
+    is_verified: true, price_tier: 'fair',
+    image_url: '',
+  },
+  chatuchak_market_shops: {
+    name: 'Chatuchak Weekend Market Shops',
+    lat: 13.7996, lng: 100.5502,
+    type: 'shopping', rating: 4.3,
+    is_verified: false, price_tier: 'caution',
+    image_url: '',
+  },
+  wat_pho_attraction: {
+    name: 'Wat Pho Temple Area',
+    lat: 13.7465, lng: 100.4933,
+    type: 'attraction', rating: 4.7,
+    is_verified: true, price_tier: 'fair',
+    image_url: dishImages.temple,
+  },
+  silom_tourist_info: {
+    name: 'Silom Tourist Information Centre',
+    lat: 13.7250, lng: 100.5300,
+    type: 'tourist_info', rating: 4.2,
+    is_verified: true, price_tier: 'fair',
+    image_url: '',
+  },
 };
 
+/**
+ * Draws the polygon around (lat, lng) at the given nominal size, then derives
+ * center_lat/center_lng/radius_km from the result — never the other way round.
+ * `sizeKm` shapes the polygon only; it is deliberately not stored anywhere.
+ */
+function zone({ name, lat, lng, sizeKm, risk_level, description_en, description_th }) {
+  const polygon = polygonAround(lat, lng, sizeKm);
+  return { name, polygon, ...derivedZoneFields(polygon), risk_level, description_en, description_th };
+}
+
 const alertZones = {
-  zone_silom_safe: {
+  zone_silom_safe: zone({
     name: 'Silom Business District',
-    center_lat: 13.7244, center_lng: 100.5278, radius_km: 1.0,
-    polygon: polygonAround(13.7244, 100.5278, 1.0),
+    lat: 13.7244, lng: 100.5278, sizeKm: 1.0,
     risk_level: 'safe',
     description_en: 'Business and tourist-friendly area with verified partners.',
     description_th: 'ย่านธุรกิจและท่องเที่ยว มีพาร์ทเนอร์ที่ผ่านการรับรอง',
-  },
-  zone_khaosan_caution: {
+  }),
+  zone_khaosan_caution: zone({
     name: 'Khaosan Road Area',
-    center_lat: 13.7590, center_lng: 100.4972, radius_km: 0.5,
-    polygon: polygonAround(13.7590, 100.4972, 0.5),
+    lat: 13.7590, lng: 100.4972, sizeKm: 0.5,
     risk_level: 'caution',
     description_en: 'Popular tourist area. Tuk-tuk and tour pricing here may vary significantly from typical rates — compare before booking.',
     description_th: 'พื้นที่ท่องเที่ยวที่ได้รับความนิยม ราคาตุ๊กตุ๊กและทัวร์ในบริเวณนี้อาจแตกต่างจากราคาทั่วไป ควรเปรียบเทียบราคาก่อนตัดสินใจ',
-  },
-  zone_patpong_caution: {
+  }),
+  zone_patpong_caution: zone({
     name: 'Patpong Night Bazaar',
-    center_lat: 13.7274, center_lng: 100.5300, radius_km: 0.4,
-    polygon: polygonAround(13.7274, 100.5300, 0.4),
+    lat: 13.7274, lng: 100.5300, sizeKm: 0.4,
     risk_level: 'caution',
     description_en: 'Busy night market area. Prices and conditions here may vary — please stay alert to your surroundings and confirm prices before purchasing.',
     description_th: 'ตลาดนัดกลางคืนที่มีผู้คนพลุกพล่าน โปรดดูแลทรัพย์สินส่วนตัวและตรวจสอบราคาก่อนตัดสินใจซื้อ',
-  },
-  zone_danger_01: {
+  }),
+  zone_danger_01: zone({
     name: 'Community Alert Zone',
-    center_lat: 13.7500, center_lng: 100.5200, radius_km: 0.3,
-    polygon: polygonAround(13.7500, 100.5200, 0.3),
+    lat: 13.7500, lng: 100.5200, sizeKm: 0.3,
     risk_level: 'danger',
     description_en: 'Increased community reports in this area. Extra caution is recommended, especially at night.',
     description_th: 'มีรายงานจากชุมชนในพื้นที่นี้เพิ่มขึ้น แนะนำให้เพิ่มความระมัดระวังเป็นพิเศษ โดยเฉพาะช่วงเวลากลางคืน',
-  },
-  zone_sukhumvit_safe: {
+  }),
+  zone_sukhumvit_safe: zone({
     name: 'Sukhumvit Tourist Zone',
-    center_lat: 13.7300, center_lng: 100.5680, radius_km: 1.2,
-    polygon: polygonAround(13.7300, 100.5680, 1.2),
+    lat: 13.7300, lng: 100.5680, sizeKm: 1.2,
     risk_level: 'safe',
     description_en: 'Well-lit tourist corridor with hotels and verified restaurants.',
     description_th: 'แหล่งท่องเที่ยวมีแสงสว่าง มีโรงแรมและร้านอาหารที่ผ่านการรับรอง',
-  },
+  }),
 };
 
 const priceStandards = {
@@ -471,7 +596,18 @@ async function seed() {
   for (const { name, data } of collections) {
     const entries = Object.entries(data);
     for (const [id, fields] of entries) {
-      await setDoc(doc(db, name, id), fields);
+      // `id` must be written as a FIELD too, not just used as the document ID.
+      // Omitting it is what produced INTEGRATION_TEST.md §F1/§F3: the CMS list
+      // query dropped every seeded document, and the edit form fed an
+      // undefined id back into Zod so those rows could not be saved.
+      // `updated_at` is part of the price_standards contract only —
+      // partner_locations and alert_zones deliberately have no such field
+      // (CLAUDE.md §3).
+      await setDoc(doc(db, name, id), {
+        id,
+        ...fields,
+        ...(name === 'price_standards' ? { updated_at: serverTimestamp() } : {}),
+      });
       console.log(`  ✓ ${name}/${id}`);
     }
     console.log(`✅ ${name} — ${entries.length} documents\n`);

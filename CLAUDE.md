@@ -175,7 +175,7 @@ id           string    // == document ID
 name         string
 lat          number
 lng          number
-type         string    // "restaurant" | "hotel" | "transport"  ← still 3 values
+type         string    // one of the 11 categories below
 rating       number    // 0.0–5.0
 is_verified  bool
 price_tier   string    // "fair" | "caution" | "high"
@@ -184,11 +184,35 @@ image_url    string    // may be "" — see below
 
 - ⚠️ **No `updated_at` on this collection.** `price_standards` has one; this does not.
   Don't write a shared "last updated" widget that assumes the field exists.
-- ⚠️ **`type` is still the 3-value enum.** Expanding it to 11 categories is **task 2.3 in
-  Phase 2A** (§4). The 11 values are **not specified anywhere yet** — they must be defined
-  as the first step of that task. When the Flutter side defines the list, update
-  `lib/schemas/partner-locations.ts` **and its tests in the web-admin repo in the same
-  change**, or staff will be unable to enter the new types.
+
+#### The 11 `type` values (shipped 2026-08-11, Phase 2A task 2.3)
+
+| value | Radar group | note |
+|---|---|---|
+| `restaurant` | Partner Businesses | original value |
+| `hotel` | Partner Businesses | original value |
+| `transport` | Transport | original value |
+| `hospital` | Emergency Services | |
+| `pharmacy` | Emergency Services | |
+| `police` | Emergency Services | |
+| `tourist_police` | Emergency Services | |
+| `atm_bank` | Partner Businesses | |
+| `shopping` | Partner Businesses | |
+| `attraction` | Partner Businesses | |
+| `tourist_info` | Partner Businesses | |
+
+- The **first three keep their original strings**, so existing documents stayed valid and
+  no data migration was needed.
+- The list lives in **three places that must always change together**:
+  `lib/core/models/partner_category.dart` (this repo, the `PartnerCategory` enum),
+  `lib/schemas/partner-locations.ts` **and its tests** in the web-admin repo. A value
+  staff can enter but the app can't render — or the reverse — is exactly what this
+  pairing prevents. The seed scripts (`tools/seed_firestore.js`, `lib/tools/seed_data.dart`)
+  carry one sample row per new value.
+- Unknown/legacy `type` strings fall back to `restaurant` (`PartnerCategory.fromValue`),
+  so a stray value degrades instead of crashing.
+- Display names for all 11, in all 6 languages, are `cat_<value>` keys in
+  `lib/core/localization/app_text.dart`.
 
 ### `alert_zones`
 
@@ -275,22 +299,56 @@ https://firebasestorage.googleapis.com/v0/b/<bucket>/o/partner_locations%2F<id>%
 Split into **three delivery phases**. Each ends in a demo-able build, which is what
 triggers the corresponding invoice in §5.
 
-### Phase 2A — Safety Radar & Filter (9,000 THB of work)
+### Phase 2A — Safety Radar & Filter (9,000 THB of work) — ✅ code complete 2026-08-11, pending device QA
 
-| Task | Description | Est. |
-|---|---|---|
-| 2.1 | **Safety Radar core** — "What's Around Me" on-demand radius search, returning cards for Safe Area / Advisory / Alert Zone / Verified Partners / Emergency Services / Transport | 1 week |
-| 2.2 | **Alert Zone proximity card** — foreground, on-open check; reuses the existing `alert_zones` polygon data (use `center_*` + `radius_km` for the cheap pre-check, `polygon` for the precise test) | 2–3 days |
-| 2.3 | **Filter panel UI** + `partner_locations.type` schema expansion (**3 → 11 categories**) + seed data update | 3–4 days |
+| Task | Description | Est. | Status |
+|---|---|---|---|
+| 2.1 | **Safety Radar core** — "What's Around Me" on-demand radius search, returning cards for Safe Area / Advisory / Alert Zone / Verified Partners / Emergency Services / Transport | 1 week | ✅ `lib/features/radar/` |
+| 2.2 | **Alert Zone proximity card** — foreground, on-open check; reuses the existing `alert_zones` polygon data (use `center_*` + `radius_km` for the cheap pre-check, `polygon` for the precise test) | 2–3 days | ✅ on the Home tab |
+| 2.3 | **Filter panel UI** + `partner_locations.type` schema expansion (**3 → 11 categories**) + seed data update | 3–4 days | ✅ shared by Radar + Map |
+
+**What 2A actually added**
+
+- `lib/features/radar/` — `RadarService` (radius search + `zoneAtOrNear`), `RadarScreen`
+  ("What's Around Me"), the shared **Filter panel**, radar cards, and the **Alert Zone
+  proximity card**.
+- `lib/core/utils/geo_utils.dart` — haversine `distanceKm`, ray-casting
+  `isPointInPolygon`, and `isInsideZone`, which does the cheap `center_*`/`radius_km`
+  rejection before the precise polygon test, exactly as §3 prescribes.
+- `lib/core/services/location_service.dart` — one foreground location helper.
+  `currentIfPermitted()` never raises the OS permission prompt and is what the Home-tab
+  proximity card uses, so first launch is not hijacked by a permission dialog. There is no
+  stream/background mode anywhere in this code (§7).
+- `lib/core/models/partner_category.dart` — the 11-value enum + icon/colour/marker-hue
+  tables and the Radar grouping.
+- The Radar entry point is a **tool tile on the Home tab**, not a 6th bottom-nav tab —
+  the nav bar stays at 5 items (§11).
+- **The Map's "Layers" sheet was replaced by the shared Filter panel.** The old sheet had
+  one "Partner Pins" switch, which can't express 11 categories. The panel is a strict
+  superset: per-category pin filtering plus the same three zone-risk toggles. The map's
+  second floating button is now `tune` with a count badge, so a narrowed map is never
+  mistaken for missing data.
+- Partner markers are now coloured **by category** (`partnerCategoryMarkerHue`) instead of
+  by `is_verified`; verified status still shows as the "Certified Fair Price" badge in the
+  partner panel and on radar cards.
+- `_scanCategoryToPartnerType` in `home_screen.dart` no longer maps a scanned
+  `attraction` onto `hotel` — `attraction` is a real category now.
 
 **Definition of done (2A):**
-- Radar returns results within the selected radius from `partner_locations` + `alert_zones`
-  with no extra Firestore collections and no client writes.
-- The 11 category values are **written down in this file** and applied in the same change
-  to (a) the Flutter model/filter UI, (b) `lib/schemas/partner-locations.ts` in the
-  web-admin repo, (c) that repo's schema tests, (d) the seed scripts.
-- Radar/proximity copy passes §8 wording rules.
-- No regression on the existing Map screen.
+- ✅ Radar returns results within the selected radius from `partner_locations` +
+  `alert_zones` with no extra Firestore collections and no client writes. Both collections
+  are fetched whole and cached in memory for 10 minutes, so changing the radius or the
+  filters re-runs the maths locally instead of re-reading Firestore.
+- ✅ The 11 category values are written down in this file (§3) and were applied in the same
+  change to (a) the Flutter model/filter UI, (b) `lib/schemas/partner-locations.ts` in the
+  web-admin repo, (c) that repo's schema tests (95 passing), (d) both seed scripts.
+- ✅ Radar/proximity copy passes the §10 wording rules — every new string is neutral and
+  statistical, the Radar carries the mandatory disclaimer as a permanent footer, and the
+  proximity card carries the short form of it.
+- ✅ `flutter analyze lib/` clean.
+- ⏳ **Still owed: hands-on QA on an Android physical device** (location permission flow,
+  radius/filter round-trips, "Show on Map" hand-off, no regression on the Map screen).
+  This is the last gate before the งวดที่ 2 invoice.
 
 ### Phase 2B — Route Suggestion & Paywall UI (6,000 THB of work)
 
@@ -369,8 +427,8 @@ domain and annual cloud/server costs, and any post-release feature work.
 | ลำดับ | Phase | กิจกรรม | กำหนดการ | สถานะ |
 |---|---|---|---|---|
 | 1 | — | Web Admin Dashboard (Phase 1 เดิม ทั้ง 5 รายการ) | 2026-07-20 → 2026-08-07 | ✅ ส่งมอบแล้ว |
-| 2 | 2A | Safety Radar core + geo-radius logic | สัปดาห์ที่ 1 (2026-08-12 → 2026-08-18) | รอดำเนินการ |
-| 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | รอดำเนินการ |
+| 2 | 2A | Safety Radar core + geo-radius logic | สัปดาห์ที่ 1 (2026-08-12 → 2026-08-18) | ✅ โค้ดเสร็จ 2026-08-11 |
+| 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | ✅ โค้ดเสร็จ 2026-08-11 — รอทดสอบบนเครื่องจริง |
 | 4 | 2B | Route Suggestion (Directions API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | รอดำเนินการ |
 | 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | รอดำเนินการ |
 | 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | รอดำเนินการ |

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'partner_category.dart';
+
 class PartnerLocation {
   const PartnerLocation({
     required this.id,
@@ -22,6 +24,10 @@ class PartnerLocation {
   final bool isVerified;
   final String priceTier;
   final String imageUrl;
+
+  /// `type` resolved to one of the 11 documented categories (CLAUDE.md §3).
+  /// Unrecognised strings fall back to `restaurant`.
+  PartnerCategory get category => PartnerCategory.fromValue(type);
 
   factory PartnerLocation.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;

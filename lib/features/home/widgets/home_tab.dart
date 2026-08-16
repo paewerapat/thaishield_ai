@@ -4,15 +4,42 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../map/screens/map_screen.dart';
+import '../../radar/screens/radar_screen.dart';
+import '../../radar/widgets/alert_zone_proximity_card.dart';
 import '../models/travel_alert.dart';
 import '../screens/safety_tips_screen.dart';
 import '../screens/travel_alerts_list_screen.dart';
 import '../services/travel_alert_service.dart';
 
 class HomeTab extends StatelessWidget {
-  const HomeTab({super.key, required this.onNavigateToTab});
+  const HomeTab({
+    super.key,
+    required this.onNavigateToTab,
+    required this.onShowOnMap,
+    required this.isActive,
+  });
 
   final ValueChanged<int> onNavigateToTab;
+
+  /// Focuses the Map tab on a coordinate — used by the Alert Zone proximity
+  /// card and by anything the Safety Radar pops back with.
+  final ValueChanged<MapFocusRequest> onShowOnMap;
+
+  /// True while Home is the selected tab. `HomeScreen` keeps every tab alive
+  /// in an `IndexedStack`, so this is the only signal the proximity card gets
+  /// that it is back on screen and should re-check (INTEGRATION_TEST.md §F9).
+  final bool isActive;
+
+  void _focusOnMap(double lat, double lng) =>
+      onShowOnMap(MapFocusRequest(lat, lng));
+
+  Future<void> _openRadar(BuildContext context) async {
+    final focus = await Navigator.of(context).push<MapFocusRequest>(
+      MaterialPageRoute(builder: (_) => const RadarScreen()),
+    );
+    if (focus != null) onShowOnMap(focus);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +56,16 @@ class HomeTab extends StatelessWidget {
                 offset: const Offset(0, -22),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _ActiveAlertsAndNews(onNavigateToTab: onNavigateToTab),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AlertZoneProximityCard(
+                        onShowOnMap: _focusOnMap,
+                        isActive: isActive,
+                      ),
+                      _ActiveAlertsAndNews(onNavigateToTab: onNavigateToTab),
+                    ],
+                  ),
                 ),
               ),
               Padding(
@@ -101,6 +137,12 @@ class HomeTab extends StatelessWidget {
         label: 'Smart Map',
         color: const Color(0xFF2E7D32),
         onTap: () => onNavigateToTab(2),
+      ),
+      _Tool(
+        icon: Icons.radar_rounded,
+        label: appText(context, 'tool_safety_radar'),
+        color: const Color(0xFF00897B),
+        onTap: () => _openRadar(context),
       ),
       _Tool(
         icon: Icons.record_voice_over_outlined,

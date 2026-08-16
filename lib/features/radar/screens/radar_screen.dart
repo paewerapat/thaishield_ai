@@ -1,0 +1,508 @@
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+import '../../../core/localization/app_text.dart';
+import '../../../core/services/location_service.dart';
+import '../../map/screens/map_screen.dart';
+import '../models/radar_filters.dart';
+import '../models/radar_result.dart';
+import '../services/radar_service.dart';
+import '../widgets/filter_panel.dart';
+import '../widgets/radar_cards.dart';
+
+const _headerGreen = Color(0xFF0A1810);
+const _pageGrey = Color(0xFFF3F5F7);
+const _navy = Color(0xFF0D1B2A);
+const _gold = Color(0xFFFFB300);
+const _green = Color(0xFF2E7D32);
+
+enum _RadarState { idle, locating, scanning, ready, failed }
+
+/// "What's Around Me" — Phase 2A task 2.1.
+///
+/// Pushed as a full screen; pops a [MapFocusRequest] when the user taps
+/// "Show on Map" on a card, which the host switches to the Map tab with.
+class RadarScreen extends StatefulWidget {
+  const RadarScreen({super.key});
+
+  @override
+  State<RadarScreen> createState() => _RadarScreenState();
+}
+
+class _RadarScreenState extends State<RadarScreen> {
+  _RadarState _state = _RadarState.idle;
+  String _errorKey = 'radar_location_error';
+  double _radiusKm = RadarService.defaultRadiusKm;
+  RadarFilters _filters = RadarFilters.all();
+  RadarResult? _result;
+  LatLng? _center;
+
+  @override
+  void initState() {
+    super.initState();
+    // Opening the screen is the request — no extra tap needed. A denied
+    // permission drops back to the idle state with a retry button.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scan());
+  }
+
+  /// [reuseLocation] re-runs the search over the cached position when only the
+  /// radius or the filters changed, so we don't ask for a new GPS fix.
+  Future<void> _scan({bool reuseLocation = false}) async {
+    var center = _center;
+
+    if (!reuseLocation || center == null) {
+      setState(() => _state = _RadarState.locating);
+      final location = await LocationService.instance.current();
+      if (!mounted) return;
+      if (!location.isOk) {
+        setState(() {
+          _state = _RadarState.failed;
+          _errorKey = switch (location.status) {
+            LocationStatus.denied => 'radar_location_denied',
+            LocationStatus.serviceDisabled => 'radar_location_disabled',
+            _ => 'radar_location_error',
+          };
+        });
+        return;
+      }
+      center = location.position!;
+      _center = center;
+    }
+
+    setState(() => _state = _RadarState.scanning);
+    try {
+      final result = await RadarService.instance.scan(
+        center: center,
+        radiusKm: _radiusKm,
+        categories: _filters.categories,
+        riskLevels: _filters.riskLevels,
+      );
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _state = _RadarState.ready;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _state = _RadarState.failed;
+        _errorKey = 'radar_load_error';
+      });
+    }
+  }
+
+  void _onRadiusChanged(double km) {
+    if (km == _radiusKm) return;
+    setState(() => _radiusKm = km);
+    _scan(reuseLocation: true);
+  }
+
+  Future<void> _openFilters() async {
+    final updated = await showRadarFilterPanel(context, _filters);
+    if (updated == null || !mounted) return;
+    setState(() => _filters = updated);
+    _scan(reuseLocation: true);
+  }
+
+  void _showOnMap(double lat, double lng) =>
+      Navigator.of(context).pop(MapFocusRequest(lat, lng));
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _pageGrey,
+      body: Column(
+        children: [
+          _RadarHeader(onBack: () => Navigator.of(context).pop()),
+          _RadarToolbar(
+            radiusKm: _radiusKm,
+            onRadiusChanged: _onRadiusChanged,
+            activeFilterCount: _filters.activeCount,
+            onOpenFilters: _openFilters,
+            busy: _state == _RadarState.locating ||
+                _state == _RadarState.scanning,
+          ),
+          Expanded(child: _buildBody()),
+          const _RadarDisclaimer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    switch (_state) {
+      case _RadarState.idle:
+      case _RadarState.locating:
+      case _RadarState.scanning:
+        return _CenteredMessage(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: _green),
+              const SizedBox(height: 16),
+              Text(
+                appText(context, 'radar_scanning'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF546E7A), fontSize: 13),
+              ),
+            ],
+          ),
+        );
+
+      case _RadarState.failed:
+        return _CenteredMessage(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.location_off_rounded, color: Color(0xFF90A4AE), size: 44),
+              const SizedBox(height: 12),
+              Text(
+                appText(context, _errorKey),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF546E7A), fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onPressed: () => _scan(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(appText(context, 'radar_retry')),
+              ),
+            ],
+          ),
+        );
+
+      case _RadarState.ready:
+        final result = _result;
+        if (result == null || result.isEmpty) {
+          return _CenteredMessage(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.radar_rounded, color: Color(0xFF90A4AE), size: 44),
+                const SizedBox(height: 12),
+                Text(
+                  appText(
+                    context,
+                    _filters.isAll ? 'radar_empty' : 'radar_empty_filtered',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFF546E7A), fontSize: 13, height: 1.4),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final groups = result.grouped.entries.toList();
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+          itemCount: groups.length + 1,
+          separatorBuilder: (_, _) => const SizedBox(height: 18),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Text(
+                appText(context, 'radar_results_found')
+                    .replaceFirst('{count}', '${result.count}'),
+                style: const TextStyle(
+                  color: _navy,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            }
+            final group = groups[index - 1];
+            return RadarGroupSection(
+              group: group.key,
+              entries: group.value,
+              onShowOnMap: _showOnMap,
+            );
+          },
+        );
+    }
+  }
+}
+
+class _RadarHeader extends StatelessWidget {
+  const _RadarHeader({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: _headerGreen,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 20, 18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconButton(
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ThaiShield AI',
+                      style: TextStyle(
+                        color: _gold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      appText(context, 'radar_title'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      appText(context, 'radar_subtitle'),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Icon(Icons.radar_rounded, color: _gold, size: 26),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RadarToolbar extends StatelessWidget {
+  const _RadarToolbar({
+    required this.radiusKm,
+    required this.onRadiusChanged,
+    required this.activeFilterCount,
+    required this.onOpenFilters,
+    required this.busy,
+  });
+
+  final double radiusKm;
+  final ValueChanged<double> onRadiusChanged;
+  final int activeFilterCount;
+  final VoidCallback onOpenFilters;
+  final bool busy;
+
+  String _radiusLabel(double km, bool isTh) {
+    if (km < 1) {
+      final metres = (km * 1000).round();
+      return isTh ? '$metres ม.' : '$metres m';
+    }
+    final value = km == km.roundToDouble()
+        ? km.toStringAsFixed(0)
+        : km.toStringAsFixed(1);
+    return isTh ? '$value กม.' : '$value km';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTh = Localizations.localeOf(context).languageCode == 'th';
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appText(context, 'radar_radius'),
+                  style: const TextStyle(
+                    color: Color(0xFF90A4AE),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final km in RadarService.radiusOptionsKm)
+                      _RadiusChip(
+                        label: _radiusLabel(km, isTh),
+                        selected: km == radiusKm,
+                        onTap: busy ? null : () => onRadiusChanged(km),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _FilterButton(
+            count: activeFilterCount,
+            onTap: busy ? null : onOpenFilters,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RadiusChip extends StatelessWidget {
+  const _RadiusChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? _green : const Color(0xFFF3F5F7),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? _green : const Color(0xFFE0E0E0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF546E7A),
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterButton extends StatelessWidget {
+  const _FilterButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = count > 0;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: active ? _green.withValues(alpha: 0.1) : const Color(0xFFF3F5F7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: active ? _green : const Color(0xFFE0E0E0),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.tune_rounded,
+              size: 17,
+              color: active ? _green : const Color(0xFF546E7A),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              appText(context, 'filter_title'),
+              style: TextStyle(
+                color: active ? _green : const Color(0xFF546E7A),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (active) ...[
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: _green,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _RadarDisclaimer extends StatelessWidget {
+  const _RadarDisclaimer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      child: SafeArea(
+        top: false,
+        child: Text(
+          appText(context, 'radar_disclaimer'),
+          style: TextStyle(color: Colors.grey[500], fontSize: 10, height: 1.35),
+        ),
+      ),
+    );
+  }
+}

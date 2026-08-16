@@ -5,8 +5,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/models/alert_zone.dart';
+import '../../../core/models/partner_category.dart';
 import '../../../core/models/partner_location.dart';
 import '../../../core/services/firestore_service.dart';
+import '../../radar/models/radar_filters.dart';
+import '../../radar/widgets/filter_panel.dart';
 
 class _Suggestion {
   const _Suggestion(this.label, this.coords, [this.zoom = 13.0]);
@@ -69,27 +72,8 @@ String _riskLabelTh(String riskLevel) {
   }
 }
 
-IconData _typeIcon(String type) {
-  switch (type) {
-    case 'hotel':
-      return Icons.hotel_rounded;
-    case 'transport':
-      return Icons.local_taxi_rounded;
-    default:
-      return Icons.restaurant_rounded;
-  }
-}
-
-String _typeLabel(String type, bool isTh) {
-  switch (type) {
-    case 'hotel':
-      return isTh ? 'โรงแรม' : 'Hotel';
-    case 'transport':
-      return isTh ? 'การเดินทาง' : 'Transport';
-    default:
-      return isTh ? 'ร้านอาหาร' : 'Restaurant';
-  }
-}
+IconData _typeIcon(String type) =>
+    partnerCategoryIcon[PartnerCategory.fromValue(type)]!;
 
 class _Review {
   const _Review({
@@ -105,9 +89,11 @@ class _Review {
   final String comment;
 }
 
+/// Sample community feedback, keyed by the broad kind of place rather than by
+/// each of the 11 categories — the copy only differs in three ways.
 List<_Review> _sampleReviews(String type, bool isTh) {
-  switch (type) {
-    case 'hotel':
+  switch (PartnerCategory.fromValue(type)) {
+    case PartnerCategory.hotel:
       return [
         _Review(
           name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
@@ -134,7 +120,7 @@ List<_Review> _sampleReviews(String type, bool isTh) {
               : 'Quick service and helpful information for first-time visitors.',
         ),
       ];
-    case 'transport':
+    case PartnerCategory.transport:
       return [
         _Review(
           name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
@@ -192,19 +178,32 @@ List<_Review> _sampleReviews(String type, bool isTh) {
 }
 
 String _typeDescription(String type, bool isTh) {
-  switch (type) {
-    case 'hotel':
+  final category = PartnerCategory.fromValue(type);
+  switch (category) {
+    case PartnerCategory.hotel:
       return isTh
           ? 'ที่พักที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว'
           : 'A participating ThaiShield partner offering transparent pricing information for travelers.';
-    case 'transport':
+    case PartnerCategory.transport:
       return isTh
           ? 'บริการเดินทางที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลค่าโดยสารโดยประมาณสำหรับนักท่องเที่ยว'
           : 'A participating ThaiShield transport partner offering estimated fare information for travelers.';
-    default:
+    case PartnerCategory.restaurant:
       return isTh
           ? 'ร้านอาหารที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว'
           : 'A participating ThaiShield restaurant partner offering transparent pricing information for travelers.';
+    default:
+      // The eight categories added in Phase 2A — including the emergency
+      // services, which are listed as a public reference point and are not
+      // described as partner businesses.
+      if (category.radarGroup == RadarGroup.emergencyServices) {
+        return isTh
+            ? 'จุดบริการที่แสดงไว้เพื่อเป็นข้อมูลอ้างอิงสำหรับนักท่องเที่ยว กรุณาตรวจสอบเวลาให้บริการก่อนเดินทาง'
+            : 'A service point listed as a reference for travelers. Please check opening hours before you go.';
+      }
+      return isTh
+          ? 'สถานที่ที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลสำหรับนักท่องเที่ยว'
+          : 'A participating ThaiShield partner listed with information for travelers.';
   }
 }
 
@@ -242,12 +241,10 @@ class _MapScreenState extends State<MapScreen> {
   String? _error;
   GoogleMapController? _mapController;
   MapType _mapType = MapType.normal;
-  bool _showPartnerPins = true;
-  final Map<String, bool> _zoneVisibility = {
-    'safe': true,
-    'caution': true,
-    'danger': true,
-  };
+  /// Which partner categories and zone risk levels are drawn. Replaces the
+  /// old single "partner pins" switch now that `type` has 11 values — see the
+  /// Filter panel (Phase 2A task 2.3), which the Radar shares.
+  RadarFilters _filters = RadarFilters.all();
   final _searchController = TextEditingController();
   bool _searching = false;
   LatLng _mapCenter = _bangkok;
@@ -360,9 +357,8 @@ class _MapScreenState extends State<MapScreen> {
             markerId: MarkerId(partner.id),
             position: LatLng(partner.lat, partner.lng),
             icon: BitmapDescriptor.defaultMarkerWithHue(
-              partner.isVerified
-                  ? BitmapDescriptor.hueAzure
-                  : BitmapDescriptor.hueOrange,
+              partnerCategoryMarkerHue[partner.category] ??
+                  BitmapDescriptor.hueAzure,
             ),
             onTap: () => setState(() {
               _selectedPartner = partner;
@@ -443,22 +439,10 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
-  void _openLayersSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => _LayersSheet(
-        showPartnerPins: _showPartnerPins,
-        zoneVisibility: _zoneVisibility,
-        onPartnerPinsChanged: (value) =>
-            setState(() => _showPartnerPins = value),
-        onZoneVisibilityChanged: (riskLevel, value) =>
-            setState(() => _zoneVisibility[riskLevel] = value),
-      ),
-    );
+  Future<void> _openFilterPanel() async {
+    final updated = await showRadarFilterPanel(context, _filters);
+    if (updated == null || !mounted) return;
+    setState(() => _filters = updated);
   }
 
   void _openMapSettings() {
@@ -548,16 +532,21 @@ class _MapScreenState extends State<MapScreen> {
                                 zoom: widget.focusRequest != null ? 16 : 12,
                               ),
                               mapType: _mapType,
-                              markers: _showPartnerPins ? _markers : const {},
+                              markers: _markers.where((m) {
+                                final partner = _partnersById[m.markerId.value];
+                                return partner == null ||
+                                    _filters.categories
+                                        .contains(partner.category);
+                              }).toSet(),
                               circles: _circles.where((c) {
                                 final zone = _zonesById[c.circleId.value];
                                 return zone == null ||
-                                    (_zoneVisibility[zone.riskLevel] ?? true);
+                                    _filters.riskLevels.contains(zone.riskLevel);
                               }).toSet(),
                               polygons: _polygons.where((p) {
                                 final zone = _zonesById[p.polygonId.value];
                                 return zone == null ||
-                                    (_zoneVisibility[zone.riskLevel] ?? true);
+                                    _filters.riskLevels.contains(zone.riskLevel);
                               }).toSet(),
                               myLocationButtonEnabled: false,
                               zoomControlsEnabled: true,
@@ -617,7 +606,8 @@ class _MapScreenState extends State<MapScreen> {
                               bottom: 12,
                               child: _FloatingButtons(
                                 onCenter: _centerOnUser,
-                                onLayers: _openLayersSheet,
+                                onFilter: _openFilterPanel,
+                                filterCount: _filters.activeCount,
                               ),
                             ),
                           ],
@@ -783,7 +773,10 @@ class _MapHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Icon(Icons.tune_rounded, color: Colors.grey[600], size: 22),
+              // Map type (normal/satellite/terrain/hybrid). `tune` now belongs
+              // to the Filter panel on the floating buttons — keep the two
+              // visually distinct.
+              child: Icon(Icons.layers_rounded, color: Colors.grey[600], size: 22),
             ),
           ),
         ],
@@ -1019,9 +1012,17 @@ class _ZonePopup extends StatelessWidget {
 }
 
 class _FloatingButtons extends StatelessWidget {
-  const _FloatingButtons({required this.onCenter, required this.onLayers});
+  const _FloatingButtons({
+    required this.onCenter,
+    required this.onFilter,
+    required this.filterCount,
+  });
   final VoidCallback onCenter;
-  final VoidCallback onLayers;
+  final VoidCallback onFilter;
+
+  /// Number of filter options currently switched off, shown as a badge so a
+  /// narrowed map is never mistaken for missing data.
+  final int filterCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1030,7 +1031,33 @@ class _FloatingButtons extends StatelessWidget {
       children: [
         _FabButton(icon: Icons.my_location_rounded, onTap: onCenter),
         const SizedBox(height: 8),
-        _FabButton(icon: Icons.layers_rounded, onTap: onLayers),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _FabButton(icon: Icons.tune_rounded, onTap: onFilter),
+            if (filterCount > 0)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Text(
+                    '$filterCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -1512,7 +1539,7 @@ class _PartnerDetailSheet extends StatelessWidget {
                         Icon(_typeIcon(partner.type), color: Colors.grey[500], size: 15),
                         const SizedBox(width: 5),
                         Text(
-                          _typeLabel(partner.type, isTh),
+                          appText(context, partner.category.textKey),
                           style: TextStyle(color: Colors.grey[600], fontSize: 13),
                         ),
                       ],
@@ -1625,171 +1652,6 @@ class _PartnerDetailSheet extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _LayersSheet extends StatefulWidget {
-  const _LayersSheet({
-    required this.showPartnerPins,
-    required this.zoneVisibility,
-    required this.onPartnerPinsChanged,
-    required this.onZoneVisibilityChanged,
-  });
-
-  final bool showPartnerPins;
-  final Map<String, bool> zoneVisibility;
-  final ValueChanged<bool> onPartnerPinsChanged;
-  final void Function(String riskLevel, bool value) onZoneVisibilityChanged;
-
-  @override
-  State<_LayersSheet> createState() => _LayersSheetState();
-}
-
-class _LayersSheetState extends State<_LayersSheet> {
-  late bool _showPartnerPins;
-  late Map<String, bool> _zoneVisibility;
-
-  @override
-  void initState() {
-    super.initState();
-    _showPartnerPins = widget.showPartnerPins;
-    _zoneVisibility = Map.of(widget.zoneVisibility);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Text(
-              isTh ? 'เลเยอร์บนแผนที่' : 'Map Layers',
-              style: const TextStyle(
-                color: Color(0xFF0D1B2A),
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              isTh
-                  ? 'เลือกแสดงหมุดและพื้นที่บนแผนที่'
-                  : 'Choose which pins and areas to show',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            _LayerToggleRow(
-              icon: Icons.location_on_rounded,
-              color: const Color(0xFF1565C0),
-              label: isTh ? 'หมุดพาร์ทเนอร์' : 'Partner Pins',
-              value: _showPartnerPins,
-              onChanged: (value) {
-                setState(() => _showPartnerPins = value);
-                widget.onPartnerPinsChanged(value);
-              },
-            ),
-            _LayerToggleRow(
-              icon: Icons.check_circle_rounded,
-              color: const Color(0xFF4CAF50),
-              label: isTh ? 'ข้อมูลการท่องเที่ยว' : 'Travel Info',
-              value: _zoneVisibility['safe'] ?? true,
-              onChanged: (value) {
-                setState(() => _zoneVisibility['safe'] = value);
-                widget.onZoneVisibilityChanged('safe', value);
-              },
-            ),
-            _LayerToggleRow(
-              icon: Icons.error_rounded,
-              color: const Color(0xFFFF9800),
-              label: isTh ? 'พื้นที่คำแนะนำ' : 'Advisory',
-              value: _zoneVisibility['caution'] ?? true,
-              onChanged: (value) {
-                setState(() => _zoneVisibility['caution'] = value);
-                widget.onZoneVisibilityChanged('caution', value);
-              },
-            ),
-            _LayerToggleRow(
-              icon: Icons.cancel_rounded,
-              color: const Color(0xFFEF5350),
-              label: isTh ? 'พื้นที่แจ้งเตือน' : 'Alert Zone',
-              value: _zoneVisibility['danger'] ?? true,
-              onChanged: (value) {
-                setState(() => _zoneVisibility['danger'] = value);
-                widget.onZoneVisibilityChanged('danger', value);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LayerToggleRow extends StatelessWidget {
-  const _LayerToggleRow({
-    required this.icon,
-    required this.color,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 16),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF0D1B2A),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Switch(
-            value: value,
-            activeThumbColor: const Color(0xFF2E7D32),
-            onChanged: onChanged,
-          ),
-        ],
-      ),
     );
   }
 }

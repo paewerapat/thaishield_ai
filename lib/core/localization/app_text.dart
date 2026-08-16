@@ -543,6 +543,250 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Место не найдено. Попробуйте другое название.',
     'ja': '場所が見つかりません。別の名前をお試しください。',
   },
+
+  // --- Partner categories (the 11 values of partner_locations.type, §3) ---
+  'cat_restaurant': {
+    'th': 'ร้านอาหาร', 'en': 'Restaurant', 'zh': '餐厅', 'ko': '식당', 'ru': 'Ресторан', 'ja': 'レストラン',
+  },
+  'cat_hotel': {
+    'th': 'ที่พัก', 'en': 'Hotel', 'zh': '酒店', 'ko': '숙소', 'ru': 'Отель', 'ja': 'ホテル',
+  },
+  'cat_transport': {
+    'th': 'การเดินทาง', 'en': 'Transport', 'zh': '交通', 'ko': '교통', 'ru': 'Транспорт', 'ja': '交通',
+  },
+  'cat_hospital': {
+    'th': 'โรงพยาบาล', 'en': 'Hospital', 'zh': '医院', 'ko': '병원', 'ru': 'Больница', 'ja': '病院',
+  },
+  'cat_pharmacy': {
+    'th': 'ร้านขายยา', 'en': 'Pharmacy', 'zh': '药店', 'ko': '약국', 'ru': 'Аптека', 'ja': '薬局',
+  },
+  'cat_police': {
+    'th': 'สถานีตำรวจ', 'en': 'Police Station', 'zh': '警察局', 'ko': '경찰서', 'ru': 'Полиция', 'ja': '警察署',
+  },
+  'cat_tourist_police': {
+    'th': 'ตำรวจท่องเที่ยว', 'en': 'Tourist Police', 'zh': '旅游警察', 'ko': '관광경찰', 'ru': 'Туристическая полиция', 'ja': 'ツーリストポリス',
+  },
+  'cat_atm_bank': {
+    'th': 'ธนาคาร & ตู้ ATM', 'en': 'Bank & ATM', 'zh': '银行与ATM', 'ko': '은행 & ATM', 'ru': 'Банк и банкомат', 'ja': '銀行・ATM',
+  },
+  'cat_shopping': {
+    'th': 'ร้านค้า & ตลาด', 'en': 'Shops & Markets', 'zh': '商店与市场', 'ko': '상점 & 시장', 'ru': 'Магазины и рынки', 'ja': 'ショップ・市場',
+  },
+  'cat_attraction': {
+    'th': 'สถานที่ท่องเที่ยว', 'en': 'Attraction', 'zh': '景点', 'ko': '관광지', 'ru': 'Достопримечательность', 'ja': '観光地',
+  },
+  'cat_tourist_info': {
+    'th': 'ศูนย์บริการนักท่องเที่ยว', 'en': 'Tourist Information', 'zh': '游客服务中心', 'ko': '관광안내소', 'ru': 'Туристический центр', 'ja': '観光案内所',
+  },
+
+  // --- Safety Radar (Phase 2A task 2.1) ---
+  'tool_safety_radar': {
+    'th': 'เรดาร์ความปลอดภัย', 'en': 'Safety Radar', 'zh': '安全雷达', 'ko': '세이프티 레이더', 'ru': 'Радар безопасности', 'ja': 'セーフティレーダー',
+  },
+  'radar_title': {
+    'th': 'เรดาร์ความปลอดภัย', 'en': 'Safety Radar', 'zh': '安全雷达', 'ko': '세이프티 레이더', 'ru': 'Радар безопасности', 'ja': 'セーフティレーダー',
+  },
+  'radar_subtitle': {
+    'th': 'ดูข้อมูลรอบตัวคุณ',
+    'en': "What's around me",
+    'zh': '查看我周围的信息',
+    'ko': '내 주변 정보 보기',
+    'ru': 'Что рядом со мной',
+    'ja': '周辺の情報を見る',
+  },
+  'radar_scan_button': {
+    'th': 'ค้นหารอบตัวฉัน',
+    'en': "What's Around Me",
+    'zh': '搜索我的周围',
+    'ko': '내 주변 검색',
+    'ru': 'Что рядом со мной',
+    'ja': '周辺を検索',
+  },
+  'radar_scan_again': {
+    'th': 'ค้นหาอีกครั้ง', 'en': 'Search Again', 'zh': '重新搜索', 'ko': '다시 검색', 'ru': 'Искать снова', 'ja': '再検索',
+  },
+  'radar_scanning': {
+    'th': 'กำลังค้นหาข้อมูลรอบตัวคุณ...', 'en': 'Searching around you...', 'zh': '正在搜索您周围的信息…', 'ko': '주변을 검색하는 중…', 'ru': 'Ищем вокруг вас…', 'ja': '周辺を検索しています…',
+  },
+  'radar_intro': {
+    'th': 'ดูสถานที่ บริการฉุกเฉิน และข้อมูลพื้นที่รอบตำแหน่งของคุณ',
+    'en': 'See places, emergency services and area information around your current location.',
+    'zh': '查看您当前位置周围的地点、紧急服务和区域信息。',
+    'ko': '현재 위치 주변의 장소, 응급 서비스, 지역 정보를 확인하세요.',
+    'ru': 'Посмотрите места, экстренные службы и информацию о районе рядом с вами.',
+    'ja': '現在地周辺の施設・緊急サービス・エリア情報を確認できます。',
+  },
+  'radar_radius': {
+    'th': 'รัศมีการค้นหา', 'en': 'Search radius', 'zh': '搜索半径', 'ko': '검색 반경', 'ru': 'Радиус поиска', 'ja': '検索範囲',
+  },
+  'radar_results_found': {
+    'th': 'พบ {count} รายการในรัศมีนี้',
+    'en': 'Found {count} results in this radius',
+    'zh': '在此范围内找到 {count} 条结果',
+    'ko': '이 반경에서 {count}건을 찾았습니다',
+    'ru': 'Найдено результатов в этом радиусе: {count}',
+    'ja': 'この範囲で {count} 件見つかりました',
+  },
+  'radar_empty': {
+    'th': 'ไม่พบข้อมูลในรัศมีนี้ ลองขยายรัศมีการค้นหาดูนะครับ',
+    'en': 'No information found in this radius. Try a wider search radius.',
+    'zh': '此范围内没有信息，请尝试扩大搜索半径。',
+    'ko': '이 반경에는 정보가 없습니다. 검색 반경을 넓혀 보세요.',
+    'ru': 'В этом радиусе ничего не найдено. Попробуйте увеличить радиус.',
+    'ja': 'この範囲では情報が見つかりません。検索範囲を広げてみてください。',
+  },
+  'radar_empty_filtered': {
+    'th': 'ไม่พบข้อมูลตามตัวกรองที่เลือก ลองปรับตัวกรองหรือขยายรัศมี',
+    'en': 'Nothing matches the selected filters. Try adjusting them or widening the radius.',
+    'zh': '没有符合所选筛选条件的结果，请调整筛选或扩大半径。',
+    'ko': '선택한 필터와 일치하는 결과가 없습니다. 필터를 조정하거나 반경을 넓혀 보세요.',
+    'ru': 'Нет результатов по выбранным фильтрам. Измените их или увеличьте радиус.',
+    'ja': '選択したフィルターに一致する結果がありません。条件の変更か範囲の拡大をお試しください。',
+  },
+  'radar_location_denied': {
+    'th': 'ต้องอนุญาตให้เข้าถึงตำแหน่งเพื่อค้นหาข้อมูลรอบตัวคุณ',
+    'en': 'Location access is needed to search around you.',
+    'zh': '需要位置权限才能搜索您周围的信息。',
+    'ko': '주변을 검색하려면 위치 권한이 필요합니다.',
+    'ru': 'Для поиска вокруг вас нужен доступ к геолокации.',
+    'ja': '周辺を検索するには位置情報の許可が必要です。',
+  },
+  'radar_location_disabled': {
+    'th': 'กรุณาเปิดบริการระบุตำแหน่งบนอุปกรณ์ของคุณ',
+    'en': 'Please turn on location services on your device.',
+    'zh': '请在您的设备上开启定位服务。',
+    'ko': '기기에서 위치 서비스를 켜 주세요.',
+    'ru': 'Пожалуйста, включите службы геолокации на устройстве.',
+    'ja': '端末の位置情報サービスをオンにしてください。',
+  },
+  'radar_location_error': {
+    'th': 'ไม่สามารถระบุตำแหน่งได้ กรุณาลองใหม่อีกครั้ง',
+    'en': 'Could not get your location. Please try again.',
+    'zh': '无法获取您的位置，请重试。',
+    'ko': '위치를 확인할 수 없습니다. 다시 시도해 주세요.',
+    'ru': 'Не удалось определить местоположение. Попробуйте ещё раз.',
+    'ja': '位置情報を取得できませんでした。もう一度お試しください。',
+  },
+  'radar_load_error': {
+    'th': 'โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+    'en': 'Could not load data. Please try again.',
+    'zh': '数据加载失败，请重试。',
+    'ko': '데이터를 불러오지 못했습니다. 다시 시도해 주세요.',
+    'ru': 'Не удалось загрузить данные. Попробуйте ещё раз.',
+    'ja': 'データを読み込めませんでした。もう一度お試しください。',
+  },
+  'radar_retry': {
+    'th': 'ลองใหม่', 'en': 'Try Again', 'zh': '重试', 'ko': '다시 시도', 'ru': 'Повторить', 'ja': '再試行',
+  },
+  'radar_disclaimer': {
+    'th': 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้',
+    'en': 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
+    'zh': '此信息基于统计和社区数据生成，仅供参考。实际价格可能有所不同。',
+    'ko': '이 정보는 통계 및 커뮤니티 데이터를 기반으로 생성되었으며 참고용입니다. 실제 가격은 다를 수 있습니다.',
+    'ru': 'Эта информация формируется на основе статистических и общественных данных и приведена исключительно в информационных целях. Фактические цены могут отличаться.',
+    'ja': 'この情報は統計データとコミュニティデータに基づいて生成されたもので、参考情報です。実際の価格は異なる場合があります。',
+  },
+  'radar_group_zone_danger': {
+    'th': 'พื้นที่ที่ชุมชนแจ้งเตือน', 'en': 'Community Alert Zone', 'zh': '社区提示区域', 'ko': '커뮤니티 알림 구역', 'ru': 'Зона общественных сообщений', 'ja': 'コミュニティ通知エリア',
+  },
+  'radar_group_zone_caution': {
+    'th': 'พื้นที่คำแนะนำสำหรับนักท่องเที่ยว', 'en': 'Tourist Advisory Area', 'zh': '旅游提示区域', 'ko': '관광 안내 구역', 'ru': 'Зона рекомендаций для туристов', 'ja': '観光アドバイザリーエリア',
+  },
+  'radar_group_zone_safe': {
+    'th': 'พื้นที่ข้อมูลการท่องเที่ยว', 'en': 'Travel Information Area', 'zh': '旅行信息区域', 'ko': '여행 정보 구역', 'ru': 'Зона туристической информации', 'ja': 'トラベル情報エリア',
+  },
+  'radar_group_emergency': {
+    'th': 'บริการฉุกเฉิน', 'en': 'Emergency Services', 'zh': '紧急服务', 'ko': '응급 서비스', 'ru': 'Экстренные службы', 'ja': '緊急サービス',
+  },
+  'radar_group_partners': {
+    'th': 'ธุรกิจพาร์ทเนอร์', 'en': 'Partner Businesses', 'zh': '合作商家', 'ko': '파트너 업체', 'ru': 'Партнёрские заведения', 'ja': 'パートナー店舗',
+  },
+  'radar_group_transport': {
+    'th': 'การเดินทาง', 'en': 'Transport', 'zh': '交通', 'ko': '교통', 'ru': 'Транспорт', 'ja': '交通',
+  },
+  'radar_badge_certified': {
+    'th': 'ราคามาตรฐานที่รับรอง', 'en': 'Certified Fair Price', 'zh': '认证公道价格', 'ko': '인증된 적정 가격', 'ru': 'Сертифицированная честная цена', 'ja': '認証済み適正価格',
+  },
+  'radar_badge_partner': {
+    'th': 'ธุรกิจพาร์ทเนอร์', 'en': 'Partner Business', 'zh': '合作商家', 'ko': '파트너 업체', 'ru': 'Партнёр', 'ja': 'パートナー店舗',
+  },
+  'radar_badge_above_range': {
+    'th': 'สูงกว่าช่วงราคาทั่วไป', 'en': 'Above Typical Range', 'zh': '高于一般价格范围', 'ko': '일반적인 가격대보다 높음', 'ru': 'Выше типичного диапазона', 'ja': '一般的な価格帯より高い',
+  },
+  'radar_you_are_inside': {
+    'th': 'คุณอยู่ในพื้นที่นี้', 'en': 'You are in this area', 'zh': '您位于该区域内', 'ko': '현재 이 구역 안에 있습니다', 'ru': 'Вы находитесь в этой зоне', 'ja': 'このエリア内にいます',
+  },
+  'radar_view_on_map': {
+    'th': 'ดูบนแผนที่', 'en': 'Show on Map', 'zh': '在地图上查看', 'ko': '지도에서 보기', 'ru': 'Показать на карте', 'ja': '地図で見る',
+  },
+
+  // --- Filter panel (Phase 2A task 2.3) ---
+  'filter_title': {
+    'th': 'ตัวกรอง', 'en': 'Filters', 'zh': '筛选', 'ko': '필터', 'ru': 'Фильтры', 'ja': 'フィルター',
+  },
+  'filter_subtitle': {
+    'th': 'เลือกประเภทสถานที่และพื้นที่ที่ต้องการแสดง',
+    'en': 'Choose which place types and areas to show',
+    'zh': '选择要显示的地点类型和区域',
+    'ko': '표시할 장소 유형과 구역을 선택하세요',
+    'ru': 'Выберите, какие типы мест и зоны показывать',
+    'ja': '表示する施設タイプとエリアを選択してください',
+  },
+  'filter_categories': {
+    'th': 'ประเภทสถานที่', 'en': 'Place Types', 'zh': '地点类型', 'ko': '장소 유형', 'ru': 'Типы мест', 'ja': '施設タイプ',
+  },
+  'filter_areas': {
+    'th': 'ประเภทพื้นที่', 'en': 'Area Types', 'zh': '区域类型', 'ko': '구역 유형', 'ru': 'Типы зон', 'ja': 'エリアタイプ',
+  },
+  'filter_select_all': {
+    'th': 'เลือกทั้งหมด', 'en': 'Select All', 'zh': '全选', 'ko': '전체 선택', 'ru': 'Выбрать все', 'ja': 'すべて選択',
+  },
+  'filter_clear_all': {
+    'th': 'ล้างทั้งหมด', 'en': 'Clear All', 'zh': '全部清除', 'ko': '전체 해제', 'ru': 'Снять все', 'ja': 'すべて解除',
+  },
+  'filter_apply': {
+    'th': 'ใช้ตัวกรอง', 'en': 'Apply Filters', 'zh': '应用筛选', 'ko': '필터 적용', 'ru': 'Применить фильтры', 'ja': 'フィルターを適用',
+  },
+  'filter_active_count': {
+    'th': 'ใช้ตัวกรอง {count} รายการ', 'en': '{count} filters active', 'zh': '已启用 {count} 个筛选条件', 'ko': '필터 {count}개 적용 중', 'ru': 'Активных фильтров: {count}', 'ja': 'フィルター {count} 件適用中',
+  },
+
+  // --- Alert Zone proximity card (Phase 2A task 2.2) ---
+  'proximity_inside_title': {
+    'th': 'คุณอยู่ในพื้นที่ที่มีข้อมูลแจ้งเตือน',
+    'en': 'You are in an area with travel information',
+    'zh': '您位于有旅行提示的区域',
+    'ko': '여행 정보가 있는 구역에 있습니다',
+    'ru': 'Вы находитесь в зоне с туристической информацией',
+    'ja': '旅行情報のあるエリア内にいます',
+  },
+  'proximity_near_title': {
+    'th': 'มีพื้นที่ที่มีข้อมูลแจ้งเตือนอยู่ใกล้คุณ',
+    'en': 'There is an area with travel information near you',
+    'zh': '您附近有带旅行提示的区域',
+    'ko': '근처에 여행 정보가 있는 구역이 있습니다',
+    'ru': 'Рядом с вами есть зона с туристической информацией',
+    'ja': '近くに旅行情報のあるエリアがあります',
+  },
+  'proximity_distance_away': {
+    'th': 'ห่างจากคุณประมาณ {distance}',
+    'en': 'About {distance} from you',
+    'zh': '距您约 {distance}',
+    'ko': '현재 위치에서 약 {distance}',
+    'ru': 'Примерно {distance} от вас',
+    'ja': '現在地から約 {distance}',
+  },
+  'proximity_dismiss': {
+    'th': 'ปิด', 'en': 'Dismiss', 'zh': '关闭', 'ko': '닫기', 'ru': 'Скрыть', 'ja': '閉じる',
+  },
+  'proximity_disclaimer': {
+    'th': 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น',
+    'en': 'This information is generated from statistical and community-based data and is intended for informational purposes only.',
+    'zh': '此信息基于统计和社区数据生成，仅供参考。',
+    'ko': '이 정보는 통계 및 커뮤니티 데이터를 기반으로 생성되었으며 참고용입니다.',
+    'ru': 'Эта информация формируется на основе статистических и общественных данных и приведена исключительно в информационных целях.',
+    'ja': 'この情報は統計データとコミュニティデータに基づいて生成されたもので、参考情報です。',
+  },
 };
 
 /// Returns the localized string for [key] based on the app's current
