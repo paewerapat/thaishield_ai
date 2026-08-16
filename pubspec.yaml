@@ -39,6 +39,20 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
 
+# record 5.2.1 pins record_linux to '>=0.5.0 <1.0.0', so pub resolves 0.7.2 —
+# which predates `startStream` on RecordMethodChannelPlatformInterface and so
+# fails Dart compilation on EVERY target, Android included, because the kernel
+# compile walks the whole package graph:
+#   record_linux.dart:12:7: Error: The non-abstract class 'RecordLinux' is
+#   missing implementations for RecordMethodChannelPlatformInterface.startStream
+# record_linux 1.3.1 implements it and targets the same ^1.5.0 interface line as
+# record_android/record_web, so only record's own upper bound stands in the way
+# — hence the override. Linux is not a build target here (§1 of CLAUDE.md); this
+# package is compiled only because it sits in the graph. Drop the override once
+# `record` widens that constraint.
+dependency_overrides:
+  record_linux: 1.3.1
+
 flutter_launcher_icons:
   android: true
   ios: true
