@@ -37,6 +37,11 @@ class _SosScreenState extends State<SosScreen>
   String _currentLangCode = 'en';
   double _soundLevel = 0.0;
   bool _isRecording = false;
+  int _elapsedSeconds = 0;
+
+  /// Hard cap on a single recording. Keeps the base64 upload small, and is
+  /// surfaced in the UI so hitting it does not look like a crash.
+  static const _maxRecordSeconds = 30;
 
   Timer? _ampTimer;
   Timer? _maxDurationTimer;
@@ -123,6 +128,7 @@ class _SosScreenState extends State<SosScreen>
       _sourceLangName = _langName(langCode);
       _currentLangCode = langCode;
       _soundLevel = 0.0;
+      _elapsedSeconds = 0;
       _isRecording = true;
     });
 
@@ -136,19 +142,23 @@ class _SosScreenState extends State<SosScreen>
     );
 
     // Poll amplitude every 120ms for the sound level bar
+    final startedAt = DateTime.now();
     _ampTimer = Timer.periodic(const Duration(milliseconds: 120), (_) async {
       if (!_isRecording) return;
       try {
         final amp = await _recorder.getAmplitude();
         if (mounted && _isRecording) {
           // amp.current is dBFS: -40 (silence) to 0 (max) → 0.0–1.0
-          setState(() => _soundLevel = ((amp.current + 40) / 40).clamp(0.0, 1.0));
+          setState(() {
+            _soundLevel = ((amp.current + 40) / 40).clamp(0.0, 1.0);
+            _elapsedSeconds = DateTime.now().difference(startedAt).inSeconds;
+          });
         }
       } catch (_) {}
     });
 
-    // Safety cap: auto-stop after 30 s to prevent huge uploads
-    _maxDurationTimer = Timer(const Duration(seconds: 30), () {
+    // Safety cap — see _maxRecordSeconds.
+    _maxDurationTimer = Timer(const Duration(seconds: _maxRecordSeconds), () {
       if (_state == _SosState.listening) _stopAndProcess();
     });
   }
@@ -423,6 +433,8 @@ class _SosScreenState extends State<SosScreen>
           onRelease: _stopAndProcess,
           pulseCtrl: _pulseCtrl,
           soundLevel: _soundLevel,
+          elapsedSeconds: _elapsedSeconds,
+          maxSeconds: _maxRecordSeconds,
         ),
       _SosState.processing => _ProcessingView(spokenText: _spokenText),
       _SosState.speaking => _SpeakingView(
@@ -555,10 +567,14 @@ class _ListeningView extends StatelessWidget {
     required this.onRelease,
     required this.pulseCtrl,
     required this.soundLevel,
+    required this.elapsedSeconds,
+    required this.maxSeconds,
   });
   final VoidCallback onRelease;
   final AnimationController pulseCtrl;
   final double soundLevel;
+  final int elapsedSeconds;
+  final int maxSeconds;
 
   @override
   Widget build(BuildContext context) {
@@ -594,20 +610,29 @@ class _ListeningView extends StatelessWidget {
             onHoldEnd: onRelease,
           ),
           const SizedBox(height: 28),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: const Color(0xFFEF5350).withValues(alpha: 0.3)),
-            ),
-            child: const Text(
-              '...',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Color(0xFF90A4AE), fontSize: 15, height: 1.5),
+          // This used to be a white card containing "...", left over from the
+          // device-native STT that streamed words in as you spoke. Cloud
+          // recognition is a single request made after you let go, so that
+          // card could never fill in — it just looked like the app had
+          // stopped working. Guidance is the honest use of the space.
+          Text(
+            appText(context, 'sos_hold_hint'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                color: Color(0xFF78909C), fontSize: 14, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          // The recorder force-stops at 30 s to keep the upload small. Before
+          // this, that cap fired with no warning and looked like a crash.
+          Text(
+            '$elapsedSeconds / $maxSeconds s',
+            style: TextStyle(
+              color: elapsedSeconds >= maxSeconds - 5
+                  ? const Color(0xFFEF5350)
+                  : const Color(0xFF90A4AE),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
