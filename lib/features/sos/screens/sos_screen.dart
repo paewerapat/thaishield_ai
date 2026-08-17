@@ -227,38 +227,76 @@ class _SosScreenState extends State<SosScreen>
     }
   }
 
-  /// Calls Google Cloud Speech-to-Text v2 (Chirp model) directly via REST.
-  /// Key is injected at build time: --dart-define=GCS_STT_KEY=...
-  /// Restrict the key in Cloud Console to the Speech-to-Text API only.
+  /// Calls Google Cloud Speech-to-Text **v1** via REST. Key is injected at
+  /// build time: --dart-define=GCS_STT_KEY=... Restrict the key in Cloud
+  /// Console to the Speech-to-Text API only.
+  ///
+  /// **Why v1 and not v2/Chirp.** v2 does not accept API keys at all — every
+  /// correctly formed v2 request answers
+  /// `403 Permission 'speech.recognizers.recognize' denied`, in every region,
+  /// because an API key carries no IAM principal. It needs OAuth, i.e. a
+  /// service account, i.e. a server. The v2 code this replaced also aimed a
+  /// `locations/us-central1` resource path at the *global* host, which failed
+  /// earlier still with `400 Expected resource location to be global` — so
+  /// SOS transcription has never worked since it was introduced.
+  ///
+  /// Going back to v1 loses the Chirp model. If its accuracy proves too low
+  /// for tourists speaking under stress, the fix is a Cloud Function proxy
+  /// holding a service account, not another attempt from the client.
+  ///
+  /// Verified against the live API for all six app languages before shipping:
+  /// en-US, th-TH, ko-KR, ru-RU and ja-JP accept `latest_short`; zh-CN does
+  /// not, hence the retry below.
+  ///
+  /// The recorder is configured for WAV 16 kHz mono (see `RecordConfig`
+  /// above), which is exactly LINEAR16 — v1 needs that spelled out, unlike
+  /// v2's `autoDecodingConfig`. Keep the two in step.
   Future<String?> _transcribeWithGCS(
     String audioBase64,
     String languageCode,
   ) async {
-    const apiKey = String.fromEnvironment('GCS_STT_KEY');
+    const apiKey = ApiKeys.speechToText;
     if (apiKey.isEmpty) {
       debugPrint('[STT] GCS_STT_KEY not set');
       return null;
     }
 
-    const projectId = 'thaishield-ai-790eb';
     const endpoint =
-        'https://speech.googleapis.com/v2/projects/$projectId'
-        '/locations/us-central1/recognizers/_:recognize'
-        '?key=$apiKey';
+        'https://speech.googleapis.com/v1/speech:recognize?key=$apiKey';
 
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'config': {
-          'autoDecodingConfig': {},
-          'languageCodes': [languageCode],
-          'model': 'chirp',
-          'features': {'enableAutomaticPunctuation': true},
-        },
-        'content': audioBase64,
-      }),
-    ).timeout(const Duration(seconds: 30));
+    Future<http.Response> send({required bool withModel}) {
+      return http.post(
+        Uri.parse(endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'config': {
+            'encoding': 'LINEAR16',
+            'sampleRateHertz': 16000,
+            'audioChannelCount': 1,
+            'languageCode': languageCode,
+            'enableAutomaticPunctuation': true,
+            // Short bursts of speech, not dictation — this is someone holding
+            // a button to say one urgent sentence.
+            if (withModel) 'model': 'latest_short',
+          },
+          'audio': {'content': audioBase64},
+        }),
+      ).timeout(const Duration(seconds: 30));
+    }
+
+    var response = await send(withModel: true);
+
+    // `latest_short` is not offered for every language — zh-CN answers
+    // "The requested model is currently not supported for language" with a
+    // 400, and `useEnhanced` does NOT quietly fall back the way the docs
+    // suggest. Retrying without the model rather than hardcoding which
+    // languages support it means this keeps working whichever way Google
+    // changes that list: the worst case is one wasted round trip on a request
+    // that would otherwise have failed outright.
+    if (response.statusCode == 400 && response.body.contains('model')) {
+      debugPrint('[STT] latest_short rejected for $languageCode — retrying without it');
+      response = await send(withModel: false);
+    }
 
     debugPrint('[STT] GCS status: ${response.statusCode}');
     if (response.statusCode != 200) {

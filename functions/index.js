@@ -11,6 +11,18 @@ setGlobalOptions({region: 'asia-southeast1'});
 
 const NEWSDATA_API_KEY = defineSecret('NEWSDATA_API_KEY');
 
+/**
+ * Ways an actual fire gets described. Used instead of the bare word, which
+ * appears far more often in "opened fire", "under fire" and "ready to fire".
+ */
+const FIRE_TERMS = [
+  'wildfire', 'wildfires', 'bushfire', 'blaze', 'arson',
+  'fire broke out', 'broke out fire', 'caught fire', 'set on fire',
+  'house fire', 'forest fire', 'building fire', 'factory fire', 'market fire',
+  'fire destroyed', 'fire damaged', 'fire swept', 'fire engulfed',
+  'firefighters', 'put out the fire', 'extinguish the fire',
+];
+
 // Keep this list in sync with `_searchTerms` in
 // lib/features/home/services/travel_alert_service.dart (Dart copy is now
 // dead code for fetching, but TravelAlert.category on the client still
@@ -21,10 +33,17 @@ const NEWSDATA_API_KEY = defineSecret('NEWSDATA_API_KEY');
 // term dropped from the API query still works whenever the article surfaces
 // through the other query or on its own merits.
 const SEARCH_TERMS = [
-  'flood', 'flooding', 'floods', 'storm', 'storms', 'wildfire', 'fire',
+  'flood', 'flooding', 'floods', 'storm', 'storms',
   'road closed', 'road closure', 'accident', 'crash', 'earthquake', 'quake',
   'tsunami', 'evacuation', 'evacuated', 'landslide', 'flight cancelled',
   'flights cancelled', 'airport closed', 'protest', 'protests',
+  // "fire" on its own is not a usable signal, so it is absent here and the
+  // real thing is matched by context instead. Bare 'fire' admitted, from the
+  // live cache: three shootings whose descriptions read "a gunman opened
+  // fire", and "Fit Patrik ready to fire War Elephants" — a football story
+  // that reached the Home tab with a red ไฟไหม้ badge. Blacklisting each
+  // idiom is whack-a-mole; requiring fire-shaped context is not.
+  ...FIRE_TERMS,
 ];
 
 /**
@@ -62,6 +81,10 @@ const NON_EVENT_PHRASES = [
   'come under fire', 'draws fire', 'drew fire', 'fired up', 'crash course',
   'storm of criticism', 'social media storm', 'takes the internet by storm',
   'flood of comments', 'flood of criticism', 'flooded with',
+  // Shootings. Genuinely serious, but not the travel disruption this feature
+  // reports (CLAUDE.md §2.1 scopes it to floods, storms, fires, road closures
+  // and major accidents), and "opened fire" is what smuggled them in.
+  'opened fire', 'open fire', 'opens fire', 'ready to fire', 'fire up',
 ];
 
 /** Whole-word match, so 'fire' stops matching 'firearm' and 'misfire'. */
@@ -197,26 +220,45 @@ exports.syncTravelAlerts = onSchedule(
       });
     }
 
-    // Only prune documents that have actually aged out. The two rotating
-    // queries return different articles, so deleting everything the current
-    // run did not return — which is what the GNews version did, when one query
-    // covered the whole vocabulary — would throw away half the cache every 15
-    // minutes and make the Home tab flicker between two sets of stories.
-    let removed = 0;
+    // Prune on two grounds only. Deleting everything the current run did not
+    // return — what the GNews version did, back when one query covered the
+    // whole vocabulary — would throw away half the cache every 15 minutes now
+    // that two queries alternate, and make the Home tab flicker between two
+    // sets of stories.
+    //
+    // 1. Aged out past MAX_AGE_DAYS.
+    // 2. No longer passes the current filter. Without this the cache keeps
+    //    serving whatever an older, looser rule admitted: the substring match
+    //    this function used before 2026-08-17 read "gunfire" as "fire", so
+    //    shootings sat on a travel-alert screen, and an age-only prune would
+    //    have left them there for a week after the fix shipped.
+    let removedAged = 0;
+    let removedFiltered = 0;
     for (const doc of existingDocs) {
       if (keepIds.has(doc.id)) continue;
       const snapshot = await doc.get();
       const publishedAt = snapshot.get('published_at');
       if (!publishedAt || publishedAt.toDate() < cutoff) {
         batch.delete(doc);
-        removed += 1;
+        removedAged += 1;
+        continue;
+      }
+      const stored = {
+        title: snapshot.get('title'),
+        description: snapshot.get('description'),
+      };
+      if (!looksTravelRelevant(stored)) {
+        batch.delete(doc);
+        removedFiltered += 1;
       }
     }
+    const removed = removedAged + removedFiltered;
 
     await batch.commit();
     logger.info(
       `syncTravelAlerts: query="${query}" fetched ${body.results?.length ?? 0}, ` +
-        `kept ${keepIds.size}, removed ${removed} aged-out.`,
+        `kept ${keepIds.size}, removed ${removed} ` +
+        `(${removedAged} aged out, ${removedFiltered} no longer pass the filter).`,
     );
   },
 );

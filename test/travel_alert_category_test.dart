@@ -20,7 +20,8 @@ void main() {
   group('TravelAlert.category — real events', () {
     test('classifies each disruption type', () {
       expect(_alert('Flash flood hits Bangkok').category, AlertCategory.flood);
-      expect(_alert('Fire guts Chatuchak market').category, AlertCategory.fire);
+      expect(_alert('Fire broke out at Chatuchak market').category,
+          AlertCategory.fire);
       expect(_alert('Tropical storm nears Phuket').category, AlertCategory.storm);
       expect(_alert('Earthquake felt in Chiang Mai').category,
           AlertCategory.earthquake);
@@ -58,6 +59,43 @@ void main() {
           AlertCategory.other);
       expect(_alert('Signed up for a crash course in Thai').category,
           AlertCategory.other);
+    });
+  });
+
+  group('TravelAlert.category — "fire" needs fire-shaped context', () {
+    test('real cache entries that reached the Home tab badged as fires', () {
+      // Verbatim from travel_alerts_cache on 2026-08-17. All four got their
+      // red ไฟไหม้ badge from the bare word "fire".
+      expect(
+        _alert(
+          'Fit Patrik ready to fire War Elephants',
+          'Thailand head coach Anthony Hudson welcomed the addition of '
+              'striker Patrik Gustavsson.',
+        ).category,
+        AlertCategory.other,
+      );
+      expect(
+        _alert(
+          'Six injured in shooting at Thai shopping event',
+          'Six people were injured after a gunman opened fire at a shopping '
+              'event in Nakhon Ratchasima province.',
+        ).category,
+        AlertCategory.other,
+      );
+    });
+
+    test('still classifies an actual fire', () {
+      expect(_alert('Fire broke out at a Bangkok market').category,
+          AlertCategory.fire);
+      expect(_alert('Blaze destroys beachfront restaurant').category,
+          AlertCategory.fire);
+      expect(_alert('Wildfire smoke blankets Chiang Mai').category,
+          AlertCategory.fire);
+      expect(
+        _alert('Rescue under way', 'Firefighters battled a house fire in Krabi.')
+            .category,
+        AlertCategory.fire,
+      );
     });
   });
 

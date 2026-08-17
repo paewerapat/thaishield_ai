@@ -51,6 +51,14 @@ class TravelAlert {
     'draws fire',
     'drew fire',
     'fired up',
+    'fire up',
+    // Shootings. "a gunman opened fire" put three of them on the Home tab
+    // badged as fires, and they are not the travel disruption this feature
+    // reports (CLAUDE.md §2.1).
+    'opened fire',
+    'open fire',
+    'opens fire',
+    'ready to fire',
     'crash course',
     'storm of criticism',
     'social media storm',
@@ -81,7 +89,31 @@ class TravelAlert {
         _hasWord(text, 'floods')) {
       return AlertCategory.flood;
     }
-    if (_hasAny(text, ['fire', 'fires', 'wildfire', 'wildfires', 'blaze'])) {
+    // Never the bare word: "fire" reaches the Home tab far more often inside
+    // "opened fire", "under fire" and "ready to fire" than as a fire. Matching
+    // the shapes an actual fire is described in costs nothing and does not
+    // need a new blacklist entry every time a sports desk reaches for the
+    // metaphor.
+    if (_hasAny(text, [
+      'wildfire',
+      'wildfires',
+      'bushfire',
+      'blaze',
+      'arson',
+      'fire broke out',
+      'caught fire',
+      'set on fire',
+      'house fire',
+      'forest fire',
+      'building fire',
+      'factory fire',
+      'market fire',
+      'fire destroyed',
+      'fire damaged',
+      'fire swept',
+      'fire engulfed',
+      'firefighters',
+    ])) {
       return AlertCategory.fire;
     }
     if (_hasAny(text, ['storm', 'storms', 'typhoon', 'cyclone', 'monsoon'])) {

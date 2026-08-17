@@ -119,6 +119,44 @@ test('queries alternate between runs and cover every query', () => {
   assert.equal(queryForRun(0), queryForRun(QUERIES.length * interval));
 });
 
+test('rejects what the older, looser filters let through', () => {
+  // All four were really in the live cache on 2026-08-17, with the exact
+  // descriptions reproduced here. Every one of them got in through the word
+  // "fire": three shootings that "opened fire", and a football preview.
+  const cases = [
+    [
+      'Thai government vows tougher gun controls after 2 deadly shootings near Bangkok',
+      'A student opened fire at his high school and family home, killing at least eight people.',
+    ],
+    [
+      'Six injured in shooting at Thai shopping event',
+      'BANGKOK: Six people were injured after a gunman opened fire at a shopping event in Nakhon Ratchasima province.',
+    ],
+    [
+      'Motorcycle theft row ends in gunfire at Thailand shopping fair, six hurt, one in coma',
+      'Six people were injured after a gunman opened fire at a shopping event in north-eastern Thailand.',
+    ],
+    [
+      'Fit Patrik ready to fire War Elephants',
+      'Thailand head coach Anthony Hudson welcomed the addition of striker Patrik Gustavsson.',
+    ],
+  ];
+  for (const [title, description] of cases) {
+    assert.equal(looksTravelRelevant(article(title, description)), false, title);
+  }
+});
+
+test('still recognises an actual fire', () => {
+  for (const [title, description] of [
+    ['Fire broke out at a Bangkok market overnight', ''],
+    ['Wildfire smoke blankets Chiang Mai', ''],
+    ['Blaze destroys Phuket beachfront restaurant', ''],
+    ['Firefighters battle blaze', 'A building fire in Pattaya displaced 20 residents.'],
+  ]) {
+    assert.equal(looksTravelRelevant(article(title, description)), true, title);
+  }
+});
+
 test('parses pubDate as UTC, not local time', () => {
   // "2026-08-17 03:23:00" with pubDateTZ=UTC. Feeding that string straight to
   // new Date() is parsed as LOCAL time by V8, which in Bangkok would date
