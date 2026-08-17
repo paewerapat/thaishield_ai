@@ -7,8 +7,8 @@ import '../../../core/localization/app_text.dart';
 import '../../../core/models/alert_zone.dart';
 import '../../../core/models/partner_category.dart';
 import '../../../core/models/partner_location.dart';
-import '../../../core/services/firestore_service.dart';
 import '../../radar/models/radar_filters.dart';
+import '../../radar/services/radar_service.dart';
 import '../../radar/widgets/filter_panel.dart';
 
 class _Suggestion {
@@ -217,7 +217,12 @@ class MapFocusRequest {
 }
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key, this.focusRequest, this.partnerTypeFilter});
+  const MapScreen({
+    super.key,
+    this.focusRequest,
+    this.partnerTypeFilter,
+    this.isActive = true,
+  });
 
   final MapFocusRequest? focusRequest;
 
@@ -225,11 +230,18 @@ class MapScreen extends StatefulWidget {
   /// Values match Firestore `partner_locations.type`: "restaurant" | "hotel" | "transport"
   final String? partnerTypeFilter;
 
+  /// True while Map is the selected tab. `HomeScreen` keeps every tab alive in
+  /// an `IndexedStack`, so this widget is built once per app launch and
+  /// `initState` never runs again — without this signal the map showed
+  /// whatever Firestore held at launch for the entire life of the process,
+  /// which on Android can be days.
+  final bool isActive;
+
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final _markers = <Marker>{};
   final _circles = <Circle>{};
   final _polygons = <Polygon>{};
@@ -238,6 +250,9 @@ class _MapScreenState extends State<MapScreen> {
   PartnerLocation? _selectedPartner;
   AlertZone? _selectedZone;
   bool _loading = true;
+  /// Set only by the manual refresh button, so a background refresh on tab
+  /// activation never blanks the map the user is already reading.
+  bool _refreshing = false;
   String? _error;
   GoogleMapController? _mapController;
   MapType _mapType = MapType.normal;
@@ -288,12 +303,16 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadMapData();
   }
 
   @override
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Map tab just became the visible one — staff may have published a zone
+    // while the user was on another tab.
+    if (widget.isActive && !oldWidget.isActive) _refreshIfStale();
     final request = widget.focusRequest;
     if (request != null && !identical(request, oldWidget.focusRequest)) {
       _mapController?.animateCamera(
@@ -303,6 +322,22 @@ class _MapScreenState extends State<MapScreen> {
     if (widget.partnerTypeFilter != oldWidget.partnerTypeFilter) {
       _updateNearestPartner();
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Covers the far more common case than a tab switch: the user leaves the
+    // app on the map, comes back an hour later, and expects current data.
+    if (state == AppLifecycleState.resumed && widget.isActive) {
+      _refreshIfStale();
+    }
+  }
+
+  /// Refetches only when the shared cache has aged past
+  /// [RadarService.activationStaleness], so bouncing between tabs does not
+  /// spam Firestore.
+  void _refreshIfStale() {
+    if (RadarService.instance.isStaleForActivation) _loadMapData();
   }
 
   Future<void> _searchLocation(String query) async {
@@ -344,10 +379,17 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Future<void> _loadMapData() async {
+  /// [forceRefresh] bypasses the shared cache entirely — used by the manual
+  /// refresh button, where the whole point is that the user does not trust
+  /// what is on screen.
+  Future<void> _loadMapData({bool forceRefresh = false}) async {
+    if (forceRefresh && mounted) setState(() => _refreshing = true);
     try {
-      final partners = await FirestoreService.instance.getPartnerLocations();
-      final zones = await FirestoreService.instance.getAlertZones();
+      // Reads through RadarService so the Map, the Radar and the Home
+      // proximity card share one cached copy: refreshing here updates all
+      // three, and switching between them costs no Firestore reads.
+      final (:partners, :zones) =
+          await RadarService.instance.load(forceRefresh: forceRefresh);
 
       final markers = <Marker>{};
       for (final partner in partners) {
@@ -422,18 +464,26 @@ class _MapScreenState extends State<MapScreen> {
           ..clear()
           ..addAll(polygons);
         _loading = false;
+        _refreshing = false;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'โหลดข้อมูลแผนที่ไม่สำเร็จ';
+        // A failed background refresh must not wipe a map that is already
+        // drawn — only report the error when there is nothing else to show.
+        if (_markers.isEmpty && _polygons.isEmpty && _circles.isEmpty) {
+          _error = 'โหลดข้อมูลแผนที่ไม่สำเร็จ';
+        }
         _loading = false;
+        _refreshing = false;
       });
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _mapController?.dispose();
     _searchController.dispose();
     super.dispose();
@@ -607,6 +657,9 @@ class _MapScreenState extends State<MapScreen> {
                               child: _FloatingButtons(
                                 onCenter: _centerOnUser,
                                 onFilter: _openFilterPanel,
+                                onRefresh: () =>
+                                    _loadMapData(forceRefresh: true),
+                                refreshing: _refreshing,
                                 filterCount: _filters.activeCount,
                               ),
                             ),
@@ -1015,10 +1068,19 @@ class _FloatingButtons extends StatelessWidget {
   const _FloatingButtons({
     required this.onCenter,
     required this.onFilter,
+    required this.onRefresh,
+    required this.refreshing,
     required this.filterCount,
   });
   final VoidCallback onCenter;
   final VoidCallback onFilter;
+
+  /// Refetches pins and zones from Firestore, ignoring the cache. The map
+  /// also refreshes itself when the tab is reopened, but a tourist who has
+  /// just been told about an advisory should not have to guess whether what
+  /// they are looking at is current.
+  final VoidCallback onRefresh;
+  final bool refreshing;
 
   /// Number of filter options currently switched off, shown as a badge so a
   /// narrowed map is never mistaken for missing data.
@@ -1029,6 +1091,12 @@ class _FloatingButtons extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _FabButton(
+          icon: Icons.refresh_rounded,
+          onTap: refreshing ? null : onRefresh,
+          spinning: refreshing,
+        ),
+        const SizedBox(height: 8),
         _FabButton(icon: Icons.my_location_rounded, onTap: onCenter),
         const SizedBox(height: 8),
         Stack(
@@ -1064,12 +1132,20 @@ class _FloatingButtons extends StatelessWidget {
 }
 
 class _FabButton extends StatelessWidget {
-  const _FabButton({required this.icon, required this.onTap});
+  const _FabButton({
+    required this.icon,
+    required this.onTap,
+    this.spinning = false,
+  });
   final IconData icon;
-  final VoidCallback onTap;
+
+  /// Null disables the button — used while a refresh is already in flight.
+  final VoidCallback? onTap;
+  final bool spinning;
 
   @override
   Widget build(BuildContext context) {
+    const foreground = Color(0xFF0D1B2A);
     return Material(
       elevation: 3,
       borderRadius: BorderRadius.circular(10),
@@ -1083,7 +1159,18 @@ class _FabButton extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: const Color(0xFF0D1B2A), size: 20),
+          child: spinning
+              ? const Center(
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: foreground,
+                    ),
+                  ),
+                )
+              : Icon(icon, color: foreground, size: 20),
         ),
       ),
     );

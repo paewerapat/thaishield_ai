@@ -678,6 +678,9 @@ const Map<String, Map<String, String>> _appText = {
   'radar_retry': {
     'th': 'ลองใหม่', 'en': 'Try Again', 'zh': '重试', 'ko': '다시 시도', 'ru': 'Повторить', 'ja': '再試行',
   },
+  'radar_refresh': {
+    'th': 'โหลดข้อมูลใหม่', 'en': 'Refresh', 'zh': '刷新', 'ko': '새로 고침', 'ru': 'Обновить', 'ja': '更新',
+  },
   'radar_disclaimer': {
     'th': 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้',
     'en': 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',

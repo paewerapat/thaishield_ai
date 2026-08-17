@@ -14,11 +14,33 @@ import '../models/radar_result.dart';
 /// Both collections are small and staff-maintained, so they are fetched whole
 /// and cached in memory for [_cacheTtl]; changing the radius or the filters
 /// re-runs the maths locally instead of hitting Firestore again.
+///
+/// This cache is the single copy of `partner_locations` + `alert_zones` in the
+/// app — the Map, the Radar and the Home proximity card all read it, so one
+/// refresh updates all three and a screen switch costs no Firestore reads.
+///
+/// **Freshness.** There is no realtime listener (deliberately: no open
+/// connection, no per-change reads). Instead the screens call [load] with
+/// `forceRefresh` when they come back to the foreground and the data is older
+/// than [activationStaleness], and offer a manual refresh control. Without
+/// that, a zone staff add during an incident would not reach a tourist whose
+/// app is already open — Android keeps processes alive for days, so "it
+/// updates on next launch" can mean never in practice.
 class RadarService {
   RadarService._();
   static final instance = RadarService._();
 
   static const _cacheTtl = Duration(minutes: 10);
+
+  /// How old the cache may be before a screen returning to the foreground
+  /// refetches. Much shorter than [_cacheTtl], which governs repeat work
+  /// *within* a screen (changing the radius, retoggling a filter) and should
+  /// not cause a network round trip.
+  ///
+  /// Both collections total about a dozen documents, so a refetch here is a
+  /// rounding error against Firestore's free tier even if the user flips
+  /// between tabs constantly.
+  static const activationStaleness = Duration(seconds: 30);
 
   /// Radius options offered by the Radar UI, in kilometres.
   static const radiusOptionsKm = <double>[0.5, 1, 3, 5];
@@ -31,6 +53,25 @@ class RadarService {
   bool get _isCacheFresh {
     final at = _fetchedAt;
     return at != null && DateTime.now().difference(at) < _cacheTtl;
+  }
+
+  /// True when a screen coming back to the foreground should refetch.
+  bool get isStaleForActivation {
+    final at = _fetchedAt;
+    return at == null ||
+        DateTime.now().difference(at) >= activationStaleness;
+  }
+
+  /// The cached collections, fetching them first if needed.
+  ///
+  /// Screens that draw the data themselves (the Map) use this rather than
+  /// calling `FirestoreService` directly, so there is one cache to refresh
+  /// instead of two that can disagree.
+  Future<({List<PartnerLocation> partners, List<AlertZone> zones})> load({
+    bool forceRefresh = false,
+  }) async {
+    await _ensureLoaded(forceRefresh: forceRefresh);
+    return (partners: _partners, zones: _zones);
   }
 
   Future<void> _ensureLoaded({bool forceRefresh = false}) async {

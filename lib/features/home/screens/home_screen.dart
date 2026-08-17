@@ -61,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MapScreen(
         partnerTypeFilter: _mapPartnerTypeFilter,
         focusRequest: _mapFocus,
+        isActive: _currentIndex == 2,
       ),
       const SosScreen(),
       const ProfileScreen(),

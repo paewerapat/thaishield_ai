@@ -42,12 +42,24 @@ class _RadarScreenState extends State<RadarScreen> {
     super.initState();
     // Opening the screen is the request — no extra tap needed. A denied
     // permission drops back to the idle state with a retry button.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scan());
+    //
+    // Opening counts as an activation, so aged data is refetched rather than
+    // served from the cache: someone opening the Radar is asking what is
+    // around them *now*.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scan(forceRefresh: RadarService.instance.isStaleForActivation),
+    );
   }
 
   /// [reuseLocation] re-runs the search over the cached position when only the
   /// radius or the filters changed, so we don't ask for a new GPS fix.
-  Future<void> _scan({bool reuseLocation = false}) async {
+  /// [forceRefresh] bypasses the shared cache. Radius and filter changes leave
+  /// it false — those re-run the maths locally and should never cost a round
+  /// trip — while opening the screen and the manual refresh button set it.
+  Future<void> _scan({
+    bool reuseLocation = false,
+    bool forceRefresh = false,
+  }) async {
     var center = _center;
 
     if (!reuseLocation || center == null) {
@@ -76,6 +88,7 @@ class _RadarScreenState extends State<RadarScreen> {
         radiusKm: _radiusKm,
         categories: _filters.categories,
         riskLevels: _filters.riskLevels,
+        forceRefresh: forceRefresh,
       );
       if (!mounted) return;
       setState(() {
@@ -113,7 +126,11 @@ class _RadarScreenState extends State<RadarScreen> {
       backgroundColor: _pageGrey,
       body: Column(
         children: [
-          _RadarHeader(onBack: () => Navigator.of(context).pop()),
+          _RadarHeader(
+            onBack: () => Navigator.of(context).pop(),
+            onRefresh: () => _scan(reuseLocation: true, forceRefresh: true),
+            refreshing: _state == _RadarState.scanning,
+          ),
           _RadarToolbar(
             radiusKm: _radiusKm,
             onRadiusChanged: _onRadiusChanged,
@@ -231,9 +248,19 @@ class _RadarScreenState extends State<RadarScreen> {
 }
 
 class _RadarHeader extends StatelessWidget {
-  const _RadarHeader({required this.onBack});
+  const _RadarHeader({
+    required this.onBack,
+    required this.onRefresh,
+    required this.refreshing,
+  });
 
   final VoidCallback onBack;
+
+  /// Refetches both collections, ignoring the cache. Opening the screen
+  /// already refreshes aged data, but there is no way for a user standing
+  /// somewhere to tell how old "aged" is — so give them the control.
+  final VoidCallback onRefresh;
+  final bool refreshing;
 
   @override
   Widget build(BuildContext context) {
@@ -285,9 +312,22 @@ class _RadarHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Icon(Icons.radar_rounded, color: _gold, size: 26),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: IconButton(
+                  onPressed: refreshing ? null : onRefresh,
+                  tooltip: appText(context, 'radar_refresh'),
+                  icon: refreshing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _gold,
+                          ),
+                        )
+                      : const Icon(Icons.refresh_rounded, color: _gold, size: 24),
+                ),
               ),
             ],
           ),
