@@ -66,16 +66,21 @@ changed — only the function's source, query shape and field mapping.)*
   [newsdata.io](https://newsdata.io/documentation) (`/api/1/latest`).
 - **Server-side shared cache — the Flutter app never calls the news API directly.** The
   scheduled Cloud Function `syncTravelAlerts` (`functions/index.js`, `asia-southeast1`)
-  polls **every 15 minutes**, filters to Thai places plus a travel-disruption keyword, and
+  polls **every 10 minutes**, filters to Thai places plus a travel-disruption keyword, and
   upserts into `travel_alerts_cache` (doc id = newsdata.io's own `article_id`).
 - **Why server-side:** `shared_preferences` is per-device. A client-side fetch means every
   install runs its own timer against the *same* API key, so volume scales with install
-  count and blows the free tier. One server-side fetch keeps usage constant (24h × 4/hr =
-  96 requests/day against an allowance of 200 credits) regardless of user count.
+  count and blows the free tier. One server-side fetch keeps usage constant (24h × 6/hr =
+  144 requests/day against an allowance of 200 credits) regardless of user count. 5-minute
+  polling would be 288/day and blow it.
 - ⚠️ **The free plan rejects any `q` over 100 characters** (`UnsupportedQueryLength`, HTTP
   422). The old GNews query was 183, so `QUERIES` holds two halves that alternate between
-  runs, chosen from the clock — one request per run, each half on an effective 30-minute
+  runs, chosen from the clock — one request per run, each half on an effective 20-minute
   cadence. Adding a term means checking the length; a test enforces it.
+- ⚠️ **`RUN_INTERVAL_MINUTES` drives both the schedule string and the rotation bucket.**
+  Setting them apart silently desyncs the two: a 10-minute schedule read through a
+  15-minute bucket yields A, A, B, A, so one query set runs twice as often as the other.
+  A test asserts consecutive runs never repeat a query.
 - ⚠️ **Do not use `country=th`.** It filters by the *source's* country, so it returns
   Bangkok Post's Kyiv and Hawaii wire copy while missing "Flash flood warning issued for 39
   Thai provinces" from an outlet registered elsewhere. The query is anchored on "Thailand"

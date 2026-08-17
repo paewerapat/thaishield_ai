@@ -13,7 +13,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {_internals} = require('./index');
-const {looksTravelRelevant, parsePubDate, queryForRun, QUERIES} = _internals;
+const {
+  looksTravelRelevant,
+  parsePubDate,
+  queryForRun,
+  QUERIES,
+  RUN_INTERVAL_MS,
+  RUN_INTERVAL_MINUTES,
+} = _internals;
 
 const article = (title, description = '', extra = {}) => ({
   title,
@@ -109,14 +116,38 @@ test('every query fits the free plan 100-character limit', () => {
 });
 
 test('queries alternate between runs and cover every query', () => {
-  const interval = 15 * 60 * 1000;
+  // Deliberately uses the module's own interval, not a copy. A literal here
+  // would keep passing after someone changed the schedule, which is the one
+  // failure this test exists to catch.
   const seen = new Set();
   for (let run = 0; run < QUERIES.length * 2; run++) {
-    seen.add(queryForRun(run * interval));
+    seen.add(queryForRun(run * RUN_INTERVAL_MS));
   }
   assert.equal(seen.size, QUERIES.length);
-  assert.notEqual(queryForRun(0), queryForRun(interval));
-  assert.equal(queryForRun(0), queryForRun(QUERIES.length * interval));
+  assert.notEqual(queryForRun(0), queryForRun(RUN_INTERVAL_MS));
+  assert.equal(queryForRun(0), queryForRun(QUERIES.length * RUN_INTERVAL_MS));
+});
+
+test('the rotation bucket matches the deployed schedule', () => {
+  // queryForRun buckets the clock by RUN_INTERVAL_MS while Cloud Scheduler
+  // fires on RUN_INTERVAL_MINUTES. If those drift apart the rotation desyncs
+  // from the runs — a 10-minute schedule read through a 15-minute bucket
+  // gives A, A, B, A, so one query set runs twice as often as the other.
+  assert.equal(RUN_INTERVAL_MS, RUN_INTERVAL_MINUTES * 60 * 1000);
+
+  const fired = [];
+  for (let run = 0; run < 6; run++) {
+    fired.push(queryForRun(run * RUN_INTERVAL_MINUTES * 60 * 1000));
+  }
+  for (let i = 1; i < fired.length; i++) {
+    assert.notEqual(fired[i], fired[i - 1], `run ${i} repeated the query`);
+  }
+});
+
+test('stays inside the free plan of 200 credits a day', () => {
+  // One request per run, one credit per request.
+  const runsPerDay = (24 * 60) / RUN_INTERVAL_MINUTES;
+  assert.ok(runsPerDay <= 200, `${runsPerDay} runs/day exceeds the allowance`);
 });
 
 test('rejects what the older, looser filters let through', () => {

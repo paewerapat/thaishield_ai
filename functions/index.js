@@ -131,7 +131,19 @@ const QUERIES = [
   'Thailand AND (accident OR protest OR evacuation OR "airport closed")',
 ];
 
-const RUN_INTERVAL_MS = 15 * 60 * 1000;
+/**
+ * How often the sync runs. Chosen against newsdata.io's free allowance of 200
+ * credits/day at one credit per request: 10 minutes is 144/day, leaving room
+ * for redeploys and manual checks. 5 minutes would be 288 and blow it.
+ *
+ * The schedule string is derived from this constant rather than written out
+ * separately, because `queryForRun` buckets the clock by the same number. Set
+ * them independently and the rotation silently desyncs from the actual runs —
+ * a 10-minute schedule against a 15-minute bucket yields A, A, B, A instead of
+ * A, B, A, B, so one query set runs twice as often as the other.
+ */
+const RUN_INTERVAL_MINUTES = 10;
+const RUN_INTERVAL_MS = RUN_INTERVAL_MINUTES * 60 * 1000;
 
 function queryForRun(now = Date.now()) {
   return QUERIES[Math.floor(now / RUN_INTERVAL_MS) % QUERIES.length];
@@ -162,13 +174,16 @@ function parsePubDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-// Runs every 15 minutes — 96 requests/day against newsdata.io's free-tier
-// allowance of 200 credits/day, one credit per request — fetches Thailand
-// travel-disruption news, and overwrites the `travel_alerts_cache` Firestore
-// collection so every app install reads a single shared, server-refreshed
-// result instead of each device calling the news API on its own.
+// Runs every RUN_INTERVAL_MINUTES, fetches Thailand travel-disruption news,
+// and refreshes the `travel_alerts_cache` Firestore collection so every app
+// install reads a single shared, server-refreshed result instead of each
+// device calling the news API on its own.
 exports.syncTravelAlerts = onSchedule(
-  {schedule: 'every 15 minutes', secrets: [NEWSDATA_API_KEY], timeoutSeconds: 60},
+  {
+    schedule: `every ${RUN_INTERVAL_MINUTES} minutes`,
+    secrets: [NEWSDATA_API_KEY],
+    timeoutSeconds: 60,
+  },
   async () => {
     const query = queryForRun();
     const response = await fetch(buildNewsdataUrl(NEWSDATA_API_KEY.value(), query));
@@ -272,4 +287,6 @@ exports._internals = {
   QUERIES,
   SEARCH_TERMS,
   THAI_PLACES,
+  RUN_INTERVAL_MS,
+  RUN_INTERVAL_MINUTES,
 };
