@@ -7,10 +7,16 @@ import '../models/travel_alert.dart';
 /// Firestore collection.
 ///
 /// The collection is populated by the scheduled `syncTravelAlerts` Cloud
-/// Function (see `functions/index.js`), which polls the GNews API every 15
+/// Function (see `functions/index.js`), which polls newsdata.io every 15
 /// minutes and writes the shared result once for every app install to
-/// read — this keeps the whole user base within GNews' free-tier quota of
-/// 100 requests/day, instead of each device calling GNews on its own.
+/// read — this keeps the whole user base within newsdata.io's free-tier
+/// allowance of 200 credits/day, instead of each device calling the news API
+/// on its own.
+///
+/// The function filters for Thai places and disruption words before writing,
+/// but the client filters again in `TravelAlert.category`: the cache holds up
+/// to a week of stories, so a rule tightened today still has yesterday's
+/// documents to contend with.
 class TravelAlertService {
   TravelAlertService._();
   static final TravelAlertService instance = TravelAlertService._();

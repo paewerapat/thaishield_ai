@@ -45,7 +45,7 @@ check (§4, Phase 2C) if you do.
 | B1 | **Language Onboarding** — first-launch language picker (TH, EN, ZH, KO, RU, JA), `shared_preferences` + `LocaleProvider`, ARB + `flutter_localizations`, 5-tab bottom nav (Home / Scan / Map / SOS / Profile), language switch from Profile, Android release signing + Play AAB upload | ✅ Complete |
 | B2 | **Firebase Backend Setup** — `flutterfire configure`, `firebase_core` + `cloud_firestore`, `Firebase.initializeApp()` in `main.dart`, `FirestoreService` reading the three content collections | ✅ Complete |
 | B3 | **Fair Price & Travel Alert Map v1** — `google_maps_flutter`, partner pins from `partner_locations`, custom pop-up (name, rating, verified badge), colored `alert_zones` overlays: green (safe) / amber (caution) / red (danger) | ✅ Complete |
-| B4 | **Home Travel Alerts (GNews)** — see §2.1 below | ✅ Complete |
+| B4 | **Home Travel Alerts (newsdata.io)** — see §2.1 below | ✅ Complete |
 | B5 | **AI Price Scanner** — see §2.2 below | ✅ Complete |
 | B6 | **AI Voice SOS (STT → Gemini → Thai TTS)** — see §2.3 below | ✅ Complete |
 | B7 | **Web CMS / Admin Dashboard** (separate repo, quotation Phase 1) — see §2.4 below | ✅ Delivered & deployed |
@@ -56,26 +56,45 @@ check (§4, Phase 2C) if you do.
 > are **not** the source of truth and **will overwrite staff edits if run against
 > production**.
 
-### 2.1 Home Travel Alerts (GNews) — implementation notes
+### 2.1 Home Travel Alerts (newsdata.io) — implementation notes
+
+*(Moved off GNews on 2026-08-17. Nothing about the Firestore contract or the client
+changed — only the function's source, query shape and field mapping.)*
 
 - Shows Thailand travel-disruption news (floods, storms, fires, road closures, major
-  accidents) on the Home tab and a full list screen, sourced from the
-  [GNews API](https://gnews.io/docs/v4).
-- **Server-side shared cache — the Flutter app never calls GNews directly.** The scheduled
-  Cloud Function `syncTravelAlerts` (`functions/index.js`, `asia-southeast1`) polls GNews
-  **every 15 minutes**, filters to items mentioning "Thailand"/"Bangkok" plus a
-  travel-disruption keyword, and upserts into `travel_alerts_cache` (doc id = md5 of the
-  article URL, so re-runs update in place; docs no longer returned by GNews are deleted in
-  the same batch).
+  accidents) on the Home tab and a full list screen, sourced from
+  [newsdata.io](https://newsdata.io/documentation) (`/api/1/latest`).
+- **Server-side shared cache — the Flutter app never calls the news API directly.** The
+  scheduled Cloud Function `syncTravelAlerts` (`functions/index.js`, `asia-southeast1`)
+  polls **every 15 minutes**, filters to Thai places plus a travel-disruption keyword, and
+  upserts into `travel_alerts_cache` (doc id = newsdata.io's own `article_id`).
 - **Why server-side:** `shared_preferences` is per-device. A client-side fetch means every
   install runs its own timer against the *same* API key, so volume scales with install
-  count and blows the 100 req/day free tier. One server-side fetch keeps usage constant
-  (24h × 4/hr = 96 req/day) regardless of user count.
+  count and blows the free tier. One server-side fetch keeps usage constant (24h × 4/hr =
+  96 requests/day against an allowance of 200 credits) regardless of user count.
+- ⚠️ **The free plan rejects any `q` over 100 characters** (`UnsupportedQueryLength`, HTTP
+  422). The old GNews query was 183, so `QUERIES` holds two halves that alternate between
+  runs, chosen from the clock — one request per run, each half on an effective 30-minute
+  cadence. Adding a term means checking the length; a test enforces it.
+- ⚠️ **Do not use `country=th`.** It filters by the *source's* country, so it returns
+  Bangkok Post's Kyiv and Hawaii wire copy while missing "Flash flood warning issued for 39
+  Thai provinces" from an outlet registered elsewhere. The query is anchored on "Thailand"
+  instead, and `THAI_PLACES` re-checks the text.
+- ⚠️ **Judge location from title and description only, never `keywords`.** That field is
+  the publisher's taxonomy — Bangkok Post tags most of its output "thailand", which put
+  Kyiv and Hungary stories on the Home tab.
+- Field mapping differs from GNews: `link`→`url`, `image_url`→`image`, `source_name`,
+  and `pubDate` is `"YYYY-MM-DD HH:mm:ss"` in **UTC** — parse it with the `Z` appended or
+  V8 reads it as local time and dates every article seven hours early.
+- Pruning is **age-based**, not "anything this run did not return". With two rotating
+  queries the latter would delete half the cache every 15 minutes.
 - The app (`lib/features/home/services/travel_alert_service.dart`) does a plain Firestore
   read ordered by `published_at desc`.
-- The GNews key is **not** in the client — it is a Functions secret (`GNEWS_API_KEY`).
-- Keep `SEARCH_TERMS` in `functions/index.js` in sync with the display-only category
-  keyword list in `lib/features/home/models/travel_alert.dart`.
+- The key is **not** in the client — it is a Functions secret (`NEWSDATA_API_KEY`).
+- Keep `SEARCH_TERMS` and `NON_EVENT_PHRASES` in `functions/index.js` in sync with the
+  category keyword list and `_nonEventPhrases` in
+  `lib/features/home/models/travel_alert.dart`.
+- `cd functions && npm test` runs the filter's unit tests (node:test, no network).
 
 ### 2.2 AI Price Scanner — implementation notes
 
@@ -463,9 +482,9 @@ flutterfire configure          # generates lib/firebase_options.dart (Android + 
 ```
 
 ```bash
-# Cloud Functions (GNews sync — §2.1)
+# Cloud Functions (news sync — §2.1)
 cd functions && npm install                       # once, and after editing package.json
-firebase functions:secrets:set GNEWS_API_KEY      # once, or when the key rotates
+firebase functions:secrets:set NEWSDATA_API_KEY   # once, or when the key rotates
 firebase deploy --only functions:syncTravelAlerts
 ```
 
