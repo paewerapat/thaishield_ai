@@ -11,6 +11,7 @@ class ScanResult {
     this.level,
     this.latitude,
     this.longitude,
+    this.isAiEstimated = false,
   });
 
   final PriceStandard standard;
@@ -25,6 +26,12 @@ class ScanResult {
   final double? latitude;
   final double? longitude;
 
+  /// True when [standard] is not a `price_standards` document at all but a
+  /// range Gemini guessed for a dish we do not carry. Nothing here was
+  /// reviewed by staff, so the UI labels it and never dresses it up as a
+  /// standard (`CLAUDE.md` §10).
+  final bool isAiEstimated;
+
   bool get hasLocation => latitude != null && longitude != null;
 
   /// True when this result only identifies the dish (e.g. via Gemini Vision
@@ -34,6 +41,42 @@ class ScanResult {
 
   static ScanResult referenceOnly(PriceStandard standard, {double? latitude, double? longitude}) {
     return ScanResult(standard: standard, latitude: latitude, longitude: longitude);
+  }
+
+  /// A dish that is not in `price_standards`, carrying the model's own range.
+  ///
+  /// The synthetic [PriceStandard] exists so the results UI can stay one code
+  /// path; [isAiEstimated] is what the UI branches on. Its `id` is empty on
+  /// purpose — nothing may look this up, write it back, or treat it as a
+  /// document. Only `en` and `th` names come back from the model, so the other
+  /// four languages fall back to the English name, which for a dish name is
+  /// usually the romanisation a traveller would say out loud anyway.
+  static ScanResult aiEstimated({
+    required String nameEn,
+    required String nameTh,
+    required double minPrice,
+    required double maxPrice,
+    double? latitude,
+    double? longitude,
+  }) {
+    return ScanResult(
+      standard: PriceStandard(
+        id: '',
+        nameEn: nameEn,
+        nameTh: nameTh.isEmpty ? nameEn : nameTh,
+        nameZh: nameEn,
+        nameKo: nameEn,
+        nameRu: nameEn,
+        nameJa: nameEn,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        category: 'food',
+        updatedAt: DateTime.now(),
+      ),
+      latitude: latitude,
+      longitude: longitude,
+      isAiEstimated: true,
+    );
   }
 
   static ScanResult fromDetection(

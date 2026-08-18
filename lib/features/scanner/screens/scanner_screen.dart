@@ -68,25 +68,26 @@ class _ScannerScreenState extends State<ScannerScreen> {
       if (!mounted) return;
       setState(() => _state = _ScanState.identifying);
 
-      final dishName = await GeminiVisionService.instance.identifyDish(
+      final identification = await GeminiVisionService.instance.identifyDish(
         imageFile,
         knownDishNames: standards.map((s) => s.nameEn).toList(),
         latitude: position?.latitude,
         longitude: position?.longitude,
       );
 
-      if (dishName == null) {
+      if (identification == null) {
         if (!mounted) return;
         setState(() => _state = _ScanState.noMatch);
         return;
       }
 
-      final standard =
-          PriceScanService.instance.findStandardByName(dishName, standards);
+      final standard = identification.isKnownDish
+          ? PriceScanService.instance
+              .findStandardByName(identification.knownDishName!, standards)
+          : null;
       if (!mounted) return;
-      if (standard == null) {
-        setState(() => _state = _ScanState.noMatch);
-      } else {
+
+      if (standard != null) {
         setState(() {
           _state = _ScanState.results;
           _results = [
@@ -97,7 +98,30 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ];
         });
+        return;
       }
+
+      // Not in price_standards. Rather than the dead end this used to be, show
+      // the model's own range — clearly badged as an unverified estimate, and
+      // only when it was confident enough to be worth showing at all.
+      if (identification.hasUsableEstimate) {
+        setState(() {
+          _state = _ScanState.results;
+          _results = [
+            ScanResult.aiEstimated(
+              nameEn: identification.genericNameEn!,
+              nameTh: identification.genericNameTh ?? '',
+              minPrice: identification.estimatedMin!,
+              maxPrice: identification.estimatedMax!,
+              latitude: position?.latitude,
+              longitude: position?.longitude,
+            ),
+          ];
+        });
+        return;
+      }
+
+      setState(() => _state = _ScanState.noMatch);
     } catch (_) {
       if (!mounted) return;
       setState(() => _state = _ScanState.error);
@@ -573,7 +597,7 @@ class _HeroSection extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (result.isReferenceOnly) ...[
-                  const _AiBadge(),
+                  _AiBadge(isEstimate: result.isAiEstimated),
                   const SizedBox(height: 6),
                 ],
                 Text(
@@ -647,7 +671,12 @@ class _CategoryBackground extends StatelessWidget {
 }
 
 class _AiBadge extends StatelessWidget {
-  const _AiBadge();
+  const _AiBadge({this.isEstimate = false});
+
+  /// True when the range below it is the model's guess rather than a
+  /// staff-curated `price_standards` entry. The two must not look alike —
+  /// see `CLAUDE.md` §10 and ScanResult.isAiEstimated.
+  final bool isEstimate;
 
   @override
   Widget build(BuildContext context) {
@@ -655,17 +684,30 @@ class _AiBadge extends StatelessWidget {
       padding:
           const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFB300).withValues(alpha: 0.9),
+        // Deliberately not the gold of a confirmed reference: an unverified
+        // estimate reads as a neutral note, not as a finding.
+        color: (isEstimate
+                ? const Color(0xFF607D8B)
+                : const Color(0xFFFFB300))
+            .withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.auto_awesome_rounded,
-              color: Colors.white, size: 12),
+          Icon(
+            isEstimate
+                ? Icons.info_outline_rounded
+                : Icons.auto_awesome_rounded,
+            color: Colors.white,
+            size: 12,
+          ),
           const SizedBox(width: 4),
           Text(
-            appText(context, 'scanner_ai_identified'),
+            appText(
+              context,
+              isEstimate ? 'scanner_ai_estimated' : 'scanner_ai_identified',
+            ),
             style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
@@ -747,7 +789,12 @@ class _PriceDisplay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            appText(context, 'scanner_reference_range'),
+            appText(
+              context,
+              result.isAiEstimated
+                  ? 'scanner_estimated_range'
+                  : 'scanner_reference_range',
+            ),
             style: const TextStyle(
                 color: Color(0xFF90A4AE), fontSize: 13),
           ),
@@ -1103,6 +1150,7 @@ class _TipForYouCard extends StatelessWidget {
   final ScanResult result;
 
   String _tipKey() {
+    if (result.isAiEstimated) return 'scanner_tip_estimated';
     if (result.isReferenceOnly) return 'scanner_tip_reference';
     return switch (result.level!) {
       VarianceLevel.within => 'scanner_tip_within',

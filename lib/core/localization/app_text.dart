@@ -437,6 +437,26 @@ const Map<String, Map<String, String>> _appText = {
   'scanner_ai_identified': {
     'th': 'AI ระบุเมนู', 'en': 'AI Identified', 'zh': 'AI 识别', 'ko': 'AI 식별됨', 'ru': 'Определено ИИ', 'ja': 'AI識別',
   },
+  // Shown when the dish is not in price_standards at all and the range below
+  // it came from Gemini. Wording follows CLAUDE.md §10: it states where the
+  // number came from and that nobody has checked it, and says nothing about
+  // any shop or about the price being fair or unfair.
+  'scanner_ai_estimated': {
+    'th': 'ประมาณการโดย AI • ยังไม่ได้ตรวจสอบ',
+    'en': 'AI Estimate • Not Verified',
+    'zh': 'AI 估算 • 未经核实',
+    'ko': 'AI 추정 • 미확인',
+    'ru': 'Оценка ИИ • не проверено',
+    'ja': 'AI推定 • 未確認',
+  },
+  'scanner_estimated_range': {
+    'th': 'ช่วงราคาโดยประมาณ (ยังไม่มีในฐานข้อมูลราคามาตรฐาน)',
+    'en': 'Estimated Price Range (not yet in our price database)',
+    'zh': '预估价格范围（尚未收录于价格数据库）',
+    'ko': '예상 가격대 (아직 가격 데이터베이스에 없음)',
+    'ru': 'Примерный диапазон цен (пока нет в базе цен)',
+    'ja': '推定価格帯（価格データベース未収録）',
+  },
   'scanner_reference_range': {
     'th': 'ช่วงราคาทั่วไปสำหรับเมนูนี้',
     'en': 'Typical Price Range for This Dish',
@@ -527,6 +547,14 @@ const Map<String, Map<String, String>> _appText = {
   },
   'scanner_tip_significant': {
     'th': 'พบความแตกต่างของราคาอย่างมีนัยสำคัญ ควรเปรียบเทียบราคาก่อนตัดสินใจ', 'en': 'Significant price variation detected. We recommend comparing prices before purchasing.', 'zh': '发现显著价格差异，建议购买前进行比较', 'ko': '상당한 가격 차이가 감지되었습니다. 구매 전 가격을 비교하는 것을 권장합니다', 'ru': 'Обнаружено значительное отклонение цены. Рекомендуем сравнить перед покупкой', 'ja': '大きな価格差が検出されました。購入前に比較することをお勧めします',
+  },
+  'scanner_tip_estimated': {
+    'th': 'ตัวเลขนี้ AI ประเมินจากรูป ยังไม่ได้ตรวจสอบโดยทีมงาน ใช้เป็นแนวทางคร่าว ๆ เท่านั้น ราคาจริงต่างกันได้ตามสถานที่และช่วงเวลา',
+    'en': 'This figure was estimated by AI from the photo and has not been reviewed by our team. Treat it as a rough guide only — actual prices vary by place and time.',
+    'zh': '此数字由 AI 根据照片估算，尚未经我们的团队核实。仅供粗略参考，实际价格因地点和时间而异',
+    'ko': '이 금액은 AI가 사진을 보고 추정한 값이며 담당 팀이 확인하지 않았습니다. 대략적인 참고용으로만 사용하세요. 실제 가격은 장소와 시간에 따라 다릅니다',
+    'ru': 'Эта сумма рассчитана ИИ по фотографии и не проверена нашей командой. Используйте её лишь как примерный ориентир — реальные цены зависят от места и времени',
+    'ja': 'この金額はAIが写真から推定したもので、担当チームによる確認は行われていません。おおよその目安としてのみご利用ください。実際の価格は場所や時間によって異なります',
   },
   'scanner_tip_reference': {
     'th': 'เปรียบเทียบราคาก่อนซื้อ ราคาอาจแตกต่างกันตามสถานที่และเวลา', 'en': 'Compare prices before you buy. Prices may vary by location and time.', 'zh': '购买前请比较价格。价格可能因地点和时间而异', 'ko': '구매 전 가격을 비교하세요. 가격은 장소와 시간에 따라 다를 수 있습니다', 'ru': 'Сравните цены перед покупкой. Цены могут различаться в зависимости от места и времени', 'ja': '購入前に価格を比較してください。価格は場所や時間によって異なる場合があります',
@@ -799,6 +827,13 @@ const Map<String, Map<String, String>> _appText = {
     'ja': 'この情報は統計データとコミュニティデータに基づいて生成されたもので、参考情報です。',
   },
 };
+
+/// Every string in every language, keyed the same way [appText] reads them.
+///
+/// Exposed so tests can assert on the copy itself without a widget tree —
+/// specifically that a key exists in all six languages, and that it obeys the
+/// §10 wording rules. Widgets should call [appText] instead.
+Map<String, Map<String, String>> get appStrings => _appText;
 
 /// Returns the localized string for [key] based on the app's current
 /// locale, falling back to English if no translation exists.

@@ -113,9 +113,27 @@ Two-stage matching from a native camera capture (`image_picker`):
    dish names — never stored, never used for location-specific pricing (`price_standards`
    has no location dimension). The identified name is looked up and shown as a **typical
    price range only** (no variance bar — no price was actually scanned).
+3. **AI estimate** (added 2026-08-18): if the dish is not in `price_standards` at all, the
+   same Vision call also returns a generic name and the model's own rough THB range, shown
+   as a clearly-labelled estimate instead of the "no match" dead end this used to be.
 
 - **Visual output:** colored variance bar (e.g. "+15% from standard price") for OCR
-  matches; a plain typical-range card with an "AI Identified" badge for Vision matches.
+  matches; a plain typical-range card with an "AI Identified" badge for Vision matches;
+  the same card with a grey **"ประมาณการโดย AI • ยังไม่ได้ตรวจสอบ" / "AI Estimate • Not
+  Verified"** badge for stage 3.
+- 🚨 **Stage 3 is a guess and must never be dressed as anything else.** `price_standards`
+  ranges carry a staff member's judgement; these carry none. Therefore:
+  - **Never** a variance bar or a percentage against an AI-estimated range — `ScanResult`
+    keeps `detectedPrice` null, so `isReferenceOnly` already enforces this.
+  - The synthetic `PriceStandard` behind it has an **empty `id`**. Nothing may look it up,
+    cache it, or write it back to Firestore.
+  - `confidence: low` responses are **discarded**, not shown with a caveat — a number a
+    tourist might repeat to a vendor is worse than no number.
+  - Copy follows §10 like everything else, and `test/dish_identification_test.dart` asserts
+    both the six-language coverage and the absence of accusatory wording.
+- There is **no** feedback loop writing unmatched dish names back to Firestore. That was
+  considered and deliberately deferred: client writes are barred by §9, and it would need a
+  Cloud Function.
 - ⚠️ **Model version — verify before touching this code.** The scanner service was written
   against `gemini-2.5-flash`, but §2.3 records that all 2.x variants now return
   404 "not available to new users" for this API key and that `gemini-3.5-flash` is the
