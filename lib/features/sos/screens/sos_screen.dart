@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../../../core/config/api_keys.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../services/sos_response_parsing.dart';
 
 enum _SosState { idle, listening, processing, speaking, error }
 
@@ -37,6 +38,7 @@ class _SosScreenState extends State<SosScreen>
   String _currentLangCode = 'en';
   double _soundLevel = 0.0;
   bool _isRecording = false;
+  bool _starting = false;
   int _elapsedSeconds = 0;
 
   /// Hard cap on a single recording. Keeps the base64 upload small, and is
@@ -104,8 +106,20 @@ class _SosScreenState extends State<SosScreen>
   }
 
   Future<void> _startListening() async {
-    if (_state != _SosState.idle) return;
+    // `_state` alone is not enough of a guard: everything below the check is
+    // asynchronous, so a second press can arrive while the first is still
+    // waiting on the permission dialog or on the recorder, and two starts
+    // against one recorder is one of the ways this screen used to lock up.
+    if (_state != _SosState.idle || _starting) return;
+    _starting = true;
+    try {
+      await _startListeningInner();
+    } finally {
+      _starting = false;
+    }
+  }
 
+  Future<void> _startListeningInner() async {
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final granted = await _ensureMicPermission();
     if (!granted) {
@@ -132,14 +146,37 @@ class _SosScreenState extends State<SosScreen>
       _isRecording = true;
     });
 
-    await _recorder.start(
-      const RecordConfig(
-        encoder: AudioEncoder.wav,
-        sampleRate: 16000,
-        numChannels: 1,
-      ),
-      path: audioPath,
-    );
+    // The previous run may still be tearing down — the TTS engine holds audio
+    // focus until it is stopped, and the recorder plugin throws if start()
+    // lands while a stop is in flight. This await used to be unguarded, so
+    // that throw escaped an async callback with nobody to catch it and left
+    // the screen sitting in `listening` with nothing recording: the freeze on
+    // the second "speak again", where the button no longer did anything at
+    // all.
+    try {
+      await _tts.stop();
+      if (await _recorder.isRecording()) {
+        await _recorder.stop();
+      }
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+        path: audioPath,
+      );
+    } catch (error) {
+      debugPrint('[SOS] recorder start failed: $error');
+      _isRecording = false;
+      if (mounted) {
+        setState(() {
+          _state = _SosState.error;
+          _errorKey = 'sos_error_mic';
+        });
+      }
+      return;
+    }
 
     // Poll amplitude every 120ms for the sound level bar
     final startedAt = DateTime.now();
@@ -170,8 +207,17 @@ class _SosScreenState extends State<SosScreen>
     _maxDurationTimer?.cancel();
     _isRecording = false;
 
-    final path = await _recorder.stop();
+    // Guarded for the same reason as start(): this await sat outside the
+    // try below, so a plugin-level failure here skipped the error state
+    // entirely and stranded the screen on `listening`.
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } catch (error) {
+      debugPrint('[SOS] recorder stop failed: $error');
+    }
 
+    if (!mounted) return;
     setState(() => _state = _SosState.processing);
 
     try {
@@ -285,9 +331,15 @@ class _SosScreenState extends State<SosScreen>
             'audioChannelCount': 1,
             'languageCode': languageCode,
             'enableAutomaticPunctuation': true,
-            // Short bursts of speech, not dictation — this is someone holding
-            // a button to say one urgent sentence.
-            if (withModel) 'model': 'latest_short',
+            // `latest_long`, not `latest_short`, despite the recording being
+            // capped at 30 seconds. The short model is tuned for commands —
+            // a word or two — and someone describing an emergency pauses
+            // mid-sentence, which is spontaneous speech, what the long model
+            // is for. Probed against the live API on 2026-08-18: the same
+            // five languages accept it as accepted `latest_short`
+            // (th-TH, en-US, ko-KR, ru-RU, ja-JP), and zh-CN rejects both,
+            // which the retry below already handles.
+            if (withModel) 'model': 'latest_long',
           },
           'audio': {'content': audioBase64},
         }),
@@ -315,11 +367,7 @@ class _SosScreenState extends State<SosScreen>
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final results = data['results'] as List?;
-    if (results == null || results.isEmpty) return null;
-    final alternatives = results.first['alternatives'] as List?;
-    if (alternatives == null || alternatives.isEmpty) return null;
-    return alternatives.first['transcript'] as String?;
+    return transcriptFromSpeechResponse(data);
   }
 
   Future<String?> _translateToThai(String spokenInput) async {
@@ -350,7 +398,10 @@ class _SosScreenState extends State<SosScreen>
           'parts': [{'text': userMessage}],
         }
       ],
-      'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 200},
+      // 200 was tight enough to clip a long sentence: Thai runs several tokens
+      // per word, and any reasoning the model emits is charged against the
+      // same budget before a single character of the answer is.
+      'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 512},
     });
 
     if (ApiKeys.gemini.isEmpty) return null;
@@ -370,11 +421,7 @@ class _SosScreenState extends State<SosScreen>
     }
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final candidates = decoded['candidates'] as List?;
-    if (candidates == null || candidates.isEmpty) return null;
-    final parts = (candidates.first['content']?['parts'] as List?) ?? [];
-    if (parts.isEmpty) return null;
-    return (parts.first['text'] as String?)?.trim();
+    return textFromGeminiResponse(decoded);
   }
 
   Future<void> _replay() async {
@@ -383,18 +430,33 @@ class _SosScreenState extends State<SosScreen>
     await _tts.speak(_thaiText);
   }
 
-  void _reset() {
+  Future<void> _reset() async {
     _ampTimer?.cancel();
     _maxDurationTimer?.cancel();
     _isRecording = false;
-    _recorder.stop();
-    _tts.stop();
-    setState(() {
-      _state = _SosState.idle;
-      _spokenText = '';
-      _thaiText = '';
-      _soundLevel = 0.0;
-    });
+
+    // The UI goes back to idle immediately; the teardown below is what the
+    // user is not waiting for.
+    if (mounted) {
+      setState(() {
+        _state = _SosState.idle;
+        _spokenText = '';
+        _thaiText = '';
+        _soundLevel = 0.0;
+      });
+    }
+
+    // Awaited now. These two were fire-and-forget, which is how a press of
+    // "speak again" could reach _startListening() while the TTS engine still
+    // held audio focus and the recorder was still stopping.
+    try {
+      await _tts.stop();
+      if (await _recorder.isRecording()) {
+        await _recorder.stop();
+      }
+    } catch (error) {
+      debugPrint('[SOS] reset teardown failed: $error');
+    }
   }
 
   @override
