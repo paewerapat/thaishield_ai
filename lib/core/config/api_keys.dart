@@ -24,4 +24,18 @@ class ApiKeys {
   /// In Codemagic, set GEMINI_API_KEY as a secure environment variable and
   /// pass --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY in the build script.
   static const String gemini = String.fromEnvironment('GEMINI_API_KEY');
+
+  /// Google **Routes API** key, used by the Route Suggestion preview
+  /// (Phase 2B task 2.4):
+  ///   flutter run --dart-define=ROUTES_API_KEY=your_key_here
+  ///
+  /// Kept separate from the Maps SDK keys committed in `AndroidManifest.xml`
+  /// and `AppDelegate.swift` on purpose. Those are *SDK* keys, which Google
+  /// lets you lock to an app signature / bundle id, so embedding them is safe.
+  /// Routes is a **web service** — Google does not honour Android/iOS
+  /// application restrictions on it, so the only restriction available is
+  /// "API restriction: Routes API" plus a quota cap. Restrict it to Routes and
+  /// set a daily quota in Cloud Console; a leaked unrestricted key bills to
+  /// this project. See the note in `route_service.dart` about cost.
+  static const String googleRoutes = String.fromEnvironment('ROUTES_API_KEY');
 }

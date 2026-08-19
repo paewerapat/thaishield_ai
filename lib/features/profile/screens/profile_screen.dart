@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,6 +10,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../onboarding/screens/language_selection_screen.dart';
+import '../../premium/models/premium_plan.dart';
+import '../../premium/providers/premium_provider.dart';
+import '../../premium/screens/paywall_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -95,6 +99,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                 child: Column(
                   children: [
+                    _buildPremiumCard(context),
+                    const SizedBox(height: 16),
                     _buildLocationCard(context),
                     const SizedBox(height: 16),
                     _buildEmergencyCard(context),
@@ -109,12 +115,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       appText(context, 'profile_about_title'),
                       'Version 1.0.0',
                     ),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 12),
+                      const _QaPremiumSwitch(),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Premium status and the way into the paywall (Phase 2B task 2.5).
+  ///
+  /// Doubles as the place a paying user checks what they have — which is the
+  /// only view of their entitlement the app offers, there being no account
+  /// screen (§7).
+  Widget _buildPremiumCard(BuildContext context) {
+    final premium = context.watch<PremiumProvider>();
+    final entitlement = premium.entitlement;
+    final active = premium.isPremium;
+
+    final String subtitle;
+    if (!active) {
+      subtitle = appText(context, 'premium_status_free_subtitle');
+    } else if (premium.isQaUnlocked) {
+      subtitle = appText(context, 'premium_status_qa');
+    } else if (entitlement?.expiresAt case final expiry?) {
+      final local = expiry.toLocal();
+      subtitle = appText(context, 'premium_status_expires').replaceFirst(
+        '{date}',
+        '${local.day}/${local.month}/${local.year}',
+      );
+    } else {
+      subtitle = appText(context, 'premium_plan_lifetime');
+    }
+
+    final accent = active ? const Color(0xFF2E7D32) : const Color(0xFFFFB300);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              active
+                  ? Icons.workspace_premium_rounded
+                  : Icons.lock_open_rounded,
+              color: active ? accent : const Color(0xFFB07800),
+              size: 21,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appText(
+                    context,
+                    active
+                        ? 'premium_status_active_title'
+                        : 'premium_status_free_title',
+                  ),
+                  style: const TextStyle(
+                    color: Color(0xFF0D1B2A),
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF90A4AE),
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!active) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => showPaywall(context),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF2E7D32),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              child: Text(
+                appText(context, 'premium_upgrade_action'),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -425,6 +539,58 @@ class _EmergencyRow extends StatelessWidget {
             label: Text(appText(context, 'profile_call')),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// QA unlock — the override the Phase 2B definition of done requires so
+/// testers can exercise the gated features before billing exists.
+///
+/// Compiled into debug builds only (the call site is behind `kDebugMode`), and
+/// `PremiumProvider.qaUnlock` refuses outside debug on top of that, so this
+/// cannot become a way to unlock a shipped app. Deliberately not localised:
+/// it is a developer control that never reaches a user.
+class _QaPremiumSwitch extends StatelessWidget {
+  const _QaPremiumSwitch();
+
+  @override
+  Widget build(BuildContext context) {
+    final premium = context.watch<PremiumProvider>();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFB300)),
+      ),
+      child: SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        activeThumbColor: const Color(0xFF2E7D32),
+        title: const Text(
+          'QA: unlock Premium',
+          style: TextStyle(
+            color: Color(0xFF0D1B2A),
+            fontSize: 13.5,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          PremiumProvider.qaOverrideFlag
+              ? 'Forced on by --dart-define=PREMIUM_OVERRIDE=true'
+              : 'Debug builds only. Grants a yearly entitlement locally.',
+          style: const TextStyle(color: Color(0xFF795548), fontSize: 11),
+        ),
+        value: premium.isPremium,
+        // The build-time override wins outright; a switch that silently did
+        // nothing would be worse than one that is visibly disabled.
+        onChanged: PremiumProvider.qaOverrideFlag
+            ? null
+            : (on) => on
+                ? premium.qaUnlock(PremiumPlan.yearly)
+                : premium.qaLock(),
       ),
     );
   }

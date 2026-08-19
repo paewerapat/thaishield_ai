@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'core/providers/locale_provider.dart';
 import 'features/home/screens/home_screen.dart';
+import 'features/premium/providers/premium_provider.dart';
 import 'features/onboarding/screens/language_selection_screen.dart';
 import 'firebase_options.dart';
 
@@ -17,9 +18,18 @@ void main() async {
 
   final localeProvider = LocaleProvider();
   await localeProvider.loadSavedLocale();
+
+  // Loaded before the first frame, like the locale, so no screen ever has to
+  // render an "entitlement unknown" state. See PremiumProvider.isLoaded.
+  final premiumProvider = PremiumProvider();
+  await premiumProvider.load();
+
   runApp(
-    ChangeNotifierProvider.value(
-      value: localeProvider,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: localeProvider),
+        ChangeNotifierProvider.value(value: premiumProvider),
+      ],
       child: const ThaiShieldApp(),
     ),
   );

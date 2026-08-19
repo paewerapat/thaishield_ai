@@ -112,3 +112,31 @@ String formatDistance(double km, {required bool isTh}) {
   final value = km.toStringAsFixed(1);
   return isTh ? '$value กม.' : '$value km';
 }
+
+/// The smallest [LatLngBounds] containing every point in [points], padded by
+/// [paddingDeg] so a route drawn edge-to-edge is not clipped by the map frame.
+///
+/// Returns null for an empty list. A single point (or a degenerate route where
+/// origin and destination coincide) still yields a valid box, because
+/// `GoogleMap` rejects bounds whose southwest corner is not strictly below and
+/// left of the northeast one.
+LatLngBounds? boundsFor(List<LatLng> points, {double paddingDeg = 0.002}) {
+  if (points.isEmpty) return null;
+
+  var minLat = points.first.latitude;
+  var maxLat = points.first.latitude;
+  var minLng = points.first.longitude;
+  var maxLng = points.first.longitude;
+
+  for (final p in points) {
+    if (p.latitude < minLat) minLat = p.latitude;
+    if (p.latitude > maxLat) maxLat = p.latitude;
+    if (p.longitude < minLng) minLng = p.longitude;
+    if (p.longitude > maxLng) maxLng = p.longitude;
+  }
+
+  return LatLngBounds(
+    southwest: LatLng(minLat - paddingDeg, minLng - paddingDeg),
+    northeast: LatLng(maxLat + paddingDeg, maxLng + paddingDeg),
+  );
+}

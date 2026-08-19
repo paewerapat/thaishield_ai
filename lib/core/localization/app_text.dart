@@ -826,6 +826,336 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Эта информация формируется на основе статистических и общественных данных и приведена исключительно в информационных целях.',
     'ja': 'この情報は統計データとコミュニティデータに基づいて生成されたもので、参考情報です。',
   },
+
+  // --- Route Suggestion (Phase 2B task 2.4) ---
+  //
+  // Wording note (§10): this feature never claims a route is "safe" or that
+  // it avoids anything — it reports distance and time as estimates from the
+  // map provider and nothing more.
+  //
+  // The location-failure states other than "denied" reuse the generic
+  // 'radar_location_disabled' / 'radar_location_error' / 'radar_retry' copy,
+  // which says nothing radar-specific. Only the denied case needed its own
+  // wording, because it has to explain what the permission is for here.
+  'route_title': {
+    'th': 'เส้นทางแนะนำ',
+    'en': 'Route Suggestion',
+    'zh': '路线建议',
+    'ko': '경로 안내',
+    'ru': 'Предлагаемый маршрут',
+    'ja': 'ルート案内',
+  },
+  'route_subtitle': {
+    'th': 'ประมาณการระยะทางและเวลาเดินทาง',
+    'en': 'Estimated distance and travel time',
+    'zh': '预计距离与行程时间',
+    'ko': '예상 거리 및 소요 시간',
+    'ru': 'Расчётное расстояние и время в пути',
+    'ja': '距離と所要時間の目安',
+  },
+  'route_to': {
+    'th': 'ไปยัง {name}',
+    'en': 'To {name}',
+    'zh': '前往 {name}',
+    'ko': '{name}까지',
+    'ru': 'До: {name}',
+    'ja': '{name} へ',
+  },
+  'route_from_your_location': {
+    'th': 'จากตำแหน่งปัจจุบันของคุณ',
+    'en': 'From your current location',
+    'zh': '从您的当前位置出发',
+    'ko': '현재 위치에서 출발',
+    'ru': 'От вашего текущего местоположения',
+    'ja': '現在地から',
+  },
+  'route_mode_drive': {
+    'th': 'รถยนต์', 'en': 'Drive', 'zh': '驾车', 'ko': '자동차', 'ru': 'На авто', 'ja': '車',
+  },
+  'route_mode_transit': {
+    'th': 'ขนส่งสาธารณะ', 'en': 'Transit', 'zh': '公共交通', 'ko': '대중교통', 'ru': 'Транспорт', 'ja': '公共交通',
+  },
+  'route_mode_walk': {
+    'th': 'เดิน', 'en': 'Walk', 'zh': '步行', 'ko': '도보', 'ru': 'Пешком', 'ja': '徒歩',
+  },
+  'route_locating': {
+    'th': 'กำลังระบุตำแหน่งของคุณ…',
+    'en': 'Finding your location…',
+    'zh': '正在获取您的位置…',
+    'ko': '현재 위치를 확인하는 중…',
+    'ru': 'Определяем ваше местоположение…',
+    'ja': '現在地を取得中…',
+  },
+  'route_calculating': {
+    'th': 'กำลังคำนวณเส้นทาง…',
+    'en': 'Calculating route…',
+    'zh': '正在计算路线…',
+    'ko': '경로를 계산하는 중…',
+    'ru': 'Рассчитываем маршрут…',
+    'ja': 'ルートを計算中…',
+  },
+  'route_estimated_time': {
+    'th': 'เวลาโดยประมาณ', 'en': 'Estimated time', 'zh': '预计时间', 'ko': '예상 시간', 'ru': 'Примерное время', 'ja': '所要時間の目安',
+  },
+  'route_distance': {
+    'th': 'ระยะทาง', 'en': 'Distance', 'zh': '距离', 'ko': '거리', 'ru': 'Расстояние', 'ja': '距離',
+  },
+  'route_duration_hm': {
+    'th': '{h} ชม. {m} นาที',
+    'en': '{h} hr {m} min',
+    'zh': '{h} 小时 {m} 分钟',
+    'ko': '{h}시간 {m}분',
+    'ru': '{h} ч {m} мин',
+    'ja': '{h} 時間 {m} 分',
+  },
+  'route_duration_m': {
+    'th': '{m} นาที',
+    'en': '{m} min',
+    'zh': '{m} 分钟',
+    'ko': '{m}분',
+    'ru': '{m} мин',
+    'ja': '{m} 分',
+  },
+  'route_open_in_maps': {
+    'th': 'เปิดใน Google Maps',
+    'en': 'Open in Google Maps',
+    'zh': '在 Google 地图中打开',
+    'ko': 'Google 지도에서 열기',
+    'ru': 'Открыть в Google Картах',
+    'ja': 'Google マップで開く',
+  },
+  'route_open_failed': {
+    'th': 'ไม่สามารถเปิด Google Maps ได้',
+    'en': 'Could not open Google Maps.',
+    'zh': '无法打开 Google 地图。',
+    'ko': 'Google 지도를 열 수 없습니다.',
+    'ru': 'Не удалось открыть Google Карты.',
+    'ja': 'Google マップを開けませんでした。',
+  },
+  'route_directions_button': {
+    'th': 'ดูเส้นทาง', 'en': 'Directions', 'zh': '路线', 'ko': '길찾기', 'ru': 'Маршрут', 'ja': 'ルート',
+  },
+  'route_location_denied': {
+    'th': 'ต้องอนุญาตให้เข้าถึงตำแหน่งเพื่อคำนวณเส้นทางจากจุดที่คุณอยู่',
+    'en': 'Location access is needed to build a route from where you are.',
+    'zh': '需要位置权限才能从您所在位置规划路线。',
+    'ko': '현재 위치에서 경로를 만들려면 위치 권한이 필요합니다.',
+    'ru': 'Для построения маршрута от вашего местоположения нужен доступ к геолокации.',
+    'ja': '現在地からのルートを作成するには位置情報の許可が必要です。',
+  },
+  'route_error_not_configured': {
+    'th': 'ฟีเจอร์เส้นทางยังไม่พร้อมใช้งานในแอปเวอร์ชันนี้',
+    'en': 'Route suggestions are not available in this build.',
+    'zh': '此版本暂不支持路线建议。',
+    'ko': '이 버전에서는 경로 안내를 사용할 수 없습니다.',
+    'ru': 'Маршруты недоступны в этой сборке.',
+    'ja': 'このバージョンではルート案内を利用できません。',
+  },
+  'route_error_no_route': {
+    'th': 'ไม่พบเส้นทางสำหรับการเดินทางรูปแบบนี้ ลองเลือกรูปแบบอื่น',
+    'en': 'No route found for this travel mode. Try another mode.',
+    'zh': '未找到此出行方式的路线，请尝试其他方式。',
+    'ko': '이 이동 수단으로는 경로를 찾을 수 없습니다. 다른 수단을 선택해 보세요.',
+    'ru': 'Маршрут для этого способа передвижения не найден. Попробуйте другой.',
+    'ja': 'この移動手段のルートが見つかりません。別の手段をお試しください。',
+  },
+  'route_error_network': {
+    'th': 'เชื่อมต่ออินเทอร์เน็ตไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+    'en': 'Could not connect. Please try again.',
+    'zh': '连接失败，请重试。',
+    'ko': '연결하지 못했습니다. 다시 시도해 주세요.',
+    'ru': 'Не удалось подключиться. Попробуйте ещё раз.',
+    'ja': '接続できませんでした。もう一度お試しください。',
+  },
+  'route_error_request': {
+    'th': 'ไม่สามารถคำนวณเส้นทางได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง',
+    'en': 'Could not calculate a route right now. Please try again.',
+    'zh': '目前无法计算路线，请重试。',
+    'ko': '지금은 경로를 계산할 수 없습니다. 다시 시도해 주세요.',
+    'ru': 'Сейчас не удалось рассчитать маршрут. Попробуйте ещё раз.',
+    'ja': '現在ルートを計算できません。もう一度お試しください。',
+  },
+  'route_disclaimer': {
+    'th': 'เส้นทาง ระยะทาง และเวลาที่แสดงเป็นข้อมูลประมาณการจากผู้ให้บริการแผนที่เพื่อประกอบการตัดสินใจเท่านั้น สภาพการจราจรและเส้นทางจริงอาจแตกต่างกันได้ โปรดปฏิบัติตามกฎจราจรและป้ายบอกทางเสมอ',
+    'en': 'Routes, distances and times shown are estimates provided by the map service and are intended for informational purposes only. Actual traffic and road conditions may differ. Always follow local traffic rules and road signs.',
+    'zh': '所显示的路线、距离和时间为地图服务提供的估算值，仅供参考。实际交通与道路状况可能有所不同。请始终遵守当地交通规则和道路标志。',
+    'ko': '표시된 경로, 거리, 소요 시간은 지도 서비스가 제공하는 추정치이며 참고용입니다. 실제 교통 및 도로 상황은 다를 수 있습니다. 항상 현지 교통 법규와 도로 표지를 따르세요.',
+    'ru': 'Показанные маршруты, расстояния и время — это оценки картографического сервиса, приведённые исключительно в информационных целях. Реальная дорожная обстановка может отличаться. Всегда соблюдайте местные правила дорожного движения и дорожные знаки.',
+    'ja': '表示されているルート、距離、所要時間は地図サービスによる推定値で、参考情報です。実際の交通・道路状況は異なる場合があります。現地の交通ルールと道路標識に必ず従ってください。',
+  },
+
+  // --- Paywall & feature gating (Phase 2B task 2.5) ---
+  //
+  // Wording note (§10): paywall copy is explicitly in scope for the wording
+  // rules, so every line here describes what a tool *does* — it never sells
+  // safety, never implies the app protects anyone, and never characterises any
+  // place or business.
+  'premium_title': {
+    'th': 'ThaiShield Premium',
+    'en': 'ThaiShield Premium',
+    'zh': 'ThaiShield Premium',
+    'ko': 'ThaiShield Premium',
+    'ru': 'ThaiShield Premium',
+    'ja': 'ThaiShield Premium',
+  },
+  'premium_subtitle': {
+    'th': 'ปลดล็อกเครื่องมือวางแผนการเดินทางทั้งหมด',
+    'en': 'Unlock the full set of trip-planning tools',
+    'zh': '解锁全部行程规划工具',
+    'ko': '여행 계획 도구 전체 잠금 해제',
+    'ru': 'Откройте все инструменты планирования поездки',
+    'ja': '旅行プランニング機能をすべて利用できます',
+  },
+  'premium_feature_radar': {
+    'th': 'ดูผลการค้นหารอบตัวได้ทั้งหมด',
+    'en': 'See every result around you',
+    'zh': '查看您周围的全部结果',
+    'ko': '주변의 모든 검색 결과 보기',
+    'ru': 'Все результаты поиска вокруг вас',
+    'ja': '周辺の検索結果をすべて表示',
+  },
+  'premium_feature_filter': {
+    'th': 'กรองตามหมวดหมู่และระดับข้อมูลพื้นที่',
+    'en': 'Filter by category and area information level',
+    'zh': '按类别与区域信息等级筛选',
+    'ko': '카테고리 및 구역 정보 등급별 필터',
+    'ru': 'Фильтр по категории и уровню информации о зоне',
+    'ja': 'カテゴリーとエリア情報レベルで絞り込み',
+  },
+  'premium_feature_route': {
+    'th': 'ดูเส้นทางและเวลาเดินทางโดยประมาณ',
+    'en': 'See routes and estimated travel time',
+    'zh': '查看路线与预计行程时间',
+    'ko': '경로와 예상 소요 시간 확인',
+    'ru': 'Маршруты и расчётное время в пути',
+    'ja': 'ルートと所要時間の目安を表示',
+  },
+  'premium_benefits_title': {
+    'th': 'สิ่งที่คุณจะได้รับ',
+    'en': 'What you get',
+    'zh': '包含内容',
+    'ko': '포함 기능',
+    'ru': 'Что входит',
+    'ja': '含まれる機能',
+  },
+  'premium_plan_monthly': {
+    'th': 'รายเดือน', 'en': 'Monthly', 'zh': '按月', 'ko': '월간', 'ru': 'Ежемесячно', 'ja': '月額',
+  },
+  'premium_plan_yearly': {
+    'th': 'รายปี', 'en': 'Yearly', 'zh': '按年', 'ko': '연간', 'ru': 'Ежегодно', 'ja': '年額',
+  },
+  'premium_plan_lifetime': {
+    'th': 'ตลอดชีพ', 'en': 'Lifetime', 'zh': '永久', 'ko': '평생', 'ru': 'Навсегда', 'ja': '買い切り',
+  },
+  'premium_period_monthly': {
+    'th': 'ต่อเดือน', 'en': 'per month', 'zh': '每月', 'ko': '월', 'ru': 'в месяц', 'ja': '月ごと',
+  },
+  'premium_period_yearly': {
+    'th': 'ต่อปี', 'en': 'per year', 'zh': '每年', 'ko': '년', 'ru': 'в год', 'ja': '年ごと',
+  },
+  'premium_period_lifetime': {
+    'th': 'จ่ายครั้งเดียว', 'en': 'one-time', 'zh': '一次性付款', 'ko': '1회 결제', 'ru': 'разовый платёж', 'ja': '一度のお支払い',
+  },
+  'premium_badge_recommended': {
+    'th': 'คุ้มที่สุด', 'en': 'Best value', 'zh': '最超值', 'ko': '최고 가성비', 'ru': 'Выгоднее всего', 'ja': 'いちばんお得',
+  },
+  'premium_price_note': {
+    'th': 'ราคาที่คุณต้องจ่ายจริงคือราคาที่แสดงใน Google Play หรือ App Store ของประเทศคุณ ซึ่งอาจต่างจากที่แสดงที่นี่ตามสกุลเงินและภาษี',
+    'en': 'The price you pay is the one shown by Google Play or the App Store in your country, which may differ from the figure here depending on currency and tax.',
+    'zh': '您实际支付的价格以您所在国家/地区的 Google Play 或 App Store 显示为准，可能因币种与税费而与此处不同。',
+    'ko': '실제 결제 금액은 사용자 국가의 Google Play 또는 App Store에 표시된 가격이며, 통화와 세금에 따라 여기 표시된 금액과 다를 수 있습니다.',
+    'ru': 'Вы платите ту цену, которая указана в Google Play или App Store вашей страны; она может отличаться от приведённой здесь из-за валюты и налогов.',
+    'ja': '実際にお支払いいただく金額は、お住まいの国の Google Play または App Store に表示される価格です。通貨や税により、ここに表示された金額と異なる場合があります。',
+  },
+  'premium_cta': {
+    'th': 'สมัคร Premium', 'en': 'Get Premium', 'zh': '获取 Premium', 'ko': 'Premium 시작하기', 'ru': 'Получить Premium', 'ja': 'Premium を利用する',
+  },
+  'premium_store_unavailable': {
+    'th': 'ระบบชำระเงินจะเปิดใช้งานในเวอร์ชันถัดไป',
+    'en': 'Purchases open in a later version.',
+    'zh': '购买功能将在后续版本开放。',
+    'ko': '결제 기능은 다음 버전에서 제공됩니다.',
+    'ru': 'Покупки станут доступны в следующей версии.',
+    'ja': '購入機能は今後のバージョンで提供されます。',
+  },
+  'premium_restore': {
+    'th': 'กู้คืนการซื้อ', 'en': 'Restore Purchases', 'zh': '恢复购买', 'ko': '구매 복원', 'ru': 'Восстановить покупки', 'ja': '購入を復元',
+  },
+  'premium_platform_note': {
+    'th': 'การซื้อจะผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้ซื้อ ติดตั้งใหม่หรือเปลี่ยนเครื่องแล้วกดกู้คืนการซื้อได้ แต่ไม่สามารถโอนข้ามระหว่าง Android และ iOS',
+    'en': 'Your purchase is tied to the Google Play or Apple ID account you buy it with. Reinstalling or moving to a new phone restores it, but it does not transfer between Android and iOS.',
+    'zh': '购买将绑定到您用于付款的 Google Play 或 Apple ID 账户。重装或更换手机后可恢复购买，但无法在 Android 与 iOS 之间转移。',
+    'ko': '구매는 결제에 사용한 Google Play 또는 Apple ID 계정에 연결됩니다. 재설치하거나 새 기기로 옮겨도 복원할 수 있지만 Android와 iOS 사이에는 이전되지 않습니다.',
+    'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена. После переустановки или смены телефона её можно восстановить, но она не переносится между Android и iOS.',
+    'ja': '購入は決済に使用した Google Play または Apple ID のアカウントに紐づきます。再インストールや機種変更後は復元できますが、Android と iOS の間では引き継げません。',
+  },
+  'premium_legal_note': {
+    'th': 'แพ็กเกจรายเดือนและรายปีจะต่ออายุอัตโนมัติ ยกเลิกได้ทุกเมื่อจากการตั้งค่าบัญชี Google Play หรือ Apple ID',
+    'en': 'Monthly and yearly plans renew automatically. You can cancel any time in your Google Play or Apple ID account settings.',
+    'zh': '按月与按年套餐将自动续订。您可随时在 Google Play 或 Apple ID 账户设置中取消。',
+    'ko': '월간 및 연간 플랜은 자동으로 갱신됩니다. Google Play 또는 Apple ID 계정 설정에서 언제든지 해지할 수 있습니다.',
+    'ru': 'Ежемесячный и ежегодный планы продлеваются автоматически. Отменить можно в любой момент в настройках аккаунта Google Play или Apple ID.',
+    'ja': '月額プランと年額プランは自動更新されます。Google Play または Apple ID のアカウント設定からいつでも解約できます。',
+  },
+  'premium_status_free_title': {
+    'th': 'อัปเกรดเป็น Premium',
+    'en': 'Upgrade to Premium',
+    'zh': '升级到 Premium',
+    'ko': 'Premium으로 업그레이드',
+    'ru': 'Перейти на Premium',
+    'ja': 'Premium にアップグレード',
+  },
+  'premium_status_free_subtitle': {
+    'th': 'เรดาร์แบบเต็ม ตัวกรอง และเส้นทางแนะนำ',
+    'en': 'Full radar results, filters and route suggestions',
+    'zh': '完整雷达结果、筛选与路线建议',
+    'ko': '전체 레이더 결과, 필터, 경로 안내',
+    'ru': 'Все результаты радара, фильтры и маршруты',
+    'ja': 'レーダーの全結果・フィルター・ルート案内',
+  },
+  'premium_status_active_title': {
+    'th': 'Premium กำลังใช้งาน',
+    'en': 'Premium active',
+    'zh': 'Premium 已启用',
+    'ko': 'Premium 사용 중',
+    'ru': 'Premium активен',
+    'ja': 'Premium 有効',
+  },
+  'premium_status_expires': {
+    'th': 'ใช้ได้ถึง {date}',
+    'en': 'Valid until {date}',
+    'zh': '有效期至 {date}',
+    'ko': '{date}까지 이용 가능',
+    'ru': 'Действует до {date}',
+    'ja': '{date} まで有効',
+  },
+  'premium_status_qa': {
+    'th': 'ปลดล็อกสำหรับการทดสอบ (QA)',
+    'en': 'Unlocked for testing (QA)',
+    'zh': '测试解锁 (QA)',
+    'ko': '테스트용 잠금 해제 (QA)',
+    'ru': 'Разблокировано для тестирования (QA)',
+    'ja': 'テスト用に解除中 (QA)',
+  },
+  'premium_upgrade_action': {
+    'th': 'ดูแพ็กเกจ', 'en': 'View plans', 'zh': '查看套餐', 'ko': '플랜 보기', 'ru': 'Тарифы', 'ja': 'プランを見る',
+  },
+  'premium_locked_results': {
+    'th': 'มีผลการค้นหาอีก {count} รายการในรัศมีนี้',
+    'en': '{count} more results within this radius',
+    'zh': '此范围内还有 {count} 条结果',
+    'ko': '이 반경 안에 {count}개의 결과가 더 있습니다',
+    'ru': 'Ещё {count} результатов в этом радиусе',
+    'ja': 'この範囲にあと {count} 件の結果があります',
+  },
+  'premium_locked_action': {
+    'th': 'ปลดล็อกด้วย Premium',
+    'en': 'Unlock with Premium',
+    'zh': '通过 Premium 解锁',
+    'ko': 'Premium으로 잠금 해제',
+    'ru': 'Открыть с Premium',
+    'ja': 'Premium で解除',
+  },
 };
 
 /// Every string in every language, keyed the same way [appText] reads them.

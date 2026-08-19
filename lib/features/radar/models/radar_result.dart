@@ -95,4 +95,19 @@ class RadarResult {
 
   int countIn(RadarGroup group) =>
       entries.where((e) => e.group == group).length;
+
+  /// The same result truncated to the [limit] nearest entries.
+  ///
+  /// Used by the free tier's Radar list (Phase 2B task 2.5). Truncating the
+  /// flat, distance-sorted list before grouping keeps what free users see the
+  /// *closest* things around them, rather than the first few of whichever
+  /// group happens to sort first.
+  RadarResult take(int limit) {
+    if (limit >= entries.length) return this;
+    return RadarResult(
+      center: center,
+      radiusKm: radiusKm,
+      entries: entries.take(limit < 0 ? 0 : limit).toList(),
+    );
+  }
 }

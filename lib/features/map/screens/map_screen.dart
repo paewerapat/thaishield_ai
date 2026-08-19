@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/models/alert_zone.dart';
 import '../../../core/models/partner_category.dart';
 import '../../../core/models/partner_location.dart';
+import '../../../core/services/location_service.dart';
+import '../../premium/models/premium_feature.dart';
+import '../../premium/providers/premium_provider.dart';
+import '../../premium/widgets/premium_gate.dart';
 import '../../radar/models/radar_filters.dart';
 import '../../radar/services/radar_service.dart';
 import '../../radar/widgets/filter_panel.dart';
+import '../../route/screens/route_preview_screen.dart';
 
 class _Suggestion {
   const _Suggestion(this.label, this.coords, [this.zoom = 13.0]);
@@ -264,6 +269,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   bool _searching = false;
   LatLng _mapCenter = _bangkok;
 
+  /// Last known position of the user, or null until one is obtained.
+  /// Drives the blue location dot and the 1 km radius ring.
+  LatLng? _userPosition;
+
+  /// The Map used to open on a fixed Bangkok coordinate no matter where the
+  /// user was, which is the first thing that made it feel like a picture
+  /// rather than a tool. It now frames the user once, the first time the tab
+  /// is actually shown — not in `initState`, because `IndexedStack` builds
+  /// every tab at launch and doing it there would ask for location before the
+  /// user has opened anything.
+  bool _autoLocated = false;
+
   double _distanceSq(LatLng a, LatLng b) {
     final dlat = a.latitude - b.latitude;
     final dlng = a.longitude - b.longitude;
@@ -312,7 +329,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
     // Map tab just became the visible one — staff may have published a zone
     // while the user was on another tab.
-    if (widget.isActive && !oldWidget.isActive) _refreshIfStale();
+    if (widget.isActive && !oldWidget.isActive) {
+      _refreshIfStale();
+      _autoLocate();
+    }
     final request = widget.focusRequest;
     if (request != null && !identical(request, oldWidget.focusRequest)) {
       _mapController?.animateCamera(
@@ -490,6 +510,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openFilterPanel() async {
+    if (!await ensurePremium(context, PremiumFeature.filterPanel)) return;
+    if (!mounted) return;
+
     final updated = await showRadarFilterPanel(context, _filters);
     if (updated == null || !mounted) return;
     setState(() => _filters = updated);
@@ -509,26 +532,80 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _centerOnUser() async {
-    try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _mapController?.animateCamera(CameraUpdate.newLatLng(_bangkok));
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 15),
-      );
-    } catch (_) {
-      _mapController?.animateCamera(CameraUpdate.newLatLng(_bangkok));
+  /// Zoom that fits the 1 km ring on a phone screen with a little margin.
+  /// Both entry points use it so the map always opens at the scale the ring
+  /// was designed to be read at.
+  static const _userZoom = 14.5;
+
+  /// Runs once, the first time the Map tab is shown.
+  ///
+  /// Fetches the position even when a focus request is pending — the ring and
+  /// the blue dot are wanted either way — but leaves the camera alone in that
+  /// case, because the user asked to look at something specific and having the
+  /// map jump back to them would undo it.
+  Future<void> _autoLocate() async {
+    if (_autoLocated) return;
+    _autoLocated = true;
+
+    final hasPendingFocus = widget.focusRequest != null;
+    await _updateUserPosition(moveCamera: !hasPendingFocus);
+  }
+
+  /// Gets a fix, stores it for the ring and the dot, and optionally frames it.
+  ///
+  /// Returns false when no position could be obtained, so the caller can
+  /// decide what to do about it — [_centerOnUser] falls back to Bangkok so a
+  /// deliberate tap is never silently ignored, while [_autoLocate] simply
+  /// leaves the map where it was.
+  Future<bool> _updateUserPosition({required bool moveCamera}) async {
+    final location = await LocationService.instance.current();
+    if (!mounted) return false;
+
+    if (!location.isOk) {
+      // Drop a stale dot rather than leave a ring somewhere the user is not.
+      if (_userPosition != null) setState(() => _userPosition = null);
+      return false;
     }
+
+    final position = location.position!;
+    setState(() {
+      _userPosition = position;
+      _mapCenter = position;
+    });
+    _updateNearestPartner();
+
+    if (moveCamera) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(position, _userZoom),
+      );
+    }
+    return true;
+  }
+
+  Future<void> _centerOnUser() async {
+    final located = await _updateUserPosition(moveCamera: true);
+    if (located || !mounted) return;
+    _mapController?.animateCamera(CameraUpdate.newLatLng(_bangkok));
+  }
+
+  /// The "what is within walking distance" ring the Safety Radar searches.
+  ///
+  /// Radius comes from `RadarService.defaultRadiusKm` rather than a literal,
+  /// so the circle drawn on the map and the radius the Radar actually searches
+  /// can never drift apart.
+  Circle? get _userRadiusCircle {
+    final position = _userPosition;
+    if (position == null) return null;
+
+    return Circle(
+      circleId: const CircleId('user_radius'),
+      center: position,
+      radius: RadarService.defaultRadiusKm * 1000,
+      strokeWidth: 2,
+      strokeColor: const Color(0xFF1E88E5).withValues(alpha: 0.55),
+      fillColor: const Color(0xFF1E88E5).withValues(alpha: 0.06),
+      consumeTapEvents: false,
+    );
   }
 
   void _openPartnerDetail(PartnerLocation partner) {
@@ -538,6 +615,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => _PartnerDetailSheet(
         partner: partner,
+        onDirections: () {
+          Navigator.pop(sheetContext);
+          _openRoutePreview(partner);
+        },
         onShowOnMap: () {
           Navigator.pop(sheetContext);
           setState(() => _selectedPartner = partner);
@@ -545,6 +626,26 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             CameraUpdate.newLatLngZoom(LatLng(partner.lat, partner.lng), 16),
           );
         },
+      ),
+    );
+  }
+
+  /// Route Suggestion entry point (Phase 2B task 2.4). Pushed over the whole
+  /// app rather than shown inside the Map tab, so the route preview keeps its
+  /// own header and the bottom nav does not overlap the summary card.
+  ///
+  /// Phase 2B task 2.5 gates this: the paywall check belongs here, at the one
+  /// place the preview is opened from.
+  Future<void> _openRoutePreview(PartnerLocation partner) async {
+    if (!await ensurePremium(context, PremiumFeature.routeSuggestion)) return;
+    if (!mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RoutePreviewScreen(
+          destination: LatLng(partner.lat, partner.lng),
+          destinationName: partner.name,
+        ),
       ),
     );
   }
@@ -588,16 +689,25 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                     _filters.categories
                                         .contains(partner.category);
                               }).toSet(),
-                              circles: _circles.where((c) {
-                                final zone = _zonesById[c.circleId.value];
-                                return zone == null ||
-                                    _filters.riskLevels.contains(zone.riskLevel);
-                              }).toSet(),
+                              circles: {
+                                ..._circles.where((c) {
+                                  final zone = _zonesById[c.circleId.value];
+                                  return zone == null ||
+                                      _filters.riskLevels
+                                          .contains(zone.riskLevel);
+                                }),
+                                ?_userRadiusCircle,
+                              },
                               polygons: _polygons.where((p) {
                                 final zone = _zonesById[p.polygonId.value];
                                 return zone == null ||
                                     _filters.riskLevels.contains(zone.riskLevel);
                               }).toSet(),
+                              // The standard blue dot, rather than a marker
+                              // of our own: it tracks and orients itself, and
+                              // the plugin refuses it without permission —
+                              // which is exactly when `_userPosition` is null.
+                              myLocationEnabled: _userPosition != null,
                               myLocationButtonEnabled: false,
                               zoomControlsEnabled: true,
                               zoomGesturesEnabled: true,
@@ -661,6 +771,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                     _loadMapData(forceRefresh: true),
                                 refreshing: _refreshing,
                                 filterCount: _filters.activeCount,
+                                filterLocked: !context
+                                    .watch<PremiumProvider>()
+                                    .isPremium,
                               ),
                             ),
                           ],
@@ -1071,6 +1184,7 @@ class _FloatingButtons extends StatelessWidget {
     required this.onRefresh,
     required this.refreshing,
     required this.filterCount,
+    required this.filterLocked,
   });
   final VoidCallback onCenter;
   final VoidCallback onFilter;
@@ -1085,6 +1199,10 @@ class _FloatingButtons extends StatelessWidget {
   /// Number of filter options currently switched off, shown as a badge so a
   /// narrowed map is never mistaken for missing data.
   final int filterCount;
+
+  /// Draws the padlock instead of the tune icon, so a free user knows the
+  /// button leads to the paywall before tapping it (Phase 2B task 2.5).
+  final bool filterLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -1102,8 +1220,11 @@ class _FloatingButtons extends StatelessWidget {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            _FabButton(icon: Icons.tune_rounded, onTap: onFilter),
-            if (filterCount > 0)
+            _FabButton(
+              icon: filterLocked ? Icons.lock_rounded : Icons.tune_rounded,
+              onTap: onFilter,
+            ),
+            if (!filterLocked && filterCount > 0)
               Positioned(
                 top: -4,
                 right: -4,
@@ -1545,9 +1666,19 @@ class _ReviewCard extends StatelessWidget {
 }
 
 class _PartnerDetailSheet extends StatelessWidget {
-  const _PartnerDetailSheet({required this.partner, required this.onShowOnMap});
+  const _PartnerDetailSheet({
+    required this.partner,
+    required this.onDirections,
+    required this.onShowOnMap,
+  });
   final PartnerLocation partner;
+  final VoidCallback onDirections;
   final VoidCallback onShowOnMap;
+
+  /// Route Suggestion is gated (Phase 2B task 2.5), so the button says so
+  /// before it is tapped rather than surprising the user with a paywall.
+  static IconData _directionsIcon(bool locked) =>
+      locked ? Icons.lock_rounded : Icons.directions_rounded;
 
   @override
   Widget build(BuildContext context) {
@@ -1702,24 +1833,55 @@ class _PartnerDetailSheet extends StatelessWidget {
                     const SizedBox(height: 12),
                     _ReviewsSection(type: partner.type, isTh: isTh),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: onShowOnMap,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D1B2A),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: onDirections,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: Icon(
+                              _directionsIcon(
+                                !context.watch<PremiumProvider>().isPremium,
+                              ),
+                              size: 18,
+                            ),
+                            label: Text(
+                              appText(context, 'route_directions_button'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.map_rounded, size: 18),
-                        label: Text(
-                          isTh ? 'ดูบนแผนที่' : 'Show on Map',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: onShowOnMap,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0D1B2A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.map_rounded, size: 18),
+                            label: Text(
+                              isTh ? 'ดูบนแผนที่' : 'Show on Map',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Text(

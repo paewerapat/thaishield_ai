@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/localization/app_text.dart';
 import '../../../core/services/location_service.dart';
 import '../../map/screens/map_screen.dart';
+import '../../premium/models/premium_feature.dart';
+import '../../premium/providers/premium_provider.dart';
+import '../../premium/screens/paywall_screen.dart';
+import '../../premium/widgets/premium_gate.dart';
+import '../../premium/widgets/premium_lock_card.dart';
 import '../models/radar_filters.dart';
 import '../models/radar_result.dart';
 import '../services/radar_service.dart';
@@ -111,6 +117,9 @@ class _RadarScreenState extends State<RadarScreen> {
   }
 
   Future<void> _openFilters() async {
+    if (!await ensurePremium(context, PremiumFeature.filterPanel)) return;
+    if (!mounted) return;
+
     final updated = await showRadarFilterPanel(context, _filters);
     if (updated == null || !mounted) return;
     setState(() => _filters = updated);
@@ -119,6 +128,10 @@ class _RadarScreenState extends State<RadarScreen> {
 
   void _showOnMap(double lat, double lng) =>
       Navigator.of(context).pop(MapFocusRequest(lat, lng));
+
+  Future<void> _openPaywall() async {
+    await showPaywall(context, feature: PremiumFeature.radarResults);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +149,7 @@ class _RadarScreenState extends State<RadarScreen> {
             onRadiusChanged: _onRadiusChanged,
             activeFilterCount: _filters.activeCount,
             onOpenFilters: _openFilters,
+            filtersLocked: !context.watch<PremiumProvider>().isPremium,
             busy: _state == _RadarState.locating ||
                 _state == _RadarState.scanning,
           ),
@@ -197,7 +211,17 @@ class _RadarScreenState extends State<RadarScreen> {
         );
 
       case _RadarState.ready:
-        final result = _result;
+        final full = _result;
+        // The free tier sees the nearest few results and a card saying how
+        // many more the radius holds (Phase 2B task 2.5). The scan itself is
+        // unchanged — this only trims what is drawn.
+        final isPremium = context.watch<PremiumProvider>().isPremium;
+        final result = full == null || isPremium
+            ? full
+            : full.take(PremiumProvider.freeRadarResultLimit);
+        final hiddenCount =
+            full == null ? 0 : full.count - (result?.count ?? 0);
+
         if (result == null || result.isEmpty) {
           return _CenteredMessage(
             child: Column(
@@ -219,20 +243,30 @@ class _RadarScreenState extends State<RadarScreen> {
         }
 
         final groups = result.grouped.entries.toList();
+        final showLockCard = hiddenCount > 0;
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-          itemCount: groups.length + 1,
+          itemCount: groups.length + (showLockCard ? 2 : 1),
           separatorBuilder: (_, _) => const SizedBox(height: 18),
           itemBuilder: (context, index) {
             if (index == 0) {
               return Text(
+                // The count is the full one on purpose: the header states
+                // what is in the radius, and the lock card below explains why
+                // fewer cards are drawn.
                 appText(context, 'radar_results_found')
-                    .replaceFirst('{count}', '${result.count}'),
+                    .replaceFirst('{count}', '${full!.count}'),
                 style: const TextStyle(
                   color: _navy,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
+              );
+            }
+            if (showLockCard && index == groups.length + 1) {
+              return PremiumLockedResultsCard(
+                hiddenCount: hiddenCount,
+                onUnlock: _openPaywall,
               );
             }
             final group = groups[index - 1];
@@ -343,6 +377,7 @@ class _RadarToolbar extends StatelessWidget {
     required this.onRadiusChanged,
     required this.activeFilterCount,
     required this.onOpenFilters,
+    required this.filtersLocked,
     required this.busy,
   });
 
@@ -350,6 +385,10 @@ class _RadarToolbar extends StatelessWidget {
   final ValueChanged<double> onRadiusChanged;
   final int activeFilterCount;
   final VoidCallback onOpenFilters;
+
+  /// Draws the padlock instead of the filter count, so a free user knows the
+  /// button leads to the paywall before tapping it.
+  final bool filtersLocked;
   final bool busy;
 
   String _radiusLabel(double km, bool isTh) {
@@ -402,6 +441,7 @@ class _RadarToolbar extends StatelessWidget {
           const SizedBox(width: 8),
           _FilterButton(
             count: activeFilterCount,
+            locked: filtersLocked,
             onTap: busy ? null : onOpenFilters,
           ),
         ],
@@ -449,14 +489,19 @@ class _RadiusChip extends StatelessWidget {
 }
 
 class _FilterButton extends StatelessWidget {
-  const _FilterButton({required this.count, required this.onTap});
+  const _FilterButton({
+    required this.count,
+    required this.locked,
+    required this.onTap,
+  });
 
   final int count;
+  final bool locked;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final active = count > 0;
+    final active = !locked && count > 0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -473,7 +518,7 @@ class _FilterButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.tune_rounded,
+              locked ? Icons.lock_rounded : Icons.tune_rounded,
               size: 17,
               color: active ? _green : const Color(0xFF546E7A),
             ),

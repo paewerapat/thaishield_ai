@@ -341,6 +341,53 @@ https://firebasestorage.googleapis.com/v0/b/<bucket>/o/partner_locations%2F<id>%
 Split into **three delivery phases**. Each ends in a demo-able build, which is what
 triggers the corresponding invoice in §5.
 
+### ⚠️ `feature-design.jpg` — the client's V2 design (received 2026-08-19)
+
+`C:\Fastwork\thaishield-ai\feature-design.jpg` is a **one-page design/marketing poster**
+for the Smart Map. It arrived **after** the quotation (`Requirement.html`, 29/07/2026) and
+is **not** part of it. Read it before touching the Map, but do not treat it as the agreed
+scope — much of it is new work, and two items conflict with rules this file sets.
+
+The client's own summary of V2: *"ไม่ได้ต้องการเพิ่มฟีเจอร์ใหม่ แต่เป็นการพัฒนาและปรับปรุง
+Smart Map ที่มีอยู่เดิมให้สามารถใช้งานได้จริง"* — open the Map, locate the user, show what
+is within ~1 km, and make search actually find places. That framing matters: the three
+things they asked for in prose are **fixes**, while the poster around them is not.
+
+| | Item | Status |
+|---|---|---|
+| ✅ | Locate the user when the Map opens · blue dot · 1 km ring | **Done 2026-08-20** — see below |
+| ✅ | Prices ฿99 / ฿799 / ฿1,999 | **Applied to `PremiumPlan`** — the poster answered the open pricing question |
+| ✅ | "รอบตัวคุณในระยะ 1 กม." data (safe / caution / alert / partners) | Already built — **Safety Radar, 2A task 2.1**, default radius 1 km. The poster puts it *inside* the Map screen; ours is a separate screen off the Home tab |
+| ⚠️ | **Place search that works** | Current search is `geocoding.locationFromAddress` — an *address* geocoder, so POI names (malls, restaurants, attractions) frequently miss. Doing this properly needs **Google Places** (Autocomplete + Details), a new paid API. **Not quoted** |
+| ⚠️ | Category icon row, "คุณอยู่ที่นี่" address panel, count tiles, nearby lists, category cards *with photos* | Data mostly exists; this is UI assembly. The photo cards also need a new CMS field. **Not quoted** |
+| ⚠️ | **7-day free trial** | Not in the code and not in 2C task 2.8. Needs store-side trial config plus entitlement logic |
+| 🚨 | **ดัชนีความปลอดภัย 95/100** | **Conflicts with §10.** Scoring an area is precisely the judgement the wording rules exist to prevent, and no data in this project can compute it. The four count tiles beside it already convey "what is around you" without rating anywhere |
+| 🚨 | **Smart Alerts** (alerts fired by location) | **Conflicts with §7** — no background/geofencing notifications. 2A task 2.2 was agreed as foreground, on-open only |
+| 🚨 | **Offline Map** | Google Maps SDK terms forbid caching tiles. Real offline maps mean replacing the map engine (Mapbox / MapLibre) — a rewrite of every map surface in the app |
+| 🚨 | **AI Local Insights** | A new AI feature, never quoted, and high §10 exposure — an AI writing prose about an area is the hardest possible case for neutral wording |
+
+**Before building anything else from the poster, settle whether it is a specification or a
+brochure.** The phone mockup on the left is one screen; the panels around it read as a
+feature list, not as UI. Interpreting the whole page as literal Map content changes the
+size of this project.
+
+### What the V2 fixes changed on the Map (2026-08-20)
+
+- **The Map opens on the user.** It used to open on a fixed Bangkok coordinate at zoom 12
+  regardless of where anyone was, with no blue dot at all (`myLocationEnabled` was never
+  set) — the single biggest reason it felt like a picture instead of a tool.
+  `_autoLocate()` runs **once**, on the first activation of the Map tab.
+- ⚠️ **Not in `initState`.** `IndexedStack` builds every tab at launch, so locating there
+  would ask for location permission before the user has opened anything — the same trap
+  §2A documents for the Home proximity card.
+- A pending `MapFocusRequest` (from the Radar's "Show on Map") **wins over auto-locate**:
+  the position is still fetched, for the dot and the ring, but the camera is left alone.
+- The **1 km ring** is drawn from `RadarService.defaultRadiusKm`, not a literal, so the
+  circle on the map and the radius the Radar actually searches cannot drift apart. It is
+  held outside `_circles`, which `_loadMapData` rebuilds from Firestore on every refresh.
+- `_centerOnUser` now goes through `LocationService` like everything else; the last raw
+  `Geolocator` call in `map_screen.dart` is gone.
+
 ### Phase 2A — Safety Radar & Filter (9,000 THB of work) — ✅ code complete 2026-08-11, pending device QA
 
 | Task | Description | Est. | Status |
@@ -394,16 +441,124 @@ triggers the corresponding invoice in §5.
 
 ### Phase 2B — Route Suggestion & Paywall UI (6,000 THB of work)
 
-| Task | Description | Est. |
-|---|---|---|
-| 2.4 | **Route Suggestion** — Google Directions API integration, route preview UI, travel-mode toggle, "Open in Google Maps" deep link | 1 week |
-| 2.5 | **Paywall / plan-comparison screen** (Monthly / Yearly / Lifetime) + client-side feature gating for Radar details, Filter and Route Suggestion | 3–4 days |
+| Task | Description | Est. | Status |
+|---|---|---|---|
+| 2.4 | **Route Suggestion** — Google Directions API integration, route preview UI, travel-mode toggle, "Open in Google Maps" deep link | 1 week | ✅ code complete 2026-08-19, pending device QA — `lib/features/route/` |
+| 2.5 | **Paywall / plan-comparison screen** (Monthly / Yearly / Lifetime) + client-side feature gating for Radar details, Filter and Route Suggestion | 3–4 days | ✅ code complete 2026-08-19, pending device QA — `lib/features/premium/` |
+
+**What 2.4 actually added**
+
+- `lib/features/route/` — `RouteService` (the API call, the cache and the response
+  parser), `RoutePreviewScreen` (map + polyline + travel-mode toggle + summary card),
+  `TravelMode`, `RouteSuggestion`, and `maps_deep_link.dart`.
+- `lib/core/utils/polyline.dart` — the decoder for Google's encoded-polyline format, and
+  `boundsFor` in `geo_utils.dart` to frame the drawn route.
+- **Entry point:** a green "Directions" button beside "Show on Map" in the Map's partner
+  detail sheet, which pushes `RoutePreviewScreen` over the whole app (so the route keeps
+  its own header and the bottom nav does not sit on top of the summary card).
+  `_openRoutePreview` in `map_screen.dart` is the single place the preview is opened
+  from — **that is where task 2.5's paywall check goes.**
+- Three travel modes: **Drive / Transit / Walk**. `TWO_WHEELER` is deliberately absent
+  even though motorbikes matter here: the Routes API accepts it but the Google Maps deep
+  link has no equivalent and silently downgrades to driving, so the preview and the
+  hand-off would disagree with no error anywhere.
+- The screen is a **preview, not a navigator** — no live re-routing and no background
+  location (§7). Turn-by-turn is handed to Google Maps.
+
+🚨 **The legacy Directions API is closed to new customers — this uses the Routes API.**
+`maps.googleapis.com/maps/api/directions` cannot be enabled on a Cloud project that did
+not already have it, so `RouteService` calls `routes.googleapis.com/directions/v2:computeRoutes`
+(POST, `X-Goog-Api-Key` + `X-Goog-FieldMask`) instead. Same feature and the same billing
+account; only the endpoint differs. This is the identical trap §2.2 records for the Gemini
+2.x models — if routes fail with a 403/404 mentioning the API not being enabled, enable
+**Routes API**, not Directions.
+
+⚠️ **Cost.** Routes bills per request. Two guards, both of which must survive any edit:
+`X-Goog-FieldMask` is held to the three fields the preview draws (widening it, or using
+`*`, moves the call to a pricier SKU for data nothing renders), and `RouteService` caches
+each (origin, destination, mode) answer for 5 minutes with the origin rounded to ~11 m, so
+flipping the travel-mode toggle costs one request per mode rather than one per tap. Set a
+daily quota cap in Cloud Console before the first release build.
+
+**What 2.5 actually added**
+
+- `lib/features/premium/` — `PremiumProvider` (**the single source of `isPremium`**),
+  `Entitlement` + `EntitlementStore` (the local cache), `PremiumPlan`, `PremiumFeature`,
+  `PaywallScreen`, `ensurePremium()` and the Radar upsell card.
+- **Three gates, all reading the same provider:** `ensurePremium(context, feature)` in
+  `map_screen._openFilterPanel`, `map_screen._openRoutePreview` and
+  `radar_screen._openFilters`; plus the Radar list, which the free tier sees trimmed to
+  `PremiumProvider.freeRadarResultLimit` (3) nearest results followed by a card naming how
+  many were withheld. Each locked control draws a **padlock** rather than its normal icon,
+  so nobody meets the paywall by surprise.
+- **Profile** gained a status card — the app's only view of an entitlement, there being no
+  account screen — and, in debug builds only, the **QA unlock switch**.
+- Free tier keeps everything shipped before 2A/2B: map, pins, zones, Scanner, SOS, news,
+  and the Radar itself.
+
+**How this works with no user system.** It does not need one, and §7 still stands — no
+Firebase Auth, no accounts, no login. Google Play and the App Store already hold the
+identity: a purchase attaches to the **Google account / Apple ID**, not to the handset. So
+2C's launch sequence is `restore()` → the store reports what that account owns → write it
+to `EntitlementStore` → `notifyListeners()`. Reinstalling or signing in on a new phone
+recovers access by itself.
+⚠️ **Entitlements do not cross between Android and iOS** — a user who buys on Android and
+switches to iPhone must buy again. Nothing short of real accounts changes that, so the
+paywall states it, and `premium_platform_note` has a test pinning it in all six languages.
+
+🚨 **`EntitlementStore` (shared_preferences) is a cache, never proof of purchase.** It
+exists so a paying user is not shown a paywall while the store SDK starts up, and it is
+per-device and per-install. 2C **must** re-verify against the store on every launch and
+overwrite it — a cancelled subscription read only from disk would grant access forever.
+
+**What 2C inherits.** `PremiumProvider.purchase()` and `.restore()` are the only stubs;
+both return `StoreOutcome.notAvailableYet` today and the paywall already handles every
+value of that enum. Task 2.8 replaces those two method bodies and adds a store-driven
+refresh. **No screen changes.**
+
+**Prices** are `PremiumPlan.priceThb`: **฿99 monthly / ฿799 yearly / ฿1,999 lifetime**,
+taken from the client's `feature-design.jpg` on 2026-08-20 (they were invented placeholders
+before that) and pinned by a test.
+⚠️ Once billing is live the figure **shown** must come from `ProductDetails.price` — the
+store's own localised, tax-inclusive string — never from this constant, which cannot follow
+a currency, a regional tax rule, or a price change. `premium_price_note` already tells the
+user that the store's price is the one they pay.
+⚠️ The design also promises a **7-day free trial**, which is neither in the code nor in 2C
+task 2.8 — it needs the trial configured on the store products plus entitlement logic.
+
+⚠️ **Set the products up under exactly the ids in `PremiumPlan.productId`**
+(`thaishield_premium_monthly` / `_yearly` / `_lifetime`), with monthly and yearly as
+**subscriptions** and lifetime as a **non-consumable**. They are different product types in
+both stores and cannot be converted later.
 
 **Definition of done (2B):**
-- Directions API key restricted per-platform and injected via `--dart-define`, never
-  committed. Watch the Directions quota — it bills per request.
-- The paywall gates features **client-side only** at this stage; purchases are not yet live.
-  A debug/override flag must let QA unlock without paying.
+- ✅ Routes API key injected via `--dart-define=ROUTES_API_KEY=…`, never committed
+  (`ApiKeys.googleRoutes`, plus the Codemagic build args).
+  ⚠️ **It cannot be restricted per-platform, and the original wording of this bullet was
+  wrong to assume it could.** Android/iOS application restrictions only apply to the *SDK*
+  keys committed in `AndroidManifest.xml` and `AppDelegate.swift`; Routes is a web service,
+  where Google honours only IP restrictions. The available protection is therefore
+  "API restriction: Routes API" **plus a daily quota cap**, and that is what must be set.
+  If that residual risk is not acceptable to the client, the fix is the same one §2.1 used
+  for the news key — move the call behind a Cloud Function and make the key a Functions
+  secret. That is a scope decision, not a code change to make silently: only the endpoint
+  in `RouteService` changes.
+- ✅ `test/route_test.dart` covers the polyline decoder (including truncated and junk
+  input), the response parser, the duration rounding, the deep-link shape, and the copy in
+  all six languages against §10.
+- ⏳ **Still owed for 2.4: hands-on QA on an Android physical device** — a real key in the
+  build, all three modes, the deep link landing in the Google Maps app, and the
+  location-denied path.
+- ✅ The paywall gates features **client-side only** at this stage; purchases are not yet
+  live. Both QA overrides exist: `--dart-define=PREMIUM_OVERRIDE=true` for any build, and a
+  debug-only switch in Profile. Neither can unlock a release build — the flag defaults to
+  false and `qaUnlock` refuses outside `kDebugMode`, which `test/premium_test.dart` asserts.
+- ✅ `test/premium_test.dart` covers entitlement expiry, the storage round trip (including
+  every malformed record that must drop to free rather than grant access), the free-tier
+  trimming, and the paywall copy in all six languages against §10 plus the store
+  disclosure rules.
+- ⏳ **Still owed for 2.5: hands-on QA on an Android physical device** — each gate with the
+  QA switch off and on, and the padlock states.
 - Store account setup (Play Console products, App Store Connect agreements/banking) is
   **started during this phase** even though 2.8 lands in 2C — review and banking approval
   have multi-day lead times and are the usual cause of slippage.
@@ -471,8 +626,8 @@ domain and annual cloud/server costs, and any post-release feature work.
 | 1 | — | Web Admin Dashboard (Phase 1 เดิม ทั้ง 5 รายการ) | 2026-07-20 → 2026-08-07 | ✅ ส่งมอบแล้ว |
 | 2 | 2A | Safety Radar core + geo-radius logic | สัปดาห์ที่ 1 (2026-08-12 → 2026-08-18) | ✅ โค้ดเสร็จ 2026-08-11 |
 | 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | ✅ โค้ดเสร็จ 2026-08-11 — รอทดสอบบนเครื่องจริง |
-| 4 | 2B | Route Suggestion (Directions API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | รอดำเนินการ |
-| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | รอดำเนินการ |
+| 4 | 2B | Route Suggestion (Routes API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | โค้ดเสร็จ 2026-08-19 · รอ QA บนเครื่องจริง |
+| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | โค้ดเสร็จ 2026-08-19 · รอ QA + รอตัดสินใจราคา |
 | 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | รอดำเนินการ |
 | 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | รอดำเนินการ |
 
@@ -485,6 +640,8 @@ domain and annual cloud/server costs, and any post-release feature work.
 
 - **NO** user registration / authentication / login screens in the Flutter app
   (Firebase Auth omitted for the app; the CMS's own staff login is separate — §2.4).
+  The paywall does **not** change this: purchases attach to the Google/Apple account, so
+  the app still has no identity of its own — see "What 2.5 actually added" in §4.
 - **NO** user scan-history logs or personal profile tracking databases.
 - **NO** rating forms or community comment inputs.
 - **NO** live chat or premium support layout simulators.
@@ -519,7 +676,7 @@ at `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
 
 | | |
 |---|---|
-| Run app | `flutter run` |
+| Run app | `flutter run --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=… --dart-define=ROUTES_API_KEY=…` |
 | Fetch plugins | `flutter pub get` |
 | Clean caches | `flutter clean` |
 | Analyze | `flutter analyze lib/` |
