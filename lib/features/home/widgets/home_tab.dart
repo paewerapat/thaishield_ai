@@ -63,7 +63,7 @@ class HomeTab extends StatelessWidget {
                         onShowOnMap: _focusOnMap,
                         isActive: isActive,
                       ),
-                      _ActiveAlertsAndNews(onNavigateToTab: onNavigateToTab),
+                      const _ActiveAlertsAndNews(),
                     ],
                   ),
                 ),
@@ -228,8 +228,7 @@ class _ToolItem extends StatelessWidget {
 }
 
 class _ActiveAlertsAndNews extends StatefulWidget {
-  const _ActiveAlertsAndNews({required this.onNavigateToTab});
-  final ValueChanged<int> onNavigateToTab;
+  const _ActiveAlertsAndNews();
 
   @override
   State<_ActiveAlertsAndNews> createState() => _ActiveAlertsAndNewsState();
@@ -266,7 +265,13 @@ class _ActiveAlertsAndNewsState extends State<_ActiveAlertsAndNews> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (loaded && alerts.isNotEmpty) _AlertsBanner(summary: _alertsSummary(context, alerts), onViewMap: () => widget.onNavigateToTab(2)),
+            if (loaded && alerts.isNotEmpty)
+              _AlertsBanner(
+                summary: _alertsSummary(context, alerts),
+                onViewReports: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TravelAlertsListScreen()),
+                ),
+              ),
             if (loaded && alerts.isNotEmpty) const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -306,10 +311,16 @@ class _ActiveAlertsAndNewsState extends State<_ActiveAlertsAndNews> {
   }
 }
 
+/// The red summary strip above Top News. Its button opens the travel alert
+/// list, **not** the Map tab: the summary counts documents in
+/// `travel_alerts_cache`, which are news articles carrying no coordinates,
+/// while the Map draws `alert_zones` — a separate set of areas staff outline
+/// by hand in the CMS. Sending the user to the Map made the button promise a
+/// flood or a storm on a map that has never held either one.
 class _AlertsBanner extends StatelessWidget {
-  const _AlertsBanner({required this.summary, required this.onViewMap});
+  const _AlertsBanner({required this.summary, required this.onViewReports});
   final String summary;
-  final VoidCallback onViewMap;
+  final VoidCallback onViewReports;
 
   @override
   Widget build(BuildContext context) {
@@ -347,11 +358,11 @@ class _AlertsBanner extends StatelessWidget {
               side: const BorderSide(color: Colors.white54),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
-            onPressed: onViewMap,
+            onPressed: onViewReports,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(appText(context, 'home_active_alerts_view_map'), style: const TextStyle(color: Colors.white, fontSize: 11.5)),
+                Text(appText(context, 'home_active_alerts_view_reports'), style: const TextStyle(color: Colors.white, fontSize: 11.5)),
                 const Icon(Icons.chevron_right, color: Colors.white, size: 14),
               ],
             ),

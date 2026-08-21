@@ -243,8 +243,8 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Текущие оповещения по Таиланду',
     'ja': 'タイの現在のアラート',
   },
-  'home_active_alerts_view_map': {
-    'th': 'ดูแผนที่', 'en': 'View Map', 'zh': '查看地图', 'ko': '지도 보기', 'ru': 'Смотреть карту', 'ja': '地図を見る',
+  'home_active_alerts_view_reports': {
+    'th': 'ดูรายงาน', 'en': 'View reports', 'zh': '查看报告', 'ko': '리포트 보기', 'ru': 'Смотреть сообщения', 'ja': 'レポートを見る',
   },
   'home_alerts_unit': {
     'th': 'รายงาน', 'en': 'reports', 'zh': '条', 'ko': '건', 'ru': 'сообщений', 'ja': '件',
