@@ -62,6 +62,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
         Navigator.of(context).pop();
       case StoreOutcome.cancelled:
         break;
+      case StoreOutcome.nothingToRestore:
+        // Not an error: "this account has no pass" is a normal answer, and
+        // showing a failure message for it sends people to support.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appText(context, 'premium_restore_none'))),
+        );
       case StoreOutcome.notAvailableYet:
       case StoreOutcome.failed:
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,6 +114,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   const SizedBox(height: 10),
                 ],
                 const SizedBox(height: 2),
+                _FootNote(text: appText(context, 'premium_trial_note')),
+                const SizedBox(height: 8),
                 _FootNote(text: appText(context, 'premium_price_note')),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -329,22 +337,18 @@ class _PlanCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Groups thousands without pulling in locale-specific number formatting for
-  /// six languages — Phase 2C replaces this with the store's own localised
-  /// price string anyway.
-  static String _price(int thb) {
-    final digits = thb.toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-      buffer.write(digits[i]);
-    }
-    return '฿$buffer';
-  }
+  /// The list price, drawn only until billing is live.
+  ///
+  /// Phase 2C replaces this with `ProductDetails.price` — the store's own
+  /// localised, tax-inclusive string — so no formatting effort is worth
+  /// spending here beyond the currency symbol.
+  static String _price(int usd) => '\$$usd';
 
   @override
   Widget build(BuildContext context) {
     final isRecommended = plan == PremiumPlan.recommended;
+    // Only the 14-day pass leads into the trial, so only it carries the badge.
+    final showsTrial = plan == PremiumPlan.twoWeeks;
 
     return InkWell(
       onTap: onTap,
@@ -409,19 +413,36 @@ class _PlanCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    appText(context, plan.periodKey),
-                    style: const TextStyle(
-                      color: Color(0xFF90A4AE),
-                      fontSize: 11.5,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          appText(context, plan.periodKey),
+                          style: const TextStyle(
+                            color: Color(0xFF90A4AE),
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ),
+                      if (showsTrial) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '· ${appText(context, 'premium_trial_badge')}',
+                          style: const TextStyle(
+                            color: _green,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             Text(
-              _price(plan.priceThb),
+              _price(plan.priceUsd),
               style: const TextStyle(
                 color: _navy,
                 fontSize: 17,

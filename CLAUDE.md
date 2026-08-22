@@ -301,6 +301,28 @@ fetched_at    timestamp  // server timestamp of the sync run that wrote/refreshe
 
 The CMS neither reads nor writes this collection.
 
+### `entitlements` (written by the app — added 2026-08-22)
+
+```
+<doc id>      string     // the store's own transaction id: Play purchaseToken,
+                         // StoreKit originalTransactionId. Not a user id — the
+                         // app has no identity to file this under (§7).
+product_id    string     // thaishield_premium_2weeks | thaishield_premium_monthly
+expires_at    timestamp  // when the pass runs out
+platform      string     // label only, for support; entitlements never cross platforms
+recorded_at   timestamp  // serverTimestamp, so a wrong device clock cannot backdate it
+```
+
+Exists because both products are **one-time consumables**, and neither store replays a
+consumable with its remaining days on a new device — Play stops returning it once
+consumed, StoreKit does not restore consumables at all. Without this, "Restore Purchases"
+(agreed scope, task 2.8) would have nothing to restore and a user who changed phone on day
+3 of a 14-day pass would simply lose the rest.
+
+Read `lib/features/premium/services/entitlement_repository.dart` before touching it, and
+§9 for why the rules look the way they do. The CMS neither reads nor writes this
+collection.
+
 ### Partner images — the part most likely to surprise you
 
 `image_url` used to be a hotlinked Pexels URL. It is now a **Firebase Storage download URL
@@ -341,7 +363,20 @@ https://firebasestorage.googleapis.com/v0/b/<bucket>/o/partner_locations%2F<id>%
 Split into **three delivery phases**. Each ends in a demo-able build, which is what
 triggers the corresponding invoice in §5.
 
-### ⚠️ `feature-design.jpg` — the client's V2 design (received 2026-08-19)
+### ✅ `feature-design.jpg` — settled 2026-08-22
+
+**The client confirmed the poster is a mockup, not a specification.** Scope stays as
+`Requirement.html`. They approved dropping ดัชนีความปลอดภัย, Smart Alerts, Offline Map and
+AI Local Insights outright; they asked for the Radar to move into the Map screen and for a
+**3-day** trial (down from 7), both given free; and they left Google Places search, the
+category photo cards, and news-as-map-pins out of this phase. **Google Places being left
+out means the "search finds nothing" complaint survives into release** — that was the
+client's own call and is recorded in the Rev.4 quotation doc.
+
+The analysis below is kept because it is why those four features were dropped. Do not
+re-open them.
+
+### ⚠️ `feature-design.jpg` — the original analysis (received 2026-08-19)
 
 `C:\Fastwork\thaishield-ai\feature-design.jpg` is a **one-page design/marketing poster**
 for the Smart Map. It arrived **after** the quotation (`Requirement.html`, 29/07/2026) and
@@ -444,7 +479,32 @@ size of this project.
 | Task | Description | Est. | Status |
 |---|---|---|---|
 | 2.4 | **Route Suggestion** — Google Directions API integration, route preview UI, travel-mode toggle, "Open in Google Maps" deep link | 1 week | ✅ code complete 2026-08-19, pending device QA — `lib/features/route/` |
-| 2.5 | **Paywall / plan-comparison screen** (Monthly / Yearly / Lifetime) + client-side feature gating for Radar details, Filter and Route Suggestion | 3–4 days | ✅ code complete 2026-08-19, pending device QA — `lib/features/premium/` |
+| 2.5 | **Paywall / plan-comparison screen** + client-side feature gating for Radar details, Filter and Route Suggestion | 3–4 days | ✅ code complete 2026-08-19; **rebuilt for the new packages 2026-08-22** — see below |
+
+**🚨 The plans changed on 2026-08-22 — read this before touching `lib/features/premium/`.**
+
+Monthly / Yearly / Lifetime in THB are gone. There are now **two one-time passes in USD**:
+`thaishield_premium_2weeks` ($7, 14 days) and `thaishield_premium_monthly` ($10, 30 days).
+Create both in Play Console and App Store Connect as **consumables**, not subscriptions —
+a product's type cannot be changed afterwards, only replaced under a new id.
+
+Three things follow from consumables that did not apply to subscriptions, and each one is
+a place where a reasonable-looking change would break something real:
+
+- **The app owns the clock.** A subscription reports its own renewal state; a consumable is
+  a single event. `Entitlement.expiresAt` is now non-null and computed from
+  `PremiumPlan.duration`. There is deliberately no way to express "never expires".
+- **The app owns the trial.** A store-run free trial can only attach to a subscription, so
+  the 3-day trial is granted by `PremiumProvider.startTrialIfEligible` against a
+  per-install flag. A reinstall earns another one; that hole is known and accepted, because
+  closing it needs an account (§7 forbids) or a server-side device record (out of scope).
+- **Restore needs a record of our own** — hence the `entitlements` collection in §3. When
+  2.8 wires Play Billing, **acknowledge but do not consume** a purchase until the pass
+  expires: a consumed purchase stops being returned by `queryPurchases`, which is what
+  makes restore possible at all on Android.
+
+`PremiumProvider.grantPurchase` and `restoreFromPurchaseIds` are already written and
+tested; 2.8 only has to feed them what the store SDK returns.
 
 **What 2.4 actually added**
 
@@ -706,6 +766,15 @@ edited in Firebase Console → Firestore Database → Rules.
 - The CMS writes via the Admin SDK and needs no rule changes. Any future authenticated
   write access must be scoped to that specific case — **never** broaden the public rule to
   allow writes from the Flutter app.
+- 🚨 **`entitlements` is the one exception, and it is temporary.** It is the only
+  collection an app client may write to, because a one-time pass has to be recoverable on
+  a second device and the app has no identity to file it under (§7). Reads are open — a
+  store transaction id identifies nobody and is not guessable — and `create` is shape-
+  checked to a known product id plus a timestamp, with `update`/`delete` refused so an
+  existing record cannot be extended. **This is not a security boundary**: the store
+  receipt is the source of truth, and task 2.8 moves the write into a Cloud Function that
+  validates the receipt, at which point `create` drops to `if false`. Do not build
+  anything that treats a document here as proof of payment.
 
 ---
 

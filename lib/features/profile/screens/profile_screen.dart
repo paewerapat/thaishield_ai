@@ -144,14 +144,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subtitle = appText(context, 'premium_status_free_subtitle');
     } else if (premium.isQaUnlocked) {
       subtitle = appText(context, 'premium_status_qa');
-    } else if (entitlement?.expiresAt case final expiry?) {
-      final local = expiry.toLocal();
+    } else if (premium.isOnTrial) {
+      // Says "trial", not "Premium active" — someone who has not paid should
+      // learn the clock is running before the day access stops.
+      subtitle = appText(context, 'premium_status_trial').replaceFirst(
+        '{days}',
+        '${premium.daysRemaining ?? 0}',
+      );
+    } else if (entitlement != null) {
+      final local = entitlement.expiresAt.toLocal();
       subtitle = appText(context, 'premium_status_expires').replaceFirst(
         '{date}',
         '${local.day}/${local.month}/${local.year}',
       );
     } else {
-      subtitle = appText(context, 'premium_plan_lifetime');
+      subtitle = appText(context, 'premium_status_free_subtitle');
     }
 
     final accent = active ? const Color(0xFF2E7D32) : const Color(0xFFFFB300);
@@ -580,7 +587,7 @@ class _QaPremiumSwitch extends StatelessWidget {
         subtitle: Text(
           PremiumProvider.qaOverrideFlag
               ? 'Forced on by --dart-define=PREMIUM_OVERRIDE=true'
-              : 'Debug builds only. Grants a yearly entitlement locally.',
+              : 'Debug builds only. Grants a 30-day pass locally.',
           style: const TextStyle(color: Color(0xFF795548), fontSize: 11),
         ),
         value: premium.isPremium,
@@ -589,7 +596,7 @@ class _QaPremiumSwitch extends StatelessWidget {
         onChanged: PremiumProvider.qaOverrideFlag
             ? null
             : (on) => on
-                ? premium.qaUnlock(PremiumPlan.yearly)
+                ? premium.qaUnlock(PremiumPlan.monthly)
                 : premium.qaLock(),
       ),
     );

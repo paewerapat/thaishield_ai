@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../map/screens/map_screen.dart';
+import '../../premium/providers/premium_provider.dart';
 import '../../scanner/screens/scanner_screen.dart';
 import '../../sos/screens/sos_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -17,6 +20,20 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String? _mapPartnerTypeFilter;
   MapFocusRequest? _mapFocus;
+
+  @override
+  void initState() {
+    super.initState();
+    // The 3-day trial is granted here rather than in `main()` because
+    // `PremiumProvider.load` has to have finished first — and this is the
+    // first screen that exists once it has. It is cheap and local: no network,
+    // no permission prompt, and it returns immediately for anyone who has
+    // already had a trial or is holding a pass.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<PremiumProvider>().startTrialIfEligible();
+    });
+  }
 
   void _goToTab(int index) => setState(() => _currentIndex = index);
 

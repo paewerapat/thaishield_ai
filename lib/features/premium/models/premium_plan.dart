@@ -1,38 +1,48 @@
-/// The three plans the paywall compares (Phase 2B task 2.5).
+/// The two passes the paywall compares.
 ///
-/// [productId] is the identifier the same plan will carry in Play Console and
-/// App Store Connect, so 2C's `in_app_purchase` lookup needs no translation
-/// table. Set them up under exactly these ids — monthly and yearly as
-/// **subscriptions**, lifetime as a **non-consumable one-time product**. They
-/// are different product types in both stores and cannot be swapped later.
+/// [productId] is the identifier the same pass carries in Play Console and App
+/// Store Connect, so 2C's `in_app_purchase` lookup needs no translation table.
+///
+/// 🚨 **Both are one-time consumables, not subscriptions.** The client settled
+/// this on 2026-08-22: a tourist buys a pass, it runs out, and nothing is ever
+/// charged again unless they buy another one. Create them in both stores as
+/// **consumable / non-renewing one-time products** — a product's type cannot be
+/// changed after it is created, only replaced with a new id.
+///
+/// Two consequences that shape the rest of this feature:
+///
+/// 1. **The stores will not track expiry for us.** A subscription reports its
+///    own renewal state; a consumable is a single event. The app therefore owns
+///    the clock — see `Entitlement.expiresAt`, computed from [duration].
+/// 2. **The stores will not run the free trial for us** either, because a store
+///    trial can only be attached to a subscription. The 3-day trial is granted
+///    by the app itself — see `PremiumProvider.startTrialIfEligible`.
 enum PremiumPlan {
+  /// 14 days. Sized for a typical holiday, and the only pass the trial leads
+  /// into.
+  twoWeeks(
+    productId: 'thaishield_premium_2weeks',
+    titleKey: 'premium_plan_2weeks',
+    periodKey: 'premium_period_2weeks',
+    priceUsd: 7,
+    duration: Duration(days: 14),
+  ),
+
+  /// 30 days, for a longer stay. Cheaper per day than [twoWeeks], which is
+  /// what makes it the one worth highlighting.
   monthly(
     productId: 'thaishield_premium_monthly',
     titleKey: 'premium_plan_monthly',
     periodKey: 'premium_period_monthly',
-    priceThb: 99,
+    priceUsd: 10,
     duration: Duration(days: 30),
-  ),
-  yearly(
-    productId: 'thaishield_premium_yearly',
-    titleKey: 'premium_plan_yearly',
-    periodKey: 'premium_period_yearly',
-    priceThb: 799,
-    duration: Duration(days: 365),
-  ),
-  lifetime(
-    productId: 'thaishield_premium_lifetime',
-    titleKey: 'premium_plan_lifetime',
-    periodKey: 'premium_period_lifetime',
-    priceThb: 1999,
-    duration: null,
   );
 
   const PremiumPlan({
     required this.productId,
     required this.titleKey,
     required this.periodKey,
-    required this.priceThb,
+    required this.priceUsd,
     required this.duration,
   });
 
@@ -40,26 +50,33 @@ enum PremiumPlan {
   final String titleKey;
   final String periodKey;
 
-  /// The price from the client's own `feature-design.jpg` (V2 design, received
-  /// 2026-08-19): ฿99 monthly, ฿799 yearly, ฿1,999 lifetime.
+  /// The list price in USD, from the client's 2026-08-22 decision.
   ///
-  /// ⚠️ Still only what the **2B** screen lays out. Once purchases are live the
-  /// figure shown must come from `ProductDetails.price` — the store's own
-  /// localised, tax-inclusive string for the user's country — never from a
-  /// number compiled into the app, which cannot follow a price change, a
-  /// currency, or a regional tax rule.
-  final int priceThb;
+  /// ⚠️ This is what the **comparison screen** draws before billing is live.
+  /// Once purchases work, the figure shown must come from
+  /// `ProductDetails.price` — the store's own localised, tax-inclusive string
+  /// for the user's country — never from a number compiled into the app, which
+  /// cannot follow a price change, a currency, or a regional tax rule.
+  final int priceUsd;
 
-  /// How long one purchase grants access. Null means it never expires, which
-  /// is what makes [lifetime] a non-consumable rather than a subscription.
-  final Duration? duration;
+  /// How long one purchase grants access, counted from the moment the store
+  /// confirms it. Never null: every pass expires, which is the whole point of
+  /// selling passes rather than subscriptions.
+  final Duration duration;
 
-  bool get isSubscription => duration != null;
+  /// Kept as a named constant rather than scattered `Duration(days: 3)` calls,
+  /// because the trial length is a commercial decision the client can change
+  /// and it has to move in exactly one place when they do.
+  static const trialDuration = Duration(days: 3);
 
-  /// The plan the comparison screen highlights. Yearly, because it is the one
-  /// worth reading twice — monthly anchors the price and lifetime is the
-  /// outlier.
-  static const recommended = PremiumPlan.yearly;
+  /// Neither pass renews. This exists so call sites read as a question about
+  /// the product rather than an assumption, and so the day someone adds a real
+  /// subscription there is one place to change.
+  bool get isSubscription => false;
+
+  /// The plan the comparison screen highlights — the 30-day pass, which is the
+  /// better value per day and the one a longer stay wants.
+  static const recommended = PremiumPlan.monthly;
 
   static PremiumPlan? fromProductId(String id) {
     for (final plan in PremiumPlan.values) {

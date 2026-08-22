@@ -17,6 +17,24 @@ class EntitlementStore {
   static final instance = EntitlementStore._();
 
   static const _key = 'premium_entitlement';
+  static const _trialUsedKey = 'premium_trial_used';
+
+  /// Whether this install has already been given the free trial.
+  ///
+  /// Per-install, like everything else here, so clearing app data or
+  /// reinstalling earns another trial. That hole is known and accepted: closing
+  /// it needs either an account or a server-side device record, and both are
+  /// out of scope (§7). It costs 3 days of access to someone determined enough
+  /// to reinstall, which is cheaper than the alternatives.
+  Future<bool> trialUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_trialUsedKey) ?? false;
+  }
+
+  Future<void> markTrialUsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_trialUsedKey, true);
+  }
 
   Future<Entitlement?> read() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,6 +55,8 @@ class EntitlementStore {
     await prefs.setString(_key, jsonEncode(entitlement.toJson()));
   }
 
+  /// Clears the entitlement but **not** [trialUsed] — a QA lock, or any future
+  /// reset, must not hand out a second trial.
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);

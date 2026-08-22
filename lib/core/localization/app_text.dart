@@ -1038,23 +1038,31 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Что входит',
     'ja': '含まれる機能',
   },
+  // Both passes are one-time purchases (client decision 2026-08-22), so the
+  // titles name a length rather than a billing cycle — "Monthly" would read as
+  // a subscription to most people, which is exactly what this is not.
+  'premium_plan_2weeks': {
+    'th': 'บัตรผ่าน 14 วัน', 'en': '14-Day Pass', 'zh': '14 天通行证', 'ko': '14일 이용권', 'ru': 'Пропуск на 14 дней', 'ja': '14日パス',
+  },
   'premium_plan_monthly': {
-    'th': 'รายเดือน', 'en': 'Monthly', 'zh': '按月', 'ko': '월간', 'ru': 'Ежемесячно', 'ja': '月額',
+    'th': 'บัตรผ่าน 30 วัน', 'en': '30-Day Pass', 'zh': '30 天通行证', 'ko': '30일 이용권', 'ru': 'Пропуск на 30 дней', 'ja': '30日パス',
   },
-  'premium_plan_yearly': {
-    'th': 'รายปี', 'en': 'Yearly', 'zh': '按年', 'ko': '연간', 'ru': 'Ежегодно', 'ja': '年額',
-  },
-  'premium_plan_lifetime': {
-    'th': 'ตลอดชีพ', 'en': 'Lifetime', 'zh': '永久', 'ko': '평생', 'ru': 'Навсегда', 'ja': '買い切り',
+  'premium_period_2weeks': {
+    'th': 'จ่ายครั้งเดียว ใช้ได้ 14 วัน', 'en': 'one-time, 14 days', 'zh': '一次性付款，14 天', 'ko': '1회 결제, 14일', 'ru': 'разовый платёж, 14 дней', 'ja': '買い切り・14日間',
   },
   'premium_period_monthly': {
-    'th': 'ต่อเดือน', 'en': 'per month', 'zh': '每月', 'ko': '월', 'ru': 'в месяц', 'ja': '月ごと',
+    'th': 'จ่ายครั้งเดียว ใช้ได้ 30 วัน', 'en': 'one-time, 30 days', 'zh': '一次性付款，30 天', 'ko': '1회 결제, 30일', 'ru': 'разовый платёж, 30 дней', 'ja': '買い切り・30日間',
   },
-  'premium_period_yearly': {
-    'th': 'ต่อปี', 'en': 'per year', 'zh': '每年', 'ko': '년', 'ru': 'в год', 'ja': '年ごと',
+  'premium_trial_badge': {
+    'th': 'ทดลองฟรี 3 วัน', 'en': '3 days free', 'zh': '免费试用 3 天', 'ko': '3일 무료', 'ru': '3 дня бесплатно', 'ja': '3日間無料',
   },
-  'premium_period_lifetime': {
-    'th': 'จ่ายครั้งเดียว', 'en': 'one-time', 'zh': '一次性付款', 'ko': '1회 결제', 'ru': 'разовый платёж', 'ja': '一度のお支払い',
+  'premium_trial_note': {
+    'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง ไม่มีการเรียกเก็บเงินใด ๆ',
+    'en': 'New users get 3 days free. When it ends the app returns to the free version on its own and nothing is charged.',
+    'zh': '新用户可免费试用 3 天。到期后应用会自动回到免费版本，不会产生任何扣款。',
+    'ko': '신규 사용자는 3일간 무료로 사용할 수 있습니다. 기간이 끝나면 앱이 자동으로 무료 버전으로 돌아가며 결제되지 않습니다.',
+    'ru': 'Новым пользователям — 3 дня бесплатно. По окончании приложение само возвращается к бесплатной версии, ничего не списывается.',
+    'ja': '新規のお客様は3日間無料でご利用いただけます。期間が終わるとアプリは自動的に無料版に戻り、料金は発生しません。',
   },
   'premium_badge_recommended': {
     'th': 'คุ้มที่สุด', 'en': 'Best value', 'zh': '最超值', 'ko': '최고 가성비', 'ru': 'Выгоднее всего', 'ja': 'いちばんお得',
@@ -1078,6 +1086,14 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Покупки станут доступны в следующей версии.',
     'ja': '購入機能は今後のバージョンで提供されます。',
   },
+  'premium_restore_none': {
+    'th': 'ไม่พบการซื้อในบัญชีนี้',
+    'en': 'No purchase found on this account.',
+    'zh': '此账户下未找到购买记录。',
+    'ko': '이 계정에서 구매 내역을 찾을 수 없습니다.',
+    'ru': 'В этом аккаунте покупок не найдено.',
+    'ja': 'このアカウントに購入履歴が見つかりませんでした。',
+  },
   'premium_restore': {
     'th': 'กู้คืนการซื้อ', 'en': 'Restore Purchases', 'zh': '恢复购买', 'ko': '구매 복원', 'ru': 'Восстановить покупки', 'ja': '購入を復元',
   },
@@ -1089,13 +1105,16 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена. После переустановки или смены телефона её можно восстановить, но она не переносится между Android и iOS.',
     'ja': '購入は決済に使用した Google Play または Apple ID のアカウントに紐づきます。再インストールや機種変更後は復元できますが、Android と iOS の間では引き継げません。',
   },
+  // Both stores require the billing model to be stated next to the price. With
+  // one-time passes the disclosure is the opposite of the usual one: the point
+  // is that nothing renews, so there is nothing to remember to cancel.
   'premium_legal_note': {
-    'th': 'แพ็กเกจรายเดือนและรายปีจะต่ออายุอัตโนมัติ ยกเลิกได้ทุกเมื่อจากการตั้งค่าบัญชี Google Play หรือ Apple ID',
-    'en': 'Monthly and yearly plans renew automatically. You can cancel any time in your Google Play or Apple ID account settings.',
-    'zh': '按月与按年套餐将自动续订。您可随时在 Google Play 或 Apple ID 账户设置中取消。',
-    'ko': '월간 및 연간 플랜은 자동으로 갱신됩니다. Google Play 또는 Apple ID 계정 설정에서 언제든지 해지할 수 있습니다.',
-    'ru': 'Ежемесячный и ежегодный планы продлеваются автоматически. Отменить можно в любой момент в настройках аккаунта Google Play или Apple ID.',
-    'ja': '月額プランと年額プランは自動更新されます。Google Play または Apple ID のアカウント設定からいつでも解約できます。',
+    'th': 'ทั้งสองแพ็กเกจเป็นการจ่ายครั้งเดียว ไม่มีการต่ออายุอัตโนมัติและไม่มีการตัดเงินซ้ำ เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรี หากต้องการใช้ต่อสามารถซื้อใหม่ได้',
+    'en': 'Both passes are a single payment. Nothing renews and nothing is charged again — when a pass ends the app returns to the free version, and you can buy another one to carry on.',
+    'zh': '两种通行证均为一次性付款，不会自动续订，也不会重复扣款。到期后应用会回到免费版本，如需继续使用可再次购买。',
+    'ko': '두 이용권 모두 1회 결제입니다. 자동 갱신도 추가 결제도 없으며, 기간이 끝나면 앱은 무료 버전으로 돌아갑니다. 계속 사용하려면 다시 구매하시면 됩니다.',
+    'ru': 'Оба пропуска — разовый платёж. Ничего не продлевается и не списывается повторно: по окончании приложение возвращается к бесплатной версии, а продолжить можно, купив новый пропуск.',
+    'ja': 'どちらのパスも買い切りです。自動更新も追加の請求もありません。期間が終わるとアプリは無料版に戻り、続けてご利用の場合はあらためてご購入いただけます。',
   },
   'premium_status_free_title': {
     'th': 'อัปเกรดเป็น Premium',
@@ -1128,6 +1147,17 @@ const Map<String, Map<String, String>> _appText = {
     'ko': '{date}까지 이용 가능',
     'ru': 'Действует до {date}',
     'ja': '{date} まで有効',
+  },
+  // Someone on the trial has not paid, so the Profile card says so rather than
+  // showing the same "Premium active" line a purchase gets — otherwise the
+  // first they hear of it is the day access stops.
+  'premium_status_trial': {
+    'th': 'กำลังทดลองใช้ฟรี · เหลือ {days} วัน',
+    'en': 'Free trial · {days} days left',
+    'zh': '免费试用中 · 剩余 {days} 天',
+    'ko': '무료 체험 중 · {days}일 남음',
+    'ru': 'Бесплатный период · осталось дней: {days}',
+    'ja': '無料お試し中 · 残り {days} 日',
   },
   'premium_status_qa': {
     'th': 'ปลดล็อกสำหรับการทดสอบ (QA)',
