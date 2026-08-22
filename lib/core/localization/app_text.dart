@@ -743,6 +743,47 @@ const Map<String, Map<String, String>> _appText = {
   'radar_group_transport': {
     'th': 'การเดินทาง', 'en': 'Transport', 'zh': '交通', 'ko': '교통', 'ru': 'Транспорт', 'ja': '交通',
   },
+  // "Around you" panel on the Smart Map (item ข, approved 2026-08-22). Shares
+  // the radar_group_* labels for the tiles, so the same area never gets two
+  // different names on two screens.
+  'around_title': {
+    'th': 'รอบตัวคุณในระยะ {radius}',
+    'en': 'Around you within {radius}',
+    'zh': '您周边 {radius} 范围内',
+    'ko': '반경 {radius} 이내 주변 정보',
+    'ru': 'Вокруг вас в радиусе {radius}',
+    'ja': '半径 {radius} 以内の周辺',
+  },
+  'around_alerts_title': {
+    'th': 'ประกาศแจ้งเตือนใกล้เคียง',
+    'en': 'Nearby advisories',
+    'zh': '附近提示',
+    'ko': '주변 안내',
+    'ru': 'Уведомления поблизости',
+    'ja': '付近のお知らせ',
+  },
+  'around_partners_title': {
+    'th': 'พันธมิตรใกล้คุณ',
+    'en': 'Partners near you',
+    'zh': '您附近的合作商家',
+    'ko': '내 주변 파트너',
+    'ru': 'Партнёры рядом',
+    'ja': '近くのパートナー',
+  },
+  'around_empty': {
+    'th': 'ยังไม่มีข้อมูลในระยะนี้ ลองเลื่อนแผนที่หรือกดรีเฟรช',
+    'en': 'No information recorded within this radius yet. Try moving the map or refreshing.',
+    'zh': '此范围内暂无记录信息，可尝试移动地图或刷新。',
+    'ko': '이 반경에는 아직 등록된 정보가 없습니다. 지도를 옮기거나 새로고침해 보세요.',
+    'ru': 'В этом радиусе пока нет данных. Попробуйте сдвинуть карту или обновить.',
+    'ja': 'この範囲にはまだ情報がありません。地図を動かすか更新してみてください。',
+  },
+  'around_unit_areas': {
+    'th': 'พื้นที่', 'en': 'areas', 'zh': '处', 'ko': '곳', 'ru': 'зон', 'ja': 'エリア',
+  },
+  'around_unit_places': {
+    'th': 'แห่ง', 'en': 'places', 'zh': '家', 'ko': '곳', 'ru': 'мест', 'ja': '件',
+  },
   'radar_badge_certified': {
     'th': 'ราคามาตรฐานที่รับรอง', 'en': 'Certified Fair Price', 'zh': '认证公道价格', 'ko': '인증된 적정 가격', 'ru': 'Сертифицированная честная цена', 'ja': '認証済み適正価格',
   },

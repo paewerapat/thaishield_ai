@@ -376,6 +376,30 @@ client's own call and is recorded in the Rev.4 quotation doc.
 The analysis below is kept because it is why those four features were dropped. Do not
 re-open them.
 
+#### Item (ข) — the Radar moved onto the Map (done 2026-08-23, no charge)
+
+`lib/features/map/widgets/around_you_panel.dart` — a draggable sheet on the Smart Map
+showing the four area/partner counts, the nearby advisories, and the nearest partners with
+distances in metres. Points to know before changing it:
+
+- **It is not a second data path.** It renders a `RadarResult` from the same
+  `RadarService` in-memory cache the pins are built from, recomputed locally on every
+  position or filter change. That costs no Firestore reads, and it is why the sheet can
+  never contradict the map behind it — including the Filter panel, which both obey.
+- **Counts are never gated, list entries are.** The free tier sees every count and the
+  nearest `freeRadarResultLimit` of *each* list, so a user beside four advisories still
+  sees partners instead of having advisories eat the whole allowance. Hiding the counts
+  would make the Map look broken rather than limited.
+- **Only non-safe zones are listed as advisories**, though all of them are counted.
+- `AroundYouPanel.minChildSize` and `_MapScreenState._aroundCollapsedFraction` are two
+  literals that must stay equal, or the map's floating buttons end up behind the collapsed
+  sheet. Both sides say so.
+- The sheet is hidden while a pin or zone popup is open, so there is only ever one detail
+  surface on screen.
+
+Items (ก) Google Places search, (ค) category cards with photos and (จ) news as map pins
+remain **not built** at the client's request.
+
 ### ⚠️ `feature-design.jpg` — the original analysis (received 2026-08-19)
 
 `C:\Fastwork\thaishield-ai\feature-design.jpg` is a **one-page design/marketing poster**

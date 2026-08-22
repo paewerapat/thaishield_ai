@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geocoding/geocoding.dart';
@@ -11,10 +13,13 @@ import '../../../core/services/location_service.dart';
 import '../../premium/models/premium_feature.dart';
 import '../../premium/providers/premium_provider.dart';
 import '../../premium/widgets/premium_gate.dart';
+import '../../premium/screens/paywall_screen.dart';
 import '../../radar/models/radar_filters.dart';
+import '../../radar/models/radar_result.dart';
 import '../../radar/services/radar_service.dart';
 import '../../radar/widgets/filter_panel.dart';
 import '../../route/screens/route_preview_screen.dart';
+import '../widgets/around_you_panel.dart';
 
 class _Suggestion {
   const _Suggestion(this.label, this.coords, [this.zoom = 13.0]);
@@ -281,6 +286,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// user has opened anything.
   bool _autoLocated = false;
 
+  /// What the Smart Map draws in the "around you" sheet (item ข, 2026-08-22).
+  ///
+  /// Recomputed locally from `RadarService`'s in-memory cache whenever the user
+  /// position, the filters or the underlying data change — the same cache the
+  /// pins are built from, so the sheet can never disagree with the map behind
+  /// it. Null until there is a position to scan around, which is what makes
+  /// the sheet render nothing at all rather than an empty shell.
+  RadarResult? _around;
+
+  /// Kept in step with `AroundYouPanel`'s `minChildSize` so the floating
+  /// buttons clear the collapsed sheet. Two literals that must match, so the
+  /// shared one lives here and the panel documents the pairing.
+  static const _aroundCollapsedFraction = 0.16;
+
   double _distanceSq(LatLng a, LatLng b) {
     final dlat = a.latitude - b.latitude;
     final dlng = a.longitude - b.longitude;
@@ -487,6 +506,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         _refreshing = false;
         _error = null;
       });
+      // After the pins, so the sheet and the map are built from the same
+      // fetch rather than two that could straddle a refresh.
+      unawaited(_refreshAround());
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -509,6 +531,63 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  /// Rebuilds the "around you" sheet from the position the blue dot is at.
+  ///
+  /// Reads `RadarService`'s cache, so this is local arithmetic in the normal
+  /// case and costs no Firestore reads — which is why it is safe to call on
+  /// every position update and every filter change.
+  ///
+  /// Uses the same [_filters] the pins obey: hiding a category on the map and
+  /// still counting it in the sheet would make the two contradict each other
+  /// on the same screen.
+  Future<void> _refreshAround() async {
+    final position = _userPosition;
+    if (position == null) {
+      if (_around != null && mounted) setState(() => _around = null);
+      return;
+    }
+
+    try {
+      final result = await RadarService.instance.scan(
+        center: position,
+        categories: _filters.categories,
+        riskLevels: _filters.riskLevels,
+      );
+      if (!mounted) return;
+      setState(() => _around = result);
+    } catch (_) {
+      // The map itself already reports a load failure; a second message for
+      // the sheet would be noise. Leaving the previous result up is better
+      // than blanking a panel the user is reading.
+    }
+  }
+
+  /// Centres the map on a radar entry and opens its detail, so tapping a row
+  /// in the sheet behaves like tapping the pin it refers to.
+  void _showAroundEntry(RadarEntry entry) {
+    switch (entry) {
+      case RadarPartnerEntry(:final partner):
+        setState(() {
+          _selectedZone = null;
+          _selectedPartner = partner;
+        });
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(partner.lat, partner.lng), 16),
+        );
+      case RadarZoneEntry(:final zone):
+        setState(() {
+          _selectedPartner = null;
+          _selectedZone = zone;
+        });
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(zone.centerLat, zone.centerLng),
+            14,
+          ),
+        );
+    }
+  }
+
   Future<void> _openFilterPanel() async {
     if (!await ensurePremium(context, PremiumFeature.filterPanel)) return;
     if (!mounted) return;
@@ -516,6 +595,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     final updated = await showRadarFilterPanel(context, _filters);
     if (updated == null || !mounted) return;
     setState(() => _filters = updated);
+    unawaited(_refreshAround());
   }
 
   void _openMapSettings() {
@@ -573,6 +653,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       _mapCenter = position;
     });
     _updateNearestPartner();
+    unawaited(_refreshAround());
 
     if (moveCamera) {
       _mapController?.animateCamera(
@@ -761,9 +842,30 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                       setState(() => _selectedZone = null),
                                 ),
                               ),
+                            if (_selectedZone == null && _selectedPartner == null)
+                              AroundYouPanel(
+                                result: _around,
+                                isPremium:
+                                    context.watch<PremiumProvider>().isPremium,
+                                onShowEntry: _showAroundEntry,
+                                onUnlock: () => showPaywall(
+                                  context,
+                                  feature: PremiumFeature.radarResults,
+                                ),
+                              ),
                             Positioned(
                               right: 12,
-                              bottom: 12,
+                              // Sits clear of the "around you" sheet when it is
+                              // up. Without this the locate button — the one
+                              // people reach for first — hides behind the
+                              // collapsed sheet.
+                              bottom: _around != null &&
+                                      _selectedZone == null &&
+                                      _selectedPartner == null
+                                  ? MediaQuery.sizeOf(context).height *
+                                          _aroundCollapsedFraction +
+                                      12
+                                  : 12,
                               child: _FloatingButtons(
                                 onCenter: _centerOnUser,
                                 onFilter: _openFilterPanel,
