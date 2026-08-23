@@ -36,6 +36,12 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # On-device tests (integration_test/). Added 2026-08-23: the project had
+  # thorough manual QA checklists and nothing that ran itself, so every feature
+  # change cost a full hands-on pass and regressions could only be caught by a
+  # human remembering to look. See DEV_PROCESS.md at the workspace root.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
 

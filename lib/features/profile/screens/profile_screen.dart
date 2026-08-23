@@ -412,11 +412,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'ru': '🇷🇺',
       'ja': '🇯🇵',
     };
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -447,11 +447,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildFeedbackTile(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -471,11 +471,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildInfoTile(BuildContext context, IconData icon, String title, String subtitle) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -565,14 +565,19 @@ class _QaPremiumSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final premium = context.watch<PremiumProvider>();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
+    // Material, not a decorated Container. A ListTile paints its background
+    // and ink splashes on the nearest Material ancestor, so a coloured box
+    // between the two hides the tap feedback — and asserts loudly in debug,
+    // which is how the on-device suite found this on 2026-08-23.
+    return Material(
+      color: const Color(0xFFFFF3E0),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFB300)),
+        side: const BorderSide(color: Color(0xFFFFB300)),
       ),
-      child: SwitchListTile(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        child: SwitchListTile(
         contentPadding: EdgeInsets.zero,
         dense: true,
         activeThumbColor: const Color(0xFF2E7D32),
@@ -598,6 +603,7 @@ class _QaPremiumSwitch extends StatelessWidget {
             : (on) => on
                 ? premium.qaUnlock(PremiumPlan.monthly)
                 : premium.qaLock(),
+        ),
       ),
     );
   }

@@ -754,6 +754,49 @@ domain and annual cloud/server costs, and any post-release feature work.
 
 ---
 
+## 7.5 Testing — the pyramid, and what it deliberately does not cover
+
+Added 2026-08-23. Before that the project had excellent **manual** checklists and
+nothing that ran itself, so every feature change cost a full hands-on pass and the
+cases that slipped were never the hard ones — they were the ones tested a fortnight
+earlier and assumed still fine.
+
+| Layer | Where | Runs on | Catches |
+|---|---|---|---|
+| Unit | `test/*_test.dart` | dev machine, ~3s | logic, models, geo maths, six-language copy |
+| Widget | `test/paywall_widget_test.dart` | dev machine, ~3s | whether the **screen** draws what the model says |
+| On-device | `integration_test/app_test.dart` | emulator/handset, ~2m | real boot with Firebase, tab navigation, first-run trial, language switch |
+| Manual | `QA_PHASE_2B.md` (workspace root) | real handset | camera, mic, real GPS, Maps deep link, purchases |
+
+```bash
+export PATH="/c/Users/werapat/flutter/bin:$PATH"
+flutter analyze
+flutter test                                    # unit + widget
+flutter test integration_test -d emulator-5554  # on-device
+```
+
+**Rules that keep this useful rather than decorative:**
+
+- Anything provable without a device belongs in the bottom two layers. A test left
+  in the on-device suite that did not need to be there is a tax paid on every run.
+- 🚨 `integration_test` **wipes SharedPreferences on the device**. Emulator or a
+  dedicated test handset only.
+- The on-device suite builds its own widget tree rather than calling `main()`:
+  `main()` initialises Firebase, and a second call throws `duplicate-app`. Firebase
+  is initialised once in `setUpAll` instead.
+- A green run proves less than it looks like. Camera, microphone, a real GPS fix,
+  the Google Maps deep link and anything about iOS are **untested, not passing** —
+  say so out loud rather than letting the count imply coverage.
+- The test count must never go **down**. A deleted test is a deleted safety net.
+
+**The QA gate** — `.claude/workflows/feature-qa.js` plus the four `qa-*` agents in
+`.claude/agents/` — runs these checks from four angles that fail differently and
+puts every finding in front of two skeptics before reporting it. Run it after any
+feature lands. Full rationale and the team process it belongs to: `DEV_PROCESS.md`
+at the workspace root.
+
+---
+
 ## 8. Firebase / Build Commands
 
 ```bash
