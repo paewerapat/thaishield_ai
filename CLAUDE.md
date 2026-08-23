@@ -415,11 +415,11 @@ things they asked for in prose are **fixes**, while the poster around them is no
 | | Item | Status |
 |---|---|---|
 | ✅ | Locate the user when the Map opens · blue dot · 1 km ring | **Done 2026-08-20** — see below |
-| ✅ | Prices ฿99 / ฿799 / ฿1,999 | **Applied to `PremiumPlan`** — the poster answered the open pricing question |
+| ✅ | Prices ฿99 / ฿799 / ฿1,999 | **Superseded 2026-08-22.** The client replaced the whole plan set with two USD passes — see "The plans changed on 2026-08-22". Do not use these figures |
 | ✅ | "รอบตัวคุณในระยะ 1 กม." data (safe / caution / alert / partners) | Already built — **Safety Radar, 2A task 2.1**, default radius 1 km. The poster puts it *inside* the Map screen; ours is a separate screen off the Home tab |
 | ⚠️ | **Place search that works** | Current search is `geocoding.locationFromAddress` — an *address* geocoder, so POI names (malls, restaurants, attractions) frequently miss. Doing this properly needs **Google Places** (Autocomplete + Details), a new paid API. **Not quoted** |
 | ⚠️ | Category icon row, "คุณอยู่ที่นี่" address panel, count tiles, nearby lists, category cards *with photos* | Data mostly exists; this is UI assembly. The photo cards also need a new CMS field. **Not quoted** |
-| ⚠️ | **7-day free trial** | Not in the code and not in 2C task 2.8. Needs store-side trial config plus entitlement logic |
+| ✅ | **Free trial** | **Built 2026-08-22, as 3 days rather than 7.** Granted in-app by `PremiumProvider.startTrialIfEligible`, because a store-run trial only attaches to a subscription and both products are one-time passes |
 | 🚨 | **ดัชนีความปลอดภัย 95/100** | **Conflicts with §10.** Scoring an area is precisely the judgement the wording rules exist to prevent, and no data in this project can compute it. The four count tiles beside it already convey "what is around you" without rating anywhere |
 | 🚨 | **Smart Alerts** (alerts fired by location) | **Conflicts with §7** — no background/geofencing notifications. 2A task 2.2 was agreed as foreground, on-open only |
 | 🚨 | **Offline Map** | Google Maps SDK terms forbid caching tiles. Real offline maps mean replacing the map engine (Mapbox / MapLibre) — a rewrite of every map surface in the app |
@@ -619,20 +619,21 @@ both return `StoreOutcome.notAvailableYet` today and the paywall already handles
 value of that enum. Task 2.8 replaces those two method bodies and adds a store-driven
 refresh. **No screen changes.**
 
-**Prices** are `PremiumPlan.priceThb`: **฿99 monthly / ฿799 yearly / ฿1,999 lifetime**,
-taken from the client's `feature-design.jpg` on 2026-08-20 (they were invented placeholders
-before that) and pinned by a test.
-⚠️ Once billing is live the figure **shown** must come from `ProductDetails.price` — the
-store's own localised, tax-inclusive string — never from this constant, which cannot follow
-a currency, a regional tax rule, or a price change. `premium_price_note` already tells the
-user that the store's price is the one they pay.
-⚠️ The design also promises a **7-day free trial**, which is neither in the code nor in 2C
-task 2.8 — it needs the trial configured on the store products plus entitlement logic.
+🚨 **Prices, product ids and product types moved on 2026-08-22 — the only correct copy of
+them is the block above** ("The plans changed on 2026-08-22"). Two passes, both USD, both
+**consumables**: `thaishield_premium_2weeks` and `thaishield_premium_monthly`. The
+`_yearly` and `_lifetime` ids are cancelled and must never be created.
 
-⚠️ **Set the products up under exactly the ids in `PremiumPlan.productId`**
-(`thaishield_premium_monthly` / `_yearly` / `_lifetime`), with monthly and yearly as
-**subscriptions** and lifetime as a **non-consumable**. They are different product types in
-both stores and cannot be converted later.
+This paragraph used to carry the ฿99 / ฿799 / ฿1,999 figures and told whoever set up the
+store to create monthly and yearly as **subscriptions**. It was left behind when the new
+block was added, and the QA gate caught it on 2026-08-23 — filed as critical, because a
+product's type is irreversible in both stores: following the old instruction burns the
+`thaishield_premium_monthly` id permanently and costs a fresh store review to recover.
+
+⚠️ Once billing is live the figure **shown** must come from `ProductDetails.price` — the
+store's own localised, tax-inclusive string — never from the constant in `PremiumPlan`,
+which cannot follow a currency, a regional tax rule, or a price change.
+`premium_price_note` already tells the user that the store's price is the one they pay.
 
 **Definition of done (2B):**
 - ✅ Routes API key injected via `--dart-define=ROUTES_API_KEY=…`, never committed
@@ -730,7 +731,10 @@ domain and annual cloud/server costs, and any post-release feature work.
 | 2 | 2A | Safety Radar core + geo-radius logic | สัปดาห์ที่ 1 (2026-08-12 → 2026-08-18) | ✅ โค้ดเสร็จ 2026-08-11 |
 | 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | ✅ โค้ดเสร็จ 2026-08-11 — รอทดสอบบนเครื่องจริง |
 | 4 | 2B | Route Suggestion (Routes API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | โค้ดเสร็จ 2026-08-19 · รอ QA บนเครื่องจริง |
-| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | โค้ดเสร็จ 2026-08-19 · รอ QA + รอตัดสินใจราคา |
+| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | โค้ดเสร็จ 2026-08-19 · **แพ็กเกจใหม่ 2026-08-22** · รอ QA บนเครื่องจริง |
+| 5.1 | — | แพ็กเกจใหม่ 2 แบบ + ทดลองฟรี 3 วัน + entitlement บน Firestore | — | ✅ 2026-08-22 (ไม่คิดค่าใช้จ่าย) |
+| 5.2 | — | ย้าย Radar เข้าหน้าแผนที่ (ข้อ ข) | — | ✅ 2026-08-23 (ไม่คิดค่าใช้จ่าย) |
+| 5.3 | — | ชุดทดสอบ widget + on-device + QA gate (§7.5) | — | ✅ 2026-08-23 |
 | 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | รอดำเนินการ |
 | 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | รอดำเนินการ |
 

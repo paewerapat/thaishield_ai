@@ -79,8 +79,9 @@ class AroundYouPanel extends StatelessWidget {
         (partners.length - shownPartners.length);
 
     return DraggableScrollableSheet(
-      // minChildSize is mirrored by `_MapScreenState._aroundCollapsedFraction`,
-    // which lifts the map's floating buttons clear of the collapsed sheet.
+      // The map lifts its floating buttons to follow this sheet by listening for
+    // DraggableScrollableNotification, so these fractions are free to change
+    // without a second literal needing to be kept in step.
     initialChildSize: 0.16,
       minChildSize: 0.16,
       maxChildSize: 0.72,

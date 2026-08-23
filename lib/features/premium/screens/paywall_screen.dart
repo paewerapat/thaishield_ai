@@ -347,8 +347,11 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRecommended = plan == PremiumPlan.recommended;
-    // Only the 14-day pass leads into the trial, so only it carries the badge.
-    final showsTrial = plan == PremiumPlan.twoWeeks;
+    // No trial badge on a plan card. The 3 free days are granted to a new
+    // install on first launch — buying this pass grants nothing free, so a
+    // "3 days free" badge on the price is an offer the purchase never honours.
+    // Flagged by the QA gate 2026-08-23. The accurate version of the same
+    // message is `premium_trial_note`, rendered under the cards.
 
     return InkWell(
       onTap: onTap,
@@ -424,17 +427,6 @@ class _PlanCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (showsTrial) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          '· ${appText(context, 'premium_trial_badge')}',
-                          style: const TextStyle(
-                            color: _green,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ],

@@ -770,13 +770,17 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Партнёры рядом',
     'ja': '近くのパートナー',
   },
+  // ⚠️ Must not suggest moving the map. The scan is centred on the user's own
+  // position, never on the map camera, so panning changes nothing — the QA gate
+  // caught the original wording sending people to a control that cannot help.
+  // Name only the two controls that actually re-scan: locate, and refresh.
   'around_empty': {
-    'th': 'ยังไม่มีข้อมูลในระยะนี้ ลองเลื่อนแผนที่หรือกดรีเฟรช',
-    'en': 'No information recorded within this radius yet. Try moving the map or refreshing.',
-    'zh': '此范围内暂无记录信息，可尝试移动地图或刷新。',
-    'ko': '이 반경에는 아직 등록된 정보가 없습니다. 지도를 옮기거나 새로고침해 보세요.',
-    'ru': 'В этом радиусе пока нет данных. Попробуйте сдвинуть карту или обновить.',
-    'ja': 'この範囲にはまだ情報がありません。地図を動かすか更新してみてください。',
+    'th': 'ยังไม่มีข้อมูลในระยะนี้ กดปุ่มระบุตำแหน่งเพื่ออัปเดตตำแหน่งของคุณ หรือกดรีเฟรช',
+    'en': 'Nothing is recorded within this radius yet. Tap the locate button to update your position, or refresh.',
+    'zh': '此范围内暂无记录信息。可点按定位按钮更新您的位置，或刷新。',
+    'ko': '이 반경에는 아직 등록된 정보가 없습니다. 위치 버튼을 눌러 현재 위치를 갱신하거나 새로고침하세요.',
+    'ru': 'В этом радиусе пока нет данных. Нажмите кнопку определения местоположения, чтобы обновить позицию, или обновите список.',
+    'ja': 'この範囲にはまだ情報がありません。現在地ボタンで位置を更新するか、更新してください。',
   },
   'around_unit_areas': {
     'th': 'พื้นที่', 'en': 'areas', 'zh': '处', 'ko': '곳', 'ru': 'зон', 'ja': 'エリア',
@@ -1093,9 +1097,6 @@ const Map<String, Map<String, String>> _appText = {
   },
   'premium_period_monthly': {
     'th': 'จ่ายครั้งเดียว ใช้ได้ 30 วัน', 'en': 'one-time, 30 days', 'zh': '一次性付款，30 天', 'ko': '1회 결제, 30일', 'ru': 'разовый платёж, 30 дней', 'ja': '買い切り・30日間',
-  },
-  'premium_trial_badge': {
-    'th': 'ทดลองฟรี 3 วัน', 'en': '3 days free', 'zh': '免费试用 3 天', 'ko': '3일 무료', 'ru': '3 дня бесплатно', 'ja': '3日間無料',
   },
   'premium_trial_note': {
     'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง ไม่มีการเรียกเก็บเงินใด ๆ',

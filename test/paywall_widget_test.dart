@@ -160,13 +160,24 @@ void main() {
       expect(find.textContaining('฿'), findsNothing);
     });
 
-    testWidgets('the trial badge sits on the 14-day pass only', (tester) async {
+    testWidgets('the trial is explained under the cards, never sold as part of a pass',
+        (tester) async {
+      // The 3 free days go to a new install on first launch. Buying a pass
+      // grants nothing free, so a "3 days free" badge on a price was an offer
+      // the purchase could never honour — the QA gate flagged it 2026-08-23 and
+      // it was removed. What remains is the accurate note beneath the cards.
       await tester.pumpWidget(_host(const PaywallScreen()));
       await tester.pumpAndSettle();
 
+      final note = appStrings['premium_trial_note']!['th']!;
+      await tester.scrollUntilVisible(find.text(note), 200);
+      await tester.pumpAndSettle();
+
+      expect(find.text(note), findsOneWidget);
       expect(
-        find.textContaining(appStrings['premium_trial_badge']!['th']!),
-        findsOneWidget,
+        appStrings['premium_trial_badge'],
+        isNull,
+        reason: 'the badge copy should have been removed with the badge',
       );
     });
 
@@ -188,13 +199,33 @@ void main() {
       expect(note.contains('iOS'), isTrue);
     });
 
-    testWidgets('every plan card can be selected', (tester) async {
+    testWidgets('tapping a plan card moves the selection to it', (tester) async {
+      // Written first as "exactly one radio is checked, before and after",
+      // which cannot fail: one is always checked because `recommended` is the
+      // initial selection, so a dead tap handler passed. The QA gate flagged it
+      // on 2026-08-23. It now asserts *which* card holds the selection, which is
+      // the thing that decides what the user is charged.
+      Finder cardFor(PremiumPlan plan) => find.ancestor(
+            of: find.text(appStrings[plan.titleKey]!['th']!),
+            matching: find.byType(InkWell),
+          );
+
       await tester.pumpWidget(_host(const PaywallScreen()));
       await tester.pumpAndSettle();
 
-      // Starts on the recommended plan.
+      // Opens on the recommended plan — the 30-day pass.
       expect(
-        find.byIcon(Icons.radio_button_checked_rounded),
+        find.descendant(
+          of: cardFor(PremiumPlan.monthly),
+          matching: find.byIcon(Icons.radio_button_checked_rounded),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: cardFor(PremiumPlan.twoWeeks),
+          matching: find.byIcon(Icons.radio_button_unchecked_rounded),
+        ),
         findsOneWidget,
       );
 
@@ -203,7 +234,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.radio_button_checked_rounded), findsOneWidget);
+      // …and the selection actually moved.
+      expect(
+        find.descendant(
+          of: cardFor(PremiumPlan.twoWeeks),
+          matching: find.byIcon(Icons.radio_button_checked_rounded),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: cardFor(PremiumPlan.monthly),
+          matching: find.byIcon(Icons.radio_button_unchecked_rounded),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('renders in all six languages without overflowing',

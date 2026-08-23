@@ -295,10 +295,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// the sheet render nothing at all rather than an empty shell.
   RadarResult? _around;
 
-  /// Kept in step with `AroundYouPanel`'s `minChildSize` so the floating
-  /// buttons clear the collapsed sheet. Two literals that must match, so the
-  /// shared one lives here and the panel documents the pairing.
-  static const _aroundCollapsedFraction = 0.16;
+  /// Where the "around you" sheet currently sits, as a fraction of screen
+  /// height, so the floating buttons can ride above its top edge.
+  ///
+  /// Was a constant matching the sheet's `minChildSize`, which only held while
+  /// the sheet was collapsed — dragging it open buried the locate and filter
+  /// buttons under it, along with the distance figures the user had just opened
+  /// the sheet to read. Caught by the QA gate on 2026-08-23.
+  ///
+  /// Capped when applied: past roughly half the screen the user is reading the
+  /// sheet, and buttons pinned to its edge would climb into the search bar.
+  double _aroundExtent = 0.16;
+  static const _aroundMaxLift = 0.46;
 
   double _distanceSq(LatLng a, LatLng b) {
     final dlat = a.latitude - b.latitude;
@@ -843,27 +851,41 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 ),
                               ),
                             if (_selectedZone == null && _selectedPartner == null)
-                              AroundYouPanel(
-                                result: _around,
-                                isPremium:
-                                    context.watch<PremiumProvider>().isPremium,
-                                onShowEntry: _showAroundEntry,
-                                onUnlock: () => showPaywall(
-                                  context,
-                                  feature: PremiumFeature.radarResults,
+                              NotificationListener<
+                                  DraggableScrollableNotification>(
+                                onNotification: (notification) {
+                                  if (notification.extent != _aroundExtent) {
+                                    setState(
+                                      () => _aroundExtent = notification.extent,
+                                    );
+                                  }
+                                  return false;
+                                },
+                                child: AroundYouPanel(
+                                  result: _around,
+                                  isPremium: context
+                                      .watch<PremiumProvider>()
+                                      .isPremium,
+                                  onShowEntry: _showAroundEntry,
+                                  onUnlock: () => showPaywall(
+                                    context,
+                                    feature: PremiumFeature.radarResults,
+                                  ),
                                 ),
                               ),
                             Positioned(
                               right: 12,
-                              // Sits clear of the "around you" sheet when it is
-                              // up. Without this the locate button — the one
-                              // people reach for first — hides behind the
-                              // collapsed sheet.
+                              // Rides above the sheet's current top edge, not a
+                              // fixed offset — otherwise dragging the sheet open
+                              // buries the locate button and the distances the
+                              // user opened it to read.
                               bottom: _around != null &&
                                       _selectedZone == null &&
                                       _selectedPartner == null
                                   ? MediaQuery.sizeOf(context).height *
-                                          _aroundCollapsedFraction +
+                                          (_aroundExtent < _aroundMaxLift
+                                              ? _aroundExtent
+                                              : _aroundMaxLift) +
                                       12
                                   : 12,
                               child: _FloatingButtons(

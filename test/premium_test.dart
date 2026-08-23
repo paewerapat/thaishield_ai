@@ -37,7 +37,6 @@ const _premiumKeys = [
   'premium_plan_monthly',
   'premium_period_2weeks',
   'premium_period_monthly',
-  'premium_trial_badge',
   'premium_trial_note',
   'premium_status_trial',
   'premium_badge_recommended',
