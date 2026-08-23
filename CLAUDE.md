@@ -796,8 +796,19 @@ flutter test integration_test -d emulator-5554  # on-device
 **The QA gate** — `.claude/workflows/feature-qa.js` plus the four `qa-*` agents in
 `.claude/agents/` — runs these checks from four angles that fail differently and
 puts every finding in front of two skeptics before reporting it. Run it after any
-feature lands. Full rationale and the team process it belongs to: `DEV_PROCESS.md`
-at the workspace root.
+feature lands. Full rationale and the team process it belongs to: `DEV_PROCESS.md`,
+beside this file.
+
+Both live **inside this repo on purpose** (moved there 2026-08-23): a gate this
+file makes mandatory has to be version-controlled, reviewable and restorable like
+anything else it governs. `QA_PHASE_2B.md` and `INTEGRATION_TEST.md` stay at the
+workspace root because they cover both repos.
+
+🚨 **The gate's first real run returned BLOCKED against this very file.** The
+2026-08-22 package rewrite added the new store-setup block without deleting the
+old one, so CLAUDE.md simultaneously ordered consumables and subscriptions under
+ids that no longer exist. Run the gate before believing a change is finished —
+the worst thing it caught that day was in the documentation, not the code.
 
 ---
 
