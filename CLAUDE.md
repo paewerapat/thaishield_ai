@@ -530,6 +530,25 @@ a place where a reasonable-looking change would break something real:
 `PremiumProvider.grantPurchase` and `restoreFromPurchaseIds` are already written and
 tested; 2.8 only has to feed them what the store SDK returns.
 
+**🚨 Restore does not work on iOS, and the client accepted that (2026-08-23).** StoreKit
+never replays consumables, so `restorePurchases()` returns no transaction id for a pass
+and there is nothing to look the Firestore record up by. Android is fine — an unconsumed
+purchase is still returned by `queryPurchases`, which is the other reason 2.8 must
+acknowledge but not consume until the pass expires. StoreKit 2's `Transaction.all` would
+return consumables, but requiring it was judged not worth the platform floor for a 14- or
+30-day pass.
+
+What accepting it obliged us to do, and what must not be undone:
+
+- `premium_platform_note` now says something **different per platform** — restore works on
+  Android, does not on iOS. A test pins that. Do not simplify it back into one promise
+  about both stores: that is a billing claim the app cannot honour on half its installs,
+  and the user only discovers it after losing time they paid for.
+- If support ever needs to reinstate an iOS pass by hand, the Firestore record is keyed by
+  the store transaction id — but nothing in the app shows that id to the user yet. Adding
+  a visible reference code to Profile is the obvious mitigation if refund requests
+  actually appear; it was proposed and deliberately not built.
+
 **What 2.4 actually added**
 
 - `lib/features/route/` — `RouteService` (the API call, the cache and the response

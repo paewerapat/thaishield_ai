@@ -728,6 +728,30 @@ void main() {
       expect(platform, contains('ios'));
     });
 
+    test('restore is not promised on iOS, where it cannot work', () {
+      // Accepted limitation, 2026-08-23: a one-time pass is a consumable, and
+      // Apple never replays consumables — so the remaining days of a pass
+      // cannot be recovered on a new iPhone. Android is fine, because an
+      // unconsumed purchase is still returned by Play.
+      //
+      // This is pinned because the earlier copy promised restore on both
+      // platforms. Saying so is a billing claim the app cannot honour on half
+      // its installs, and the user only finds out after losing time they paid
+      // for.
+      for (final language in _languages) {
+        final text = appStrings['premium_platform_note']![language]!;
+        expect(
+          text.toLowerCase().contains('ios') || text.contains('iOS'),
+          isTrue,
+          reason: '$language must name the platform the limit applies to',
+        );
+      }
+
+      final english = appStrings['premium_platform_note']!['en']!.toLowerCase();
+      expect(english, contains('does not restore'));
+      expect(english, contains('on android you can restore'));
+    });
+
     test('the copy does not promise a renewal that cannot happen', () {
       // Both products are one-time passes. Wording carried over from the
       // subscription plans would be a billing claim the app cannot honour, and

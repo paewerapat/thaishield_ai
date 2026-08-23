@@ -1138,13 +1138,19 @@ const Map<String, Map<String, String>> _appText = {
   'premium_restore': {
     'th': 'กู้คืนการซื้อ', 'en': 'Restore Purchases', 'zh': '恢复购买', 'ko': '구매 복원', 'ru': 'Восстановить покупки', 'ja': '購入を復元',
   },
+  // ⚠️ Says something different for each platform on purpose. Restoring a
+  // one-time pass works on Android, where an unconsumed purchase is still
+  // returned by the store, and does not work on iOS, which never replays
+  // consumables. Promising restore on both — as this string used to — is a
+  // billing claim the app cannot honour on half its installs, and the refund
+  // request lands after the user has already lost the time they paid for.
   'premium_platform_note': {
-    'th': 'การซื้อจะผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้ซื้อ ติดตั้งใหม่หรือเปลี่ยนเครื่องแล้วกดกู้คืนการซื้อได้ แต่ไม่สามารถโอนข้ามระหว่าง Android และ iOS',
-    'en': 'Your purchase is tied to the Google Play or Apple ID account you buy it with. Reinstalling or moving to a new phone restores it, but it does not transfer between Android and iOS.',
-    'zh': '购买将绑定到您用于付款的 Google Play 或 Apple ID 账户。重装或更换手机后可恢复购买，但无法在 Android 与 iOS 之间转移。',
-    'ko': '구매는 결제에 사용한 Google Play 또는 Apple ID 계정에 연결됩니다. 재설치하거나 새 기기로 옮겨도 복원할 수 있지만 Android와 iOS 사이에는 이전되지 않습니다.',
-    'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена. После переустановки или смены телефона её можно восстановить, но она не переносится между Android и iOS.',
-    'ja': '購入は決済に使用した Google Play または Apple ID のアカウントに紐づきます。再インストールや機種変更後は復元できますが、Android と iOS の間では引き継げません。',
+    'th': 'การซื้อจะผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้ซื้อ และไม่สามารถโอนข้ามระหว่าง Android และ iOS · บน Android หากติดตั้งใหม่หรือเปลี่ยนเครื่อง กดกู้คืนการซื้อเพื่อใช้เวลาที่เหลือต่อได้ · บน iOS บัตรผ่านเป็นสินค้าแบบจ่ายครั้งเดียวซึ่งระบบของ Apple ไม่รองรับการกู้คืน จึงแนะนำให้ใช้ในเครื่องเดิมจนหมดอายุ',
+    'en': 'Your purchase is tied to the Google Play or Apple ID account you buy it with, and does not transfer between Android and iOS. On Android you can restore the remaining time after reinstalling or moving to a new phone. On iOS a pass is a one-time product that Apple does not restore, so plan to use it on the device you bought it on.',
+    'zh': '购买将绑定到您用于付款的 Google Play 或 Apple ID 账户，且无法在 Android 与 iOS 之间转移。在 Android 上，重装或更换手机后可恢复剩余时间；在 iOS 上，通行证属于一次性商品，Apple 不支持恢复，建议在原设备上用完。',
+    'ko': '구매는 결제에 사용한 Google Play 또는 Apple ID 계정에 연결되며 Android와 iOS 사이에는 이전되지 않습니다. Android에서는 재설치하거나 기기를 바꿔도 남은 기간을 복원할 수 있습니다. iOS에서는 이용권이 1회성 상품이라 Apple이 복원을 지원하지 않으므로 구매한 기기에서 사용하시기 바랍니다.',
+    'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена, и не переносится между Android и iOS. На Android оставшееся время можно восстановить после переустановки или смены телефона. На iOS пропуск — разовый товар, который Apple не восстанавливает, поэтому используйте его на том устройстве, где купили.',
+    'ja': '購入は決済に使用した Google Play または Apple ID のアカウントに紐づき、Android と iOS の間では引き継げません。Android では再インストールや機種変更後に残り期間を復元できます。iOS ではパスが買い切り商品のため Apple の復元に対応しておらず、購入した端末でのご利用をおすすめします。',
   },
   // Both stores require the billing model to be stated next to the price. With
   // one-time passes the disclosure is the opposite of the usual one: the point

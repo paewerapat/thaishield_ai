@@ -164,6 +164,19 @@ class PremiumProvider extends ChangeNotifier {
   /// 2C wires this to `InAppPurchase.restorePurchases()`, collects the
   /// transaction ids the store replays, and hands them to
   /// [restoreFromPurchaseIds].
+  ///
+  /// 🚨 **On iOS this will find nothing, and that is accepted.** StoreKit does
+  /// not replay consumables, so `restorePurchases()` returns no transaction id
+  /// for a pass and there is nothing to look the Firestore record up by. On
+  /// Android the same call works, because an unconsumed purchase is still
+  /// returned by `queryPurchases` — which is exactly why 2.8 must acknowledge
+  /// but **not consume** a Play purchase until the pass expires.
+  ///
+  /// The client accepted this on 2026-08-23 rather than requiring StoreKit 2.
+  /// The obligation that came with accepting it is that the app says so before
+  /// anyone pays: `premium_platform_note` states the limit per platform, and a
+  /// test pins that it keeps doing so. Do not "fix" that copy back to a single
+  /// promise about both stores.
   Future<StoreOutcome> restore() async {
     return StoreOutcome.notAvailableYet;
   }
