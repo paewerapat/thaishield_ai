@@ -305,8 +305,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   ///
   /// Capped when applied: past roughly half the screen the user is reading the
   /// sheet, and buttons pinned to its edge would climb into the search bar.
-  double _aroundExtent = 0.16;
-  static const _aroundMaxLift = 0.46;
+  double _aroundExtent = 0.26;
+
+  /// Past this the sheet owns the screen and the map's own controls step aside.
+  /// Must stay above `AroundYouPanel`'s `minChildSize` or the buttons disappear
+  /// while the sheet is still collapsed.
+  static const _aroundHideButtonsAbove = 0.34;
+
+  /// The map's floating controls are only useful while the map is visible.
+  bool get _showMapButtons =>
+      _selectedZone == null &&
+      _selectedPartner == null &&
+      (_around == null || _aroundExtent <= _aroundHideButtonsAbove);
 
   double _distanceSq(LatLng a, LatLng b) {
     final dlat = a.latitude - b.latitude;
@@ -875,20 +885,28 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               ),
                             Positioned(
                               right: 12,
-                              // Rides above the sheet's current top edge, not a
-                              // fixed offset — otherwise dragging the sheet open
-                              // buries the locate button and the distances the
-                              // user opened it to read.
-                              bottom: _around != null &&
-                                      _selectedZone == null &&
-                                      _selectedPartner == null
+                              // Rides just above the sheet's top edge while the
+                              // sheet is low, then gets out of the way entirely.
+                              //
+                              // Lifting alone was not enough: past roughly a
+                              // third of the screen the buttons ended up
+                              // floating *over* the sheet, covering the very
+                              // distances the user dragged it open to read.
+                              // Verified on the emulator 2026-08-23.
+                              bottom: _showMapButtons
                                   ? MediaQuery.sizeOf(context).height *
-                                          (_aroundExtent < _aroundMaxLift
-                                              ? _aroundExtent
-                                              : _aroundMaxLift) +
+                                          _aroundExtent +
                                       12
                                   : 12,
-                              child: _FloatingButtons(
+                              child: AnimatedOpacity(
+                                opacity: _showMapButtons ? 1 : 0,
+                                duration: const Duration(milliseconds: 150),
+                                // Invisible buttons must also be unhittable, or
+                                // a tap meant for a partner row opens the filter
+                                // panel instead.
+                                child: IgnorePointer(
+                                  ignoring: !_showMapButtons,
+                                  child: _FloatingButtons(
                                 onCenter: _centerOnUser,
                                 onFilter: _openFilterPanel,
                                 onRefresh: () =>
@@ -898,6 +916,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 filterLocked: !context
                                     .watch<PremiumProvider>()
                                     .isPremium,
+                                  ),
+                                ),
                               ),
                             ),
                           ],

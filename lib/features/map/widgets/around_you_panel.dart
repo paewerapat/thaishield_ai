@@ -79,14 +79,21 @@ class AroundYouPanel extends StatelessWidget {
         (partners.length - shownPartners.length);
 
     return DraggableScrollableSheet(
-      // The map lifts its floating buttons to follow this sheet by listening for
-    // DraggableScrollableNotification, so these fractions are free to change
-    // without a second literal needing to be kept in step.
-    initialChildSize: 0.16,
-      minChildSize: 0.16,
-      maxChildSize: 0.72,
+        // 0.26, not 0.16. The collapsed sheet exists to answer "how busy is this
+      // area" without any gesture, and at 0.16 the bottom navigation clipped the
+      // count row in half — the one thing it promises to show. Measured on the
+      // emulator 2026-08-23 after the labels grew to three lines.
+      //
+      // The map lifts and then hides its floating buttons by listening for
+      // DraggableScrollableNotification, so these fractions can change without a
+      // second literal needing to be kept in step — but
+      // `_MapScreenState._aroundHideButtonsAbove` must stay above this minimum,
+      // or the buttons vanish while the sheet is still collapsed.
+      initialChildSize: 0.26,
+      minChildSize: 0.26,
+      maxChildSize: 0.75,
       snap: true,
-      snapSizes: const [0.16, 0.45, 0.72],
+      snapSizes: const [0.26, 0.5, 0.75],
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -286,13 +293,18 @@ class _Tile extends StatelessWidget {
           children: [
             Text(
               label,
-              maxLines: 2,
+              // Three lines, not two. The Thai zone labels are long — "พื้นที่
+              // คำแนะนำสำหรับนักท่องเที่ยว" clipped mid-word at two lines, which
+              // is worse than small: a truncated label for an area type is a
+              // label that tells the user nothing. Caught on the emulator
+              // 2026-08-23.
+              maxLines: 3,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
-                fontSize: 9.5,
-                height: 1.25,
+                fontSize: 9,
+                height: 1.2,
                 fontWeight: FontWeight.w600,
               ),
             ),
