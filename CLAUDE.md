@@ -817,6 +817,40 @@ the worst thing it caught that day was in the documentation, not the code.
 
 ---
 
+## 7.6 Handing a build to the client for acceptance
+
+Two builds go out, and the reason there are two matters: **a fresh install grants
+the 3-day trial immediately**, so anyone testing the real build sees everything
+unlocked and never reaches the paywall — which is precisely task 2.5, the thing
+they are supposed to be accepting.
+
+| Build | What it is | Why |
+|---|---|---|
+| `thaishield-2B-ตรวจรับ.apk` | `--debug --split-per-abi`, arm64 | `kDebugMode` is true, so the QA switch in Profile exists and the tester can flip between free and Premium in one tap |
+| `thaishield-2B-เวอร์ชันจริง.apk` | `--release --split-per-abi`, arm64 | What a real user gets. No switch, and `qaUnlock` refuses outside debug on top of that |
+
+```bash
+# Keys live in thaishield_ai-secret.txt (outside git) — never paste them into a
+# command that gets logged. Source them instead.
+flutter build apk --debug   --split-per-abi --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=…
+flutter build apk --release --split-per-abi --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=…
+```
+
+`--split-per-abi` is not optional for a handover: the fat debug APK is 206 MB and
+the arm64 slice is 107 MB, which is the difference between a client installing it
+and a client giving up. arm64-v8a covers every current Android handset.
+
+Binaries go to the workspace `delivery/` folder (outside git); the acceptance
+guide the client actually follows is `DELIVERY_2B.md` beside this file, so it is
+versioned and reusable for 2C.
+
+⚠️ **Route Suggestion is absent from both builds** until a `ROUTES_API_KEY`
+exists — the screen correctly reports the feature as unavailable rather than
+failing, but task 2.4 cannot be accepted. See §5's note on the paid-but-undelivered
+milestone.
+
+---
+
 ## 8. Firebase / Build Commands
 
 ```bash
