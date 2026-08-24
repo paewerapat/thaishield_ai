@@ -169,7 +169,7 @@ Firestore content without the Firebase Console.
 | Staff auth | Google Sign-In with domain restriction, Firebase Auth — **CMS only** |
 | Manages | `price_standards`, `partner_locations` (with real photo upload to Firebase Storage), `alert_zones` (interactive Google Maps polygon editor) |
 
-- Staff auth in the CMS **does not contradict** §6 "no Firebase Auth in the app" — that
+- Staff auth in the CMS **does not contradict** §7 "no Firebase Auth in the app" — that
   rule is about the Flutter app, which still reads anonymously.
 - The CMS writes through the **Admin SDK**, which bypasses Firestore rules entirely.
 - Known open items on the CMS side (tracked in that repo's `STATUS.md`, **not blocking**
@@ -188,7 +188,7 @@ a spec. Where anything else disagrees, **this section is what is really in Fires
 |---|---|
 | Firebase project | `thaishield-ai-790eb` |
 | Region (Firestore, Storage, Functions, CMS backend) | `asia-southeast1` |
-| Firestore rules | public read, **no client writes** (see §7) |
+| Firestore rules | public read, **no client writes** (see §9) |
 | App auth | none — the app reads anonymously |
 
 ### `price_standards`
@@ -351,7 +351,7 @@ https://firebasestorage.googleapis.com/v0/b/<bucket>/o/partner_locations%2F<id>%
   maintain.
 - **Document IDs match `^[a-z0-9_]+$`** and are immutable after creation in the CMS. If the
   app ever generates documents, follow the same convention.
-- **§8 wording rules apply to CMS-entered text too.** `alert_zones` descriptions run through
+- **§10 wording rules apply to CMS-entered text too.** `alert_zones` descriptions run through
   an automated linter in the CMS, but it only recognises **English** terms — **Thai copy is
   unchecked** and still needs human review. Anything the app displays verbatim from
   `description_th` carries that risk.
@@ -675,13 +675,25 @@ which cannot follow a currency, a regional tax rule, or a price change.
 | 2.6 | **Legal-wording revision pass** on all new copy across all 6 language ARB files | 2 days |
 | 2.7 | **QA** — regression test on existing Map / Scanner / SOS features, release build | 2–3 days |
 
+**Task 2.6 — the audit is done, the enforcement is permanent (2026-08-24).** All 216
+keys were read in all six languages: **no §10 violation was found**, and
+`test/wording_test.dart` now holds that line for every string added from here on. See
+"How this is enforced" at the end of §10, including what the linter deliberately does not
+cover. What is left of 2.6 is the copy task 2.8 has not written yet, which the linter
+picks up automatically.
+
+⚠️ The wording rules are **§10**. An earlier draft of the bullet below pointed at §8,
+which is the build-commands section — a reviewer following that reference would have
+checked the wrong thing and concluded the copy was fine.
+
 **Definition of done (2C):**
 - Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on
   iOS via cloud CI.
-- Receipt validation does not require adding Firebase Auth to the app (§6) — if a
+- Receipt validation does not require adding Firebase Auth to the app (§7) — if a
   server-side check is used, it goes through a Cloud Function, not client rules.
-- Every new string in all 6 ARB files passes §8.
-- Android AAB + iOS build produced from CI; §9 commands still work from a clean checkout.
+- Every new string, in all six languages, passes **§10** — which now means
+  `flutter test test/wording_test.dart` is green rather than that somebody read it.
+- Android AAB + iOS build produced from CI; §8 commands still work from a clean checkout.
 
 **Not included in this quotation:** Google/Apple revenue share (15–30% per transaction),
 domain and annual cloud/server costs, and any post-release feature work.
@@ -715,7 +727,7 @@ domain and annual cloud/server costs, and any post-release feature work.
 | | **รวมที่ต้องชำระเพิ่ม** | **8,000.00** | |
 
 🚨 **งวดที่ 3 ถูกชำระก่อนการตรวจรับ (2026-08-23).** เงินมาแล้วแต่ 2B ยัง**ส่งมอบไม่ครบ**:
-task 2.4 Route Suggestion ยังทดสอบไม่ได้เลยเพราะไม่มี `ROUTES_API_KEY` (ดู §7.5 และ
+task 2.4 Route Suggestion ยังทดสอบไม่ได้เลยเพราะไม่มี `ROUTES_API_KEY` (ดู §7.6 และ
 `QA_PHASE_2B.md` §1.1). ตราบใดที่ยังไม่มี key ฟีเจอร์หลักครึ่งหนึ่งของงวดที่ลูกค้าจ่ายแล้ว
 ยังใช้งานไม่ได้ — งานนี้เป็นหนี้ที่ค้างอยู่ ไม่ใช่ทางเลือก
 
@@ -772,7 +784,8 @@ earlier and assumed still fine.
 
 | Layer | Where | Runs on | Catches |
 |---|---|---|---|
-| Unit | `test/*_test.dart` | dev machine, ~3s | logic, models, geo maths, six-language copy |
+| Unit | `test/*_test.dart` | dev machine, ~4s | logic, models, geo maths, six-language copy |
+| Wording | `test/wording_test.dart` | dev machine, ~1s | §10 over **every** key in **all six** languages |
 | Widget | `test/paywall_widget_test.dart` | dev machine, ~3s | whether the **screen** draws what the model says |
 | On-device | `integration_test/app_test.dart` | emulator/handset, ~2m | real boot with Firebase, tab navigation, first-run trial, language switch |
 | Manual | `QA_PHASE_2B.md` (workspace root) | real handset | camera, mic, real GPS, Maps deep link, purchases |
@@ -991,6 +1004,58 @@ content**, push notifications, and any AI-generated (Gemini) response shown to u
 The app's goal is to **inform** tourists so they can decide for themselves — never to
 **judge or accuse** any specific shop, person or area. Apply this to every new feature and
 copy change, including all Phase 2A/2B/2C work.
+
+### How this is enforced (added 2026-08-24, task 2.6)
+
+`test/wording_test.dart` reads the key set **out of `appStrings` itself** and checks all
+six languages. A string added tomorrow is covered tomorrow, with nobody remembering to
+add it to a list.
+
+That shape was chosen because the previous one had quietly failed. Four tests each
+carried a `§10 wording` block over a hand-written list of their own feature's keys, and
+each checked the **English entry only**. Measured before the rewrite: **63 of 216 keys,
+29%, English-only.** Unchecked among the other 153 were `variance_above` and
+`variance_significant` — the app telling a tourist what a scanned price *means*, which is
+the exact sentence §10's replacement table was written to govern — plus every `radar_*`,
+`proximity_*`, `alert_category_*`, `scanner_*` and `sos_*` string.
+
+**Legal exposure does not stop at the English column.** A Thai translation reading
+"ร้านนี้โกง" while the English says "Price Is Higher Than Typical Range" is precisely the
+accusation this guide exists to prevent — and, shipping Thai-first to an audience in
+Thailand, it is the version most likely to be read by the business being described.
+
+⚠️ **Banned terms are patterns, not substrings, and the Russian column is why.** `опасн`
+("danger") is a substring of `безопасн` (“**safe**”), so a contains-check reports
+"Радар безопасности" — *Safety* Radar — as a violation. On first measurement that was
+five false alarms out of seven Russian hits. A linter wrong five times out of seven is one
+that gets switched off, so `(?<!без)опасн` carries a lookbehind and `небезопасн` is listed
+separately.
+
+**Exemptions are per (key, term), never per key**, and each carries its reason in the
+file. `safety_tip_5` and `safety_tip_6` are exempt from *avoid* only — the midday sun and
+walking alone at night are not a business and not an identified place, which is the thing
+§10 actually protects. They were exempted rather than reworded on purpose: rewriting copy
+in six languages to satisfy a linter written in the same change would add five unreviewed
+translations to remove a risk judged not to exist.
+
+🚨 **What the linter does not see** — say this out loud rather than letting a green run
+imply coverage:
+
+- **The SOS translation output.** It relays the tourist's *own* emergency speech, so if
+  they say someone is overcharging them, the app must translate that faithfully. Sanitising
+  it would break the feature's purpose at the worst possible moment. Deliberately out of
+  scope — do not "fix" it later.
+- **Thai free text staff enter in the CMS** (`description_th`) — §3 already flags that the
+  CMS linter reads English only, and this test runs against the app's own strings, not
+  Firestore.
+- **Firestore seed data.**
+- The Gemini **Vision** prompt is already constrained in-prompt (never call a price unfair
+  or a scam, never name a shop) and locked to a response schema of names and numbers, so
+  free-form prose cannot leak. That is a separate guard, checked by
+  `test/dish_identification_test.dart`.
+
+The four older per-feature `§10 wording` blocks are now redundant but stay: a deleted
+test is a deleted safety net (§7.5), and they assert other things besides.
 
 ---
 
