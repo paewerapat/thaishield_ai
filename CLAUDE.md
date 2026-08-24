@@ -830,11 +830,19 @@ they are supposed to be accepting.
 | `thaishield-2B-เวอร์ชันจริง.apk` | `--release --split-per-abi`, arm64 | What a real user gets. No switch, and `qaUnlock` refuses outside debug on top of that |
 
 ```bash
-# Keys live in thaishield_ai-secret.txt (outside git) — never paste them into a
-# command that gets logged. Source them instead.
-flutter build apk --debug   --split-per-abi --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=…
-flutter build apk --release --split-per-abi --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=…
+bash tools/build-delivery.sh
 ```
+
+That is the whole command. The script reads the three `--dart-define` keys from
+`thaishield_ai-secret.txt` (outside git) and **never prints a value**, runs
+analyze and the test suite first, builds both variants split per ABI, and stages
+them in the workspace `delivery/` folder under the names `DELIVERY_2B.md` uses.
+Typing the defines by hand is how a key ends up in a shell history, a build log,
+or a chat transcript.
+
+If `ROUTES_API_KEY` is missing the script **still builds** — everything except
+Route Suggestion is worth shipping — but says so loudly, because a build without
+it looks complete while silently dropping half of task 2.4.
 
 `--split-per-abi` is not optional for a handover: the fat debug APK is 206 MB and
 the arm64 slice is 107 MB, which is the difference between a client installing it
