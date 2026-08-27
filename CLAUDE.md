@@ -650,9 +650,16 @@ which cannot follow a currency, a regional tax rule, or a price change.
 - ✅ `test/route_test.dart` covers the polyline decoder (including truncated and junk
   input), the response parser, the duration rounding, the deep-link shape, and the copy in
   all six languages against §10.
-- ⏳ **Still owed for 2.4: hands-on QA on an Android physical device** — a real key in the
-  build, all three modes, the deep link landing in the Google Maps app, and the
-  location-denied path.
+- ✅ The key exists and works (2026-08-27). Verified by calling `computeRoutes`
+  directly: DRIVE, WALK and TRANSIT all return 200 with a polyline, and the call
+  succeeding from a **desktop** is itself the proof that Application restrictions are
+  set to None — an Android-restricted key would have returned 403, because
+  `RouteService` posts through `package:http` and therefore sends no
+  `X-Android-Package`/`X-Android-Cert` headers for Google to check.
+- ⏳ **Still owed for 2.4: hands-on QA on an Android physical device** — all three modes
+  on screen, the 5-minute cache proving itself on R8, the deep link landing in the
+  Google Maps app, and the location-denied path. A working key is not an accepted
+  feature.
 - ✅ The paywall gates features **client-side only** at this stage; purchases are not yet
   live. Both QA overrides exist: `--dart-define=PREMIUM_OVERRIDE=true` for any build, and a
   debug-only switch in Profile. Neither can unlock a release build — the flag defaults to
@@ -726,10 +733,16 @@ domain and annual cloud/server costs, and any post-release feature work.
 | งวดที่ 4 | ส่งมอบ **Phase 2C** — IAP + Legal Wording + QA + Release Build (ปิดงาน) | **8,000.00** | 0.00 |
 | | **รวมที่ต้องชำระเพิ่ม** | **8,000.00** | |
 
-🚨 **งวดที่ 3 ถูกชำระก่อนการตรวจรับ (2026-08-23).** เงินมาแล้วแต่ 2B ยัง**ส่งมอบไม่ครบ**:
-task 2.4 Route Suggestion ยังทดสอบไม่ได้เลยเพราะไม่มี `ROUTES_API_KEY` (ดู §7.6 และ
-`QA_PHASE_2B.md` §1.1). ตราบใดที่ยังไม่มี key ฟีเจอร์หลักครึ่งหนึ่งของงวดที่ลูกค้าจ่ายแล้ว
-ยังใช้งานไม่ได้ — งานนี้เป็นหนี้ที่ค้างอยู่ ไม่ใช่ทางเลือก
+🚨 **งวดที่ 3 ถูกชำระก่อนการตรวจรับ (2026-08-23) และหนี้ก้อนนั้นเพิ่งปิดไปครึ่งหนึ่ง
+(2026-08-27).** `ROUTES_API_KEY` ถูกสร้างและใส่ในไฟล์ secret แล้ว ทดสอบยิง
+`computeRoutes` จริงผ่านทั้งสามโหมด — DRIVE 5,911 ม./18 นาที · WALK 5,117 ม./75 นาที ·
+TRANSIT 5,917 ม./49 นาที ทุกโหมดคืน polyline ปกติ HTTP 200
+
+การที่ `curl` จากเครื่องเดสก์ท็อปยิงผ่าน **พิสูจน์ในตัวว่า Application restriction ตั้งเป็น
+None ถูกต้อง** — ถ้าตั้งเป็น Android apps ตามแบบ key ตัวอื่น คำสั่งนั้นจะได้ 403
+
+**ที่ยังค้าง:** QA บนเครื่องจริง R1–R15 (`QA_PHASE_2B.md` §3) ยังไม่ได้ทำ · key ที่ใช้ได้
+แปลว่าฟีเจอร์ *รันได้* ไม่ได้แปลว่า *ตรวจรับแล้ว*
 
 - ทุกงวด **ไม่เกิน 10,000.00 บาท** ตามข้อจำกัดของลูกค้า ✔
 - แต่ละงวดเรียกเก็บ **หลังส่งมอบ build ให้ทดสอบ** และลูกค้าตรวจรับตาม *Definition of done*
@@ -865,10 +878,10 @@ Binaries go to the workspace `delivery/` folder (outside git); the acceptance
 guide the client actually follows is `DELIVERY_2B.md` beside this file, so it is
 versioned and reusable for 2C.
 
-⚠️ **Route Suggestion is absent from both builds** until a `ROUTES_API_KEY`
-exists — the screen correctly reports the feature as unavailable rather than
-failing, but task 2.4 cannot be accepted. See §5's note on the paid-but-undelivered
-milestone.
+✅ **Route Suggestion is in both builds from 2026-08-27**, when the key was
+created and verified live against `computeRoutes` in all three travel modes. The
+builds before that date report the feature as unavailable rather than failing,
+which is correct behaviour and not a bug to chase if an old APK resurfaces.
 
 ---
 
