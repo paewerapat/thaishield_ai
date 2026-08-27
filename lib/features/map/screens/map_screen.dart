@@ -1101,30 +1101,41 @@ class _LegendRow extends StatelessWidget {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _LegendChip(
-            icon: Icons.check_circle_rounded,
-            color: const Color(0xFF4CAF50),
-            label: appText(context, 'map_legend_info'),
-          ),
-          _LegendChip(
-            icon: Icons.error_rounded,
-            color: const Color(0xFFFF9800),
-            label: appText(context, 'map_legend_advisory'),
-          ),
-          _LegendChip(
-            icon: Icons.cancel_rounded,
-            color: const Color(0xFFEF5350),
-            label: appText(context, 'map_legend_alert'),
-          ),
-          _LegendChip(
-            icon: Icons.location_on_rounded,
-            color: const Color(0xFF1565C0),
-            label: appText(context, 'map_legend_partner'),
-          ),
-        ],
+      // Scrolls rather than spacing four chips across a fixed Row. The Row
+      // version fit English and nothing else: Thai overflowed by 5.7px the
+      // moment these labels stopped being hardcoded English, and Chinese and
+      // Japanese set full-width glyphs that are wider still. Truncating a
+      // legend defeats its purpose, so the row gives way instead of the text —
+      // and this cannot overflow in any language, including one added later.
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _LegendChip(
+              icon: Icons.check_circle_rounded,
+              color: const Color(0xFF4CAF50),
+              label: appText(context, 'map_legend_info'),
+            ),
+            const SizedBox(width: 8),
+            _LegendChip(
+              icon: Icons.error_rounded,
+              color: const Color(0xFFFF9800),
+              label: appText(context, 'map_legend_advisory'),
+            ),
+            const SizedBox(width: 8),
+            _LegendChip(
+              icon: Icons.cancel_rounded,
+              color: const Color(0xFFEF5350),
+              label: appText(context, 'map_legend_alert'),
+            ),
+            const SizedBox(width: 8),
+            _LegendChip(
+              icon: Icons.location_on_rounded,
+              color: const Color(0xFF1565C0),
+              label: appText(context, 'map_legend_partner'),
+            ),
+          ],
+        ),
       ),
     );
   }
