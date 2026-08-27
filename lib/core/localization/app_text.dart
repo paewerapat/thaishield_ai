@@ -788,6 +788,58 @@ const Map<String, Map<String, String>> _appText = {
   'around_unit_places': {
     'th': 'แห่ง', 'en': 'places', 'zh': '家', 'ko': '곳', 'ru': 'мест', 'ja': '件',
   },
+  // Review count on the partner sheet. Was '($count รีวิว)' written straight
+  // into map_screen.dart, so every non-Thai reader saw the Thai word for
+  // "reviews" beside a number.
+  // The four legend chips across the top of the Smart Map. They were English
+  // literals until 2026-08-27 — visible on every screenshot of every QA run and
+  // still missed, because nothing checked text that never entered this table.
+  // The English is unchanged; the other five languages are what was missing.
+  'map_legend_info': {
+    'th': 'ข้อมูลท่องเที่ยว',
+    'en': 'Travel Info',
+    'zh': '旅游信息',
+    'ko': '여행 정보',
+    'ru': 'Инфо',
+    'ja': '旅行情報',
+  },
+  'map_legend_advisory': {
+    'th': 'คำแนะนำ',
+    'en': 'Advisory',
+    'zh': '出行提示',
+    'ko': '여행 안내',
+    'ru': 'Совет',
+    'ja': '注意情報',
+  },
+  'map_legend_alert': {
+    'th': 'ชุมชนแจ้งเตือน',
+    'en': 'Alert Zone',
+    'zh': '社区提醒',
+    'ko': '커뮤니티 알림',
+    'ru': 'Оповещение',
+    'ja': 'コミュニティ通知',
+  },
+  'map_legend_partner': {
+    'th': 'พาร์ทเนอร์',
+    'en': 'Partner',
+    'zh': '合作商家',
+    'ko': '파트너',
+    'ru': 'Партнёр',
+    'ja': 'パートナー',
+  },
+  'partner_review_count': {
+    'th': '({count} รีวิว)',
+    'en': '({count} reviews)',
+    'zh': '（{count} 条评价）',
+    'ko': '(리뷰 {count}개)',
+    'ru': '(отзывов: {count})',
+    'ja': '({count}件のレビュー)',
+  },
+  // 🚨 These three are **shared with the Map's partner sheet** since 2026-08-27.
+  // The `radar_` prefix is historical. Before that the Map hardcoded English
+  // literals — 'VERIFIED', 'FAIR PRICE', 'PARTNER' — so the same partner read
+  // "Certified Fair Price" on the Radar and "VERIFIED" on the Map, and only in
+  // English. §10 replaces "Verified" with "Certified"; keep it that way in both.
   'radar_badge_certified': {
     'th': 'ราคามาตรฐานที่รับรอง', 'en': 'Certified Fair Price', 'zh': '认证公道价格', 'ko': '인증된 적정 가격', 'ru': 'Сертифицированная честная цена', 'ja': '認証済み適正価格',
   },

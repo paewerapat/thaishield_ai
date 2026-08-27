@@ -1107,22 +1107,22 @@ class _LegendRow extends StatelessWidget {
           _LegendChip(
             icon: Icons.check_circle_rounded,
             color: const Color(0xFF4CAF50),
-            label: 'Travel Info',
+            label: appText(context, 'map_legend_info'),
           ),
           _LegendChip(
             icon: Icons.error_rounded,
             color: const Color(0xFFFF9800),
-            label: 'Advisory',
+            label: appText(context, 'map_legend_advisory'),
           ),
           _LegendChip(
             icon: Icons.cancel_rounded,
             color: const Color(0xFFEF5350),
-            label: 'Alert Zone',
+            label: appText(context, 'map_legend_alert'),
           ),
           _LegendChip(
             icon: Icons.location_on_rounded,
             color: const Color(0xFF1565C0),
-            label: 'Partner',
+            label: appText(context, 'map_legend_partner'),
           ),
         ],
       ),
@@ -1474,7 +1474,7 @@ class _PartnerBottomPanel extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                partner.isVerified ? 'Verified Partner' : 'Partner Business',
+                appText(context, 'radar_badge_partner'),
                 style: const TextStyle(
                   color: Color(0xFF0D1B2A),
                   fontSize: 15,
@@ -1568,7 +1568,8 @@ class _PartnerCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '($reviewCount รีวิว)',
+                    appText(context, 'partner_review_count')
+                        .replaceFirst('{count}', '$reviewCount'),
                     style: TextStyle(
                       color: Colors.grey[500],
                       fontSize: 12,
@@ -1582,22 +1583,25 @@ class _PartnerCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   _Tag(
-                    label: partner.priceTier == 'fair'
-                        ? 'FAIR PRICE'
-                        : 'ABOVE TYPICAL RANGE',
+                    label: appText(
+                      context,
+                      partner.priceTier == 'fair'
+                          ? 'variance_within'
+                          : 'radar_badge_above_range',
+                    ),
                     color: partner.priceTier == 'fair'
                         ? const Color(0xFF4CAF50)
                         : const Color(0xFFFF9800),
                   ),
-                  const _Tag(
-                    label: 'PARTNER',
-                    color: Color(0xFF1565C0),
+                  _Tag(
+                    label: appText(context, 'radar_badge_partner'),
+                    color: const Color(0xFF1565C0),
                     icon: Icons.shield_rounded,
                   ),
                   if (partner.isVerified)
-                    const _Tag(
-                      label: 'VERIFIED',
-                      color: Color(0xFF2E7D32),
+                    _Tag(
+                      label: appText(context, 'radar_badge_certified'),
+                      color: const Color(0xFF2E7D32),
                       icon: Icons.verified_rounded,
                     ),
                 ],
@@ -1921,7 +1925,8 @@ class _PartnerDetailSheet extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          isTh ? '($reviewCount รีวิว)' : '($reviewCount reviews)',
+                          appText(context, 'partner_review_count')
+                              .replaceFirst('{count}', '$reviewCount'),
                           style: TextStyle(color: Colors.grey[500], fontSize: 12),
                         ),
                       ],
@@ -1932,22 +1937,25 @@ class _PartnerDetailSheet extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         _Tag(
-                          label: partner.priceTier == 'fair'
-                              ? 'FAIR PRICE'
-                              : 'ABOVE TYPICAL RANGE',
+                          label: appText(
+                            context,
+                            partner.priceTier == 'fair'
+                                ? 'variance_within'
+                                : 'radar_badge_above_range',
+                          ),
                           color: partner.priceTier == 'fair'
                               ? const Color(0xFF4CAF50)
                               : const Color(0xFFFF9800),
                         ),
-                        const _Tag(
-                          label: 'PARTNER',
-                          color: Color(0xFF1565C0),
+                        _Tag(
+                          label: appText(context, 'radar_badge_partner'),
+                          color: const Color(0xFF1565C0),
                           icon: Icons.shield_rounded,
                         ),
                         if (partner.isVerified)
-                          const _Tag(
-                            label: 'VERIFIED',
-                            color: Color(0xFF2E7D32),
+                          _Tag(
+                            label: appText(context, 'radar_badge_certified'),
+                            color: const Color(0xFF2E7D32),
                             icon: Icons.verified_rounded,
                           ),
                       ],

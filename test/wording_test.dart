@@ -27,6 +27,8 @@
 // Thai first to an audience in Thailand, it is the *most* likely one to be read
 // by the shop being described.
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:thaishield_ai/core/localization/app_text.dart';
 
@@ -223,6 +225,50 @@ void main() {
           appStrings.containsKey(key),
           isTrue,
           reason: '$key is exempted from the "avoid" rule but no longer exists',
+        );
+      }
+    });
+
+    test('map badges are never written as literals', () {
+      // The rule above can only see strings that reach `appStrings`. On
+      // 2026-08-27 device QA found the ones that never do: `map_screen.dart`
+      // passed 'VERIFIED', 'FAIR PRICE', 'PARTNER' and 'ABOVE TYPICAL RANGE'
+      // straight into its badge widget. English-only in a six-language app —
+      // and "Verified" is the exact word §10's table replaces with
+      // "Certified", which the Radar had been getting right the whole time
+      // from `radar_badge_certified`. Same partner, two different labels,
+      // depending on which screen you opened.
+      //
+      // So this test reads the source. Every badge label on the map must come
+      // from the table, where the rule above can then check it.
+      final source =
+          File('lib/features/map/screens/map_screen.dart').readAsStringSync();
+
+      final literalLabels =
+          RegExp(r"label:\s*'([^']*)'").allMatches(source).map((m) => m[1]!);
+
+      expect(
+        literalLabels,
+        isEmpty,
+        reason:
+            'These badge labels bypass the localization table, so they ship in '
+            'one language and no §10 check can see them. Move each into '
+            'app_text.dart and read it with appText(context, key): '
+            '${literalLabels.join(', ')}',
+      );
+    });
+
+    test('the shared badge keys still say Certified, not Verified', () {
+      // §10's replacement table, on the three keys the Radar and the Map now
+      // share. If someone "simplifies" the wording back, both screens regress
+      // together and the word returns to a build the client already accepted.
+      expect(appStrings['radar_badge_certified']!['en'], 'Certified Fair Price');
+      for (final language in _languages) {
+        final text = appStrings['radar_badge_certified']![language]!;
+        expect(
+          text.toLowerCase(),
+          isNot(contains('verified')),
+          reason: 'radar_badge_certified [$language] reads as Verified: $text',
         );
       }
     });

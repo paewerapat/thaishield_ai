@@ -1062,30 +1062,37 @@ imply coverage:
   CMS linter reads English only, and this test runs against the app's own strings, not
   Firestore.
 - **Firestore seed data.**
-- 🚨 **String literals written straight into widgets**, which is where the worst
-  offender currently lives. `map_screen.dart` hardcodes `'VERIFIED'`, `'FAIR PRICE'`,
-  `'PARTNER'`, `'ABOVE TYPICAL RANGE'` and `'Verified Partner'` (lines 1477, 1586,
-  1599, 1936, 1949) — English-only in a six-language app, and **"Verified" is the
-  word §10's table replaces with "Certified"**. The correctly-worded, fully
-  translated keys already exist and are already used by the Radar
-  (`radar_cards.dart:312` → `radar_badge_certified` = "Certified Fair Price" /
-  "ราคามาตรฐานที่รับรอง"), so the same status is labelled two different ways in the
-  same app depending on which screen you are on. Found on-device 2026-08-27, not by
-  the linter — because these strings never reach `appStrings`.
-- Also hardcoded in `map_screen.dart`: the Thai review-count suffix `'รีวิว'` (shown
-  to Russian and Japanese users as-is), the Thai zone labels at lines 77–81, and
-  `geo_utils.dart:110,113` `'ม.'`/`'กม.'`. Same root cause.
-- 🚨 **The sample reviews at `map_screen.dart:109–122` are invented** — "นักท่องเที่ยว
-  A/B/C" with star ratings and opinions ("ราคาตรงตามที่แสดงในแอป") attached to
-  **named, real businesses**. They are labelled ตัวอย่าง, but a tourist reading them
-  beside a real shop's name and rating will take them as reports about that shop.
-  §10 exists to stop the app making claims about identified businesses; inventing
-  favourable ones is the same exposure pointed the other way. Decide deliberately
-  whether they ship.
-- The Gemini **Vision** prompt is already constrained in-prompt (never call a price unfair
-  or a scam, never name a shop) and locked to a response schema of names and numbers, so
-  free-form prose cannot leak. That is a separate guard, checked by
-  `test/dish_identification_test.dart`.
+- ✅ **String literals written straight into widgets — fixed 2026-08-27, and now
+  tested.** The Map's partner sheet used to pass `'VERIFIED'`, `'FAIR PRICE'`,
+  `'PARTNER'`, `'ABOVE TYPICAL RANGE'` and `'Verified Partner'` straight into its
+  badge widget: English-only in a six-language app, and **"Verified" is the word
+  §10's table replaces with "Certified"** — which the Radar had been getting right
+  the whole time from `radar_badge_certified`. The same partner therefore read
+  "Certified Fair Price / ราคามาตรฐานที่รับรอง" on one screen and "VERIFIED" on
+  another. All five now read from the table, and the three badge keys are shared
+  with the Radar so the two screens can no longer drift.
+
+  `test/wording_test.dart` **reads `map_screen.dart` as source** and fails on any
+  `label:` given a string literal — the only way to catch text that never reaches
+  `appStrings`. On its first run it immediately found four more: the legend chips
+  **Travel Info / Advisory / Alert Zone / Partner**, which sat across the top of
+  every screenshot of every QA pass ever run on this app and were never noticed.
+  Their English is unchanged; the five missing languages were added.
+
+- 🚨 **The sample reviews at `map_screen.dart:104–122` are invented, and still
+  ship.** "นักท่องเที่ยว A/B/C" / "Traveler A/B/C" with star ratings and opinions
+  ("ราคาตรงตามที่แสดงในแอป") attached to **named, real businesses**. They carry a
+  ตัวอย่าง label, but a tourist reading them beside a real shop's name and rating
+  will take them as reports about that shop. §10 exists to stop the app making
+  claims about identified businesses; inventing favourable ones is the same
+  exposure pointed the other way. Raised with the client 2026-08-27 and **not yet
+  decided** — do not treat the silence as approval.
+
+- ⚠️ Two milder gaps, deliberately left: `_riskLabel`/`_riskLabelTh` in
+  `map_screen.dart` and `formatDistance` in `geo_utils.dart` are **Thai-or-English
+  pairs**, so the other four languages fall back to English rather than to Thai.
+  Wrong, but not a §10 risk and not a broken string — worth folding into the table
+  when those screens are next touched.
 
 The four older per-feature `§10 wording` blocks are now redundant but stay: a deleted
 test is a deleted safety net (§7.5), and they assert other things besides.
