@@ -1062,6 +1062,26 @@ imply coverage:
   CMS linter reads English only, and this test runs against the app's own strings, not
   Firestore.
 - **Firestore seed data.**
+- 🚨 **String literals written straight into widgets**, which is where the worst
+  offender currently lives. `map_screen.dart` hardcodes `'VERIFIED'`, `'FAIR PRICE'`,
+  `'PARTNER'`, `'ABOVE TYPICAL RANGE'` and `'Verified Partner'` (lines 1477, 1586,
+  1599, 1936, 1949) — English-only in a six-language app, and **"Verified" is the
+  word §10's table replaces with "Certified"**. The correctly-worded, fully
+  translated keys already exist and are already used by the Radar
+  (`radar_cards.dart:312` → `radar_badge_certified` = "Certified Fair Price" /
+  "ราคามาตรฐานที่รับรอง"), so the same status is labelled two different ways in the
+  same app depending on which screen you are on. Found on-device 2026-08-27, not by
+  the linter — because these strings never reach `appStrings`.
+- Also hardcoded in `map_screen.dart`: the Thai review-count suffix `'รีวิว'` (shown
+  to Russian and Japanese users as-is), the Thai zone labels at lines 77–81, and
+  `geo_utils.dart:110,113` `'ม.'`/`'กม.'`. Same root cause.
+- 🚨 **The sample reviews at `map_screen.dart:109–122` are invented** — "นักท่องเที่ยว
+  A/B/C" with star ratings and opinions ("ราคาตรงตามที่แสดงในแอป") attached to
+  **named, real businesses**. They are labelled ตัวอย่าง, but a tourist reading them
+  beside a real shop's name and rating will take them as reports about that shop.
+  §10 exists to stop the app making claims about identified businesses; inventing
+  favourable ones is the same exposure pointed the other way. Decide deliberately
+  whether they ship.
 - The Gemini **Vision** prompt is already constrained in-prompt (never call a price unfair
   or a scam, never name a shop) and locked to a response schema of names and numbers, so
   free-form prose cannot leak. That is a separate guard, checked by
