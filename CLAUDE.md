@@ -1079,14 +1079,22 @@ imply coverage:
   every screenshot of every QA pass ever run on this app and were never noticed.
   Their English is unchanged; the five missing languages were added.
 
-- 🚨 **The sample reviews at `map_screen.dart:104–122` are invented, and still
-  ship.** "นักท่องเที่ยว A/B/C" / "Traveler A/B/C" with star ratings and opinions
-  ("ราคาตรงตามที่แสดงในแอป") attached to **named, real businesses**. They carry a
-  ตัวอย่าง label, but a tourist reading them beside a real shop's name and rating
-  will take them as reports about that shop. §10 exists to stop the app making
-  claims about identified businesses; inventing favourable ones is the same
-  exposure pointed the other way. Raised with the client 2026-08-27 and **not yet
-  decided** — do not treat the silence as approval.
+- ✅ **The invented reviews are gone (2026-08-28).** The partner sheet used to
+  show "นักท่องเที่ยว A/B/C" / "Traveler A/B/C" with star ratings and opinions
+  ("ราคาตรงตามที่แสดงในแอป") under a **named, real business**. They carried a
+  ตัวอย่าง label, but a reader seeing them beside a real shop's name and rating
+  takes them as reports about that shop. §10 exists to stop the app making claims
+  about identified businesses; inventing favourable ones is the same exposure
+  pointed the other way. `_Review`, `_sampleReviews`, `_ReviewsSection` and
+  `_ReviewCard` were deleted outright.
+
+  🚨 **The review *count* went with them, and it was the worse half.**
+  `reviewCount = 80 + (partner.id.hashCode.abs() % 600)` — a number derived from
+  a hash of the document id and printed as "(215 รีวิว)" beside a real shop.
+  `partner_locations` has no review field at all (§3), so nothing backed it, and
+  unlike the review text it carried **no ตัวอย่าง label** — it read as hard data.
+  If a real count ever exists it belongs in Firestore first. The `rating` field
+  stays: that one is real, entered by staff through the CMS.
 
 - ⚠️ Two milder gaps, deliberately left: `_riskLabel`/`_riskLabelTh` in
   `map_screen.dart` and `formatDistance` in `geo_utils.dart` are **Thai-or-English

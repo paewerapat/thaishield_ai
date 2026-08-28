@@ -788,9 +788,6 @@ const Map<String, Map<String, String>> _appText = {
   'around_unit_places': {
     'th': 'แห่ง', 'en': 'places', 'zh': '家', 'ko': '곳', 'ru': 'мест', 'ja': '件',
   },
-  // Review count on the partner sheet. Was '($count รีวิว)' written straight
-  // into map_screen.dart, so every non-Thai reader saw the Thai word for
-  // "reviews" beside a number.
   // The four legend chips across the top of the Smart Map. They were English
   // literals until 2026-08-27 — visible on every screenshot of every QA run and
   // still missed, because nothing checked text that never entered this table.
@@ -826,14 +823,6 @@ const Map<String, Map<String, String>> _appText = {
     'ko': '파트너',
     'ru': 'Партнёр',
     'ja': 'パートナー',
-  },
-  'partner_review_count': {
-    'th': '({count} รีวิว)',
-    'en': '({count} reviews)',
-    'zh': '（{count} 条评价）',
-    'ko': '(리뷰 {count}개)',
-    'ru': '(отзывов: {count})',
-    'ja': '({count}件のレビュー)',
   },
   // 🚨 These three are **shared with the Map's partner sheet** since 2026-08-27.
   // The `radar_` prefix is historical. Before that the Map hardcoded English

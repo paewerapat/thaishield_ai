@@ -85,107 +85,9 @@ String _riskLabelTh(String riskLevel) {
 IconData _typeIcon(String type) =>
     partnerCategoryIcon[PartnerCategory.fromValue(type)]!;
 
-class _Review {
-  const _Review({
-    required this.name,
-    required this.initials,
-    required this.rating,
-    required this.comment,
-  });
-
-  final String name;
-  final String initials;
-  final int rating;
-  final String comment;
-}
 
 /// Sample community feedback, keyed by the broad kind of place rather than by
 /// each of the 11 categories — the copy only differs in three ways.
-List<_Review> _sampleReviews(String type, bool isTh) {
-  switch (PartnerCategory.fromValue(type)) {
-    case PartnerCategory.hotel:
-      return [
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
-          initials: 'A',
-          rating: 5,
-          comment: isTh
-              ? 'ห้องพักสะอาด พนักงานเป็นมิตร และทำเลสะดวกสำหรับเดินทางไปแหล่งท่องเที่ยว'
-              : 'Clean rooms, friendly staff, and a convenient location for getting around.',
-        ),
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว B' : 'Traveler B',
-          initials: 'B',
-          rating: 4,
-          comment: isTh
-              ? 'ราคาตรงตามที่แสดงในแอป คุ้มค่ากับสิ่งที่ได้รับ'
-              : 'Price matched what was shown in the app — good value overall.',
-        ),
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว C' : 'Traveler C',
-          initials: 'C',
-          rating: 5,
-          comment: isTh
-              ? 'บริการรวดเร็วและให้ข้อมูลที่เป็นประโยชน์กับนักท่องเที่ยว'
-              : 'Quick service and helpful information for first-time visitors.',
-        ),
-      ];
-    case PartnerCategory.transport:
-      return [
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
-          initials: 'A',
-          rating: 5,
-          comment: isTh
-              ? 'คนขับใช้มิเตอร์ตามปกติ ค่าโดยสารตรงกับช่วงราคาที่แอปแสดง'
-              : 'Driver used the meter as expected — fare matched the typical range shown in the app.',
-        ),
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว B' : 'Traveler B',
-          initials: 'B',
-          rating: 4,
-          comment: isTh
-              ? 'สะดวกและรวดเร็วในการเดินทางช่วงเวลาเร่งด่วน'
-              : 'Convenient and quick, even during busy hours.',
-        ),
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว C' : 'Traveler C',
-          initials: 'C',
-          rating: 4,
-          comment: isTh
-              ? 'พนักงานพูดคุยเป็นมิตรและช่วยแนะนำเส้นทาง'
-              : 'Friendly driver who helped with directions along the way.',
-        ),
-      ];
-    default:
-      return [
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว A' : 'Traveler A',
-          initials: 'A',
-          rating: 5,
-          comment: isTh
-              ? 'อาหารอร่อยและราคาตรงกับข้อมูลที่แสดงในแอป'
-              : 'Great food, and pricing matched the information shown in the app.',
-        ),
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว B' : 'Traveler B',
-          initials: 'B',
-          rating: 4,
-          comment: isTh
-              ? 'บรรยากาศดีและพนักงานเป็นมิตรกับนักท่องเที่ยว'
-              : 'Nice atmosphere and staff were welcoming to tourists.',
-        ),
-        _Review(
-          name: isTh ? 'นักท่องเที่ยว C' : 'Traveler C',
-          initials: 'C',
-          rating: 5,
-          comment: isTh
-              ? 'คุ้มค่ากับราคาที่จ่าย และมีเมนูให้เลือกหลากหลาย'
-              : 'Good value for the price, with a varied menu to choose from.',
-        ),
-      ];
-  }
-}
 
 String _typeDescription(String type, bool isTh) {
   final category = PartnerCategory.fromValue(type);
@@ -1535,10 +1437,6 @@ class _PartnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Review count isn't part of the Firestore schema yet — derive a stable
-    // placeholder from the partner id so the UI matches the mockup layout.
-    final reviewCount = 80 + (partner.id.hashCode.abs() % 600);
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1575,15 +1473,6 @@ class _PartnerCard extends StatelessWidget {
                       color: Color(0xFF0D1B2A),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    appText(context, 'partner_review_count')
-                        .replaceFirst('{count}', '$reviewCount'),
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -1717,112 +1606,7 @@ class _Tag extends StatelessWidget {
   }
 }
 
-class _ReviewsSection extends StatelessWidget {
-  const _ReviewsSection({required this.type, required this.isTh});
-  final String type;
-  final bool isTh;
 
-  @override
-  Widget build(BuildContext context) {
-    final reviews = _sampleReviews(type, isTh);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          isTh ? 'รีวิวจากนักท่องเที่ยว' : 'Traveler Reviews',
-          style: const TextStyle(
-            color: Color(0xFF0D1B2A),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          isTh
-              ? 'ตัวอย่างความคิดเห็นจากชุมชนนักท่องเที่ยว'
-              : 'Sample feedback from the traveler community',
-          style: TextStyle(color: Colors.grey[500], fontSize: 11),
-        ),
-        const SizedBox(height: 10),
-        for (final review in reviews)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _ReviewCard(review: review),
-          ),
-      ],
-    );
-  }
-}
-
-class _ReviewCard extends StatelessWidget {
-  const _ReviewCard({required this.review});
-  final _Review review;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FA),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: const Color(0xFFE0E0E0),
-                child: Text(
-                  review.initials,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF616161),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      review.name,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0D1B2A),
-                      ),
-                    ),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (i) => Icon(
-                          i < review.rating
-                              ? Icons.star_rounded
-                              : Icons.star_outline_rounded,
-                          color: const Color(0xFFFFB300),
-                          size: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            review.comment,
-            style: TextStyle(color: Colors.grey[700], fontSize: 12.5, height: 1.4),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _PartnerDetailSheet extends StatelessWidget {
   const _PartnerDetailSheet({
@@ -1842,8 +1626,6 @@ class _PartnerDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTh = Localizations.localeOf(context).languageCode == 'th';
-    final reviewCount = 80 + (partner.id.hashCode.abs() % 600);
-
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       minChildSize: 0.4,
@@ -1934,12 +1716,6 @@ class _PartnerDetailSheet extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          appText(context, 'partner_review_count')
-                              .replaceFirst('{count}', '$reviewCount'),
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -1992,10 +1768,6 @@ class _PartnerDetailSheet extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Divider(color: Colors.grey[200]),
-                    const SizedBox(height: 12),
-                    _ReviewsSection(type: partner.type, isTh: isTh),
-                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
