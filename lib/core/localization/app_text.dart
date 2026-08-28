@@ -108,6 +108,25 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Сообщить о проблеме или поделиться предложениями',
     'ja': '問題の報告や提案を共有',
   },
+  // Play requires an accessible privacy policy for an app that asks for
+  // location, camera and microphone — all three of which this one does. The
+  // listing URL alone is not the same as the user being able to reach it.
+  'profile_privacy': {
+    'th': 'นโยบายความเป็นส่วนตัว',
+    'en': 'Privacy Policy',
+    'zh': '隐私政策',
+    'ko': '개인정보 처리방침',
+    'ru': 'Политика конфиденциальности',
+    'ja': 'プライバシーポリシー',
+  },
+  'profile_privacy_subtitle': {
+    'th': 'แอปนี้เก็บและใช้ข้อมูลอะไรบ้าง',
+    'en': 'What this app collects and how it is used',
+    'zh': '本应用收集哪些信息及如何使用',
+    'ko': '이 앱이 수집하는 정보와 사용 방법',
+    'ru': 'Какие данные собирает приложение и как они используются',
+    'ja': 'このアプリが収集する情報とその利用方法',
+  },
   'profile_about_title': {
     'th': 'เกี่ยวกับ ThaiShield AI',
     'en': 'About ThaiShield AI',

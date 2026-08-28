@@ -166,9 +166,21 @@ Firestore content without the Firebase Console.
 | Stack | Next.js 14 + Firebase Admin SDK (Server Actions) |
 | Deploy target | **Firebase App Hosting** (not plain Firebase Hosting — it cannot run Server Actions, and its `webframeworks` support is legacy) |
 | CMS URL | `https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app` |
+| **Privacy policy URL** | `https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/privacy` |
 | Staff auth | Google Sign-In with domain restriction, Firebase Auth — **CMS only** |
 | Manages | `price_standards`, `partner_locations` (with real photo upload to Firebase Storage), `alert_zones` (interactive Google Maps polygon editor) |
 
+- 🚨 **The privacy policy URL is needed in three places and they must stay in step:**
+  the Play Console listing, the App Store Connect listing, and **inside the app** —
+  `_privacyPolicyUrl` in `profile_screen.dart`, shown as a row in Profile. This app
+  asks for location, camera and microphone, and Play requires the policy to be
+  reachable for that; a URL in the store listing is not the same as the user being
+  able to open it. The page lives outside `/admin` on purpose (auth is enforced in
+  `app/admin/layout.tsx`), so it needs no login.
+- The web CMS **deploys from a push to `main`** — App Hosting builds from GitHub,
+  live in about three minutes. There is no CLI deploy step for it, and
+  `firebase login` has nothing to do with it; that is only for Cloud Functions.
+  `WEB_ADMIN.md` §10.3 in the other repo is the authority.
 - Staff auth in the CMS **does not contradict** §7 "no Firebase Auth in the app" — that
   rule is about the Flutter app, which still reads anonymously.
 - The CMS writes through the **Admin SDK**, which bypasses Firestore rules entirely.

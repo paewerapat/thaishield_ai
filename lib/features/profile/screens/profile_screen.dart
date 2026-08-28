@@ -14,6 +14,16 @@ import '../../premium/models/premium_plan.dart';
 import '../../premium/providers/premium_provider.dart';
 import '../../premium/screens/paywall_screen.dart';
 
+/// The public privacy policy, served by the web admin outside its `/admin`
+/// tree so it needs no login (that repo's `app/privacy/page.tsx`).
+///
+/// This app asks for location, camera and microphone. Play requires the policy
+/// for that, and putting the URL in the store listing is not the same as the
+/// user being able to reach it — hence the row in Profile. The same URL goes in
+/// the Play Console and App Store Connect listings; keep the three in step.
+const _privacyPolicyUrl =
+    'https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/privacy';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -85,6 +95,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  Future<void> _openPrivacyPolicy() async {
+    // externalApplication so it opens the browser rather than an in-app view:
+    // a policy the user can see the address bar of is the point.
+    await launchUrl(
+      Uri.parse(_privacyPolicyUrl),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale;
@@ -108,6 +127,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildLanguageTile(context, locale.languageCode),
                     const SizedBox(height: 12),
                     _buildFeedbackTile(context),
+                    const SizedBox(height: 12),
+                    _buildPrivacyTile(context),
                     const SizedBox(height: 12),
                     _buildInfoTile(
                       context,
@@ -466,6 +487,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         trailing: const Icon(Icons.chevron_right, color: Color(0xFFBDBDBD)),
         onTap: _sendFeedback,
+      ),
+    );
+  }
+
+  Widget _buildPrivacyTile(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFE0E0E0)),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: const Icon(
+          Icons.privacy_tip_outlined,
+          color: Color(0xFF4FC3F7),
+        ),
+        title: Text(
+          appText(context, 'profile_privacy'),
+          style: const TextStyle(
+            color: Color(0xFF0D1B2A),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          appText(context, 'profile_privacy_subtitle'),
+          style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
+        ),
+        trailing: const Icon(Icons.open_in_new, color: Color(0xFFBDBDBD)),
+        onTap: _openPrivacyPolicy,
       ),
     );
   }
