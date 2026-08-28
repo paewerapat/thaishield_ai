@@ -1420,9 +1420,7 @@ class _PartnerBottomPanel extends StatelessWidget {
           _PartnerCard(partner: partner),
           const SizedBox(height: 10),
           Text(
-            Localizations.localeOf(context).languageCode == 'th'
-                ? 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้'
-                : 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
+            appText(context, 'radar_disclaimer'),
             style: TextStyle(color: Colors.grey[500], fontSize: 10, height: 1.3),
           ),
         ],
@@ -1809,7 +1807,7 @@ class _PartnerDetailSheet extends StatelessWidget {
                             ),
                             icon: const Icon(Icons.map_rounded, size: 18),
                             label: Text(
-                              isTh ? 'ดูบนแผนที่' : 'Show on Map',
+                              appText(context, 'radar_view_on_map'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -1820,9 +1818,7 @@ class _PartnerDetailSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      isTh
-                          ? 'ข้อมูลนี้เป็นการประเมินจากข้อมูลสถิติและข้อมูลจากชุมชนเพื่อประกอบการตัดสินใจเท่านั้น ราคาจริงอาจแตกต่างกันได้'
-                          : 'This information is generated from statistical and community-based data and is intended for informational purposes only. Actual prices may vary.',
+                      appText(context, 'radar_disclaimer'),
                       style: TextStyle(
                         color: Colors.grey[500],
                         fontSize: 10,
