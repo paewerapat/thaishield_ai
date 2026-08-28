@@ -317,11 +317,13 @@ void main() {
   });
 
   group('RouteService configuration', () {
-    test('reports itself unconfigured without a ROUTES_API_KEY', () {
-      // `flutter test` passes no --dart-define, so this is the unconfigured
-      // build: the screen must be able to say so instead of firing a request
-      // with an empty key and showing a generic failure.
-      expect(RouteService.instance.isConfigured, isFalse);
+    test('needs no build-time key now that the call is proxied', () {
+      // Until 2026-08-29 this asserted the opposite: without
+      // --dart-define=ROUTES_API_KEY the service reported itself unconfigured,
+      // because the key travelled in the APK. The key is a Functions secret
+      // now, so a build carries nothing that can be missing — and `flutter
+      // test`, which passes no defines, is exactly the build that proves it.
+      expect(RouteService.instance.isConfigured, isTrue);
     });
   });
 

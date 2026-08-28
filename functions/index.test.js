@@ -115,7 +115,7 @@ test('every query fits the free plan 100-character limit', () => {
   }
 });
 
-test('queries alternate between runs and cover every query', () => {
+test('every query gets used, and the cycle closes', () => {
   // Deliberately uses the module's own interval, not a copy. A literal here
   // would keep passing after someone changed the schedule, which is the one
   // failure this test exists to catch.
@@ -124,8 +124,18 @@ test('queries alternate between runs and cover every query', () => {
     seen.add(queryForRun(run * RUN_INTERVAL_MS));
   }
   assert.equal(seen.size, QUERIES.length);
-  assert.notEqual(queryForRun(0), queryForRun(RUN_INTERVAL_MS));
   assert.equal(queryForRun(0), queryForRun(QUERIES.length * RUN_INTERVAL_MS));
+
+  // Since 2026-08-29 there is a single query, so consecutive runs *should*
+  // repeat — that is what returning the cadence to 10 minutes means. The
+  // alternation guard is kept behind this branch rather than deleted, so it
+  // comes back on its own the day a second set is added. Deleting it would
+  // mean rediscovering the A, A, B, A desync the hard way.
+  if (QUERIES.length === 1) {
+    assert.equal(queryForRun(0), queryForRun(RUN_INTERVAL_MS));
+  } else {
+    assert.notEqual(queryForRun(0), queryForRun(RUN_INTERVAL_MS));
+  }
 });
 
 test('the rotation bucket matches the deployed schedule', () => {
@@ -139,9 +149,15 @@ test('the rotation bucket matches the deployed schedule', () => {
   for (let run = 0; run < 6; run++) {
     fired.push(queryForRun(run * RUN_INTERVAL_MINUTES * 60 * 1000));
   }
-  for (let i = 1; i < fired.length; i++) {
-    assert.notEqual(fired[i], fired[i - 1], `run ${i} repeated the query`);
+  // With one query every run is the same query and there is nothing to
+  // desync; with more than one, a repeat between consecutive runs is exactly
+  // the bug this test was written for.
+  if (QUERIES.length > 1) {
+    for (let i = 1; i < fired.length; i++) {
+      assert.notEqual(fired[i], fired[i - 1], `run ${i} repeated the query`);
+    }
   }
+  assert.equal(fired.length, 6);
 });
 
 test('stays inside the free plan of 200 credits a day', () => {

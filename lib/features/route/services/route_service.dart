@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../core/config/api_keys.dart';
 import '../../../core/utils/polyline.dart';
 import '../models/route_suggestion.dart';
 import '../models/travel_mode.dart';
@@ -35,12 +34,26 @@ class RouteService {
   RouteService._();
   static final instance = RouteService._();
 
+  /// The project's own Cloud Function, not Google's endpoint directly.
+  ///
+  /// Routes is a web service, so no Android/iOS application restriction
+  /// applies to its key — an embedded key is readable by anyone who unzips the
+  /// APK, and the only guards were "restrict to Routes API" and a quota cap.
+  /// Since 2026-08-29 the key lives as a Functions secret and the app holds
+  /// nothing worth stealing.
+  ///
+  /// The `cloudfunctions.net` form is used rather than the `run.app` URL
+  /// because it is derivable from region and project id, so it can be written
+  /// here before the first deploy.
+  ///
+  /// 🚨 **This endpoint is unauthenticated.** Moving the key server-side stops
+  /// it leaking; it does not stop someone who finds this URL from spending the
+  /// project's Routes quota. Firebase App Check is what closes that, and it
+  /// works without the accounts §7 forbids. Until then the daily quota cap is
+  /// the only bound on the damage.
   static const _endpoint =
-      'https://routes.googleapis.com/directions/v2:computeRoutes';
+      'https://asia-southeast1-thaishield-ai-790eb.cloudfunctions.net/computeRoute';
 
-  /// Only what the preview draws: the summary line and the line on the map.
-  static const _fieldMask =
-      'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline';
 
   static const _cacheTtl = Duration(minutes: 5);
   static const _timeout = Duration(seconds: 15);
@@ -50,7 +63,11 @@ class RouteService {
   /// True when a build actually passed `ROUTES_API_KEY`. The UI checks this
   /// before offering the entry point, so a misconfigured build shows the
   /// feature as unavailable instead of failing after the user taps.
-  bool get isConfigured => ApiKeys.googleRoutes.isNotEmpty;
+  /// Always true since the key moved server-side: there is no longer a build
+  /// flag that can be missing. A misdeployed or unreachable function now
+  /// surfaces through the ordinary network-failure path instead, which the
+  /// preview screen already handles with a retry.
+  bool get isConfigured => true;
 
   static String _cacheKey(LatLng origin, LatLng destination, TravelMode mode) {
     String r(double v) => v.toStringAsFixed(4);
@@ -96,8 +113,6 @@ class RouteService {
             Uri.parse(_endpoint),
             headers: {
               'Content-Type': 'application/json',
-              'X-Goog-Api-Key': ApiKeys.googleRoutes,
-              'X-Goog-FieldMask': _fieldMask,
             },
             body: body,
           )

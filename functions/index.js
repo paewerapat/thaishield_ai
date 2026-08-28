@@ -1,4 +1,5 @@
 const {onSchedule} = require('firebase-functions/v2/scheduler');
+const {onRequest} = require('firebase-functions/v2/https');
 const {defineSecret} = require('firebase-functions/params');
 const {setGlobalOptions} = require('firebase-functions/v2');
 const logger = require('firebase-functions/logger');
@@ -10,6 +11,7 @@ const db = admin.firestore();
 setGlobalOptions({region: 'asia-southeast1'});
 
 const NEWSDATA_API_KEY = defineSecret('NEWSDATA_API_KEY');
+const ROUTES_API_KEY = defineSecret('ROUTES_API_KEY');
 
 /**
  * Ways an actual fire gets described. Used instead of the bare word, which
@@ -116,19 +118,39 @@ const MAX_AGE_DAYS = 7;
 
 /**
  * newsdata.io's free plan rejects any `q` longer than 100 characters
- * (`UnsupportedQueryLength`), and the old single GNews query was 183. Rather
- * than dropping half the vocabulary, the two halves alternate between runs,
- * derived from the clock so no state has to be stored. Each set therefore gets
- * an effective 30-minute cadence while the function still makes one request
- * per run.
+ * (`UnsupportedQueryLength`), and the old single GNews query was 183. The
+ * rotation machinery below exists because of that cap: several sets can
+ * alternate between runs, derived from the clock so no state is stored.
  *
- * Natural events and travel disruption are split apart deliberately: the
- * second set is the one tourists act on, and burying "airport closed" in a
- * list dominated by weather words is how it got dropped in the first place.
+ * 🚨 **There is one set now, and that is the point — dropped 2026-08-29.**
+ *
+ * A second set ran until then:
+ *
+ *     'Thailand AND (accident OR protest OR evacuation OR "airport closed")'
+ *
+ * It was written on the theory that disruption news is what tourists actually
+ * act on, and that burying "airport closed" among weather words is how it got
+ * missed. Measured against three days of real cache on 2026-08-20, that theory
+ * did not survive. Of the 9 articles only that set could reach, **7 were
+ * junk**: a hotel chocolate boutique and a TikTok payments story (both matched
+ * a stray literal "accident"), three bungee-streamer stories, and two
+ * diplomatic "no protest letter was received" denials. The 2 survivors were
+ * single-incident local road news, not travel disruption. **`evacuation` and
+ * `"airport closed"` never matched anything at all** — the two terms the set
+ * was justified by.
+ *
+ * Dropping it does two good things at once: the largest source of cache junk
+ * goes, and the remaining query's cadence halves from 20 minutes back to 10,
+ * because it now runs every time instead of every other time. Request volume
+ * is unchanged at one per run.
+ *
+ * If disruption news is ever wanted back, measure it the same way before
+ * trusting it — see the "how to re-run the check" note that came with the
+ * 2026-08-20 measurement. Adding terms to *this* set is the cheaper move,
+ * since it costs no cadence.
  */
 const QUERIES = [
   'Thailand AND (flood OR storm OR earthquake OR tsunami OR landslide OR fire)',
-  'Thailand AND (accident OR protest OR evacuation OR "airport closed")',
 ];
 
 /**
@@ -278,6 +300,124 @@ exports.syncTravelAlerts = onSchedule(
   },
 );
 
+/**
+ * Google Routes proxy — added 2026-08-29 so the Routes key stops shipping
+ * inside the APK.
+ *
+ * Routes is a web service, so Google honours no Android/iOS application
+ * restriction on its key: the only protections available to a key embedded in
+ * an app were "restrict to Routes API" plus a daily quota cap. Anyone who
+ * unzips the APK gets the key. Moving the call here removes it from the
+ * binary entirely.
+ *
+ * 🚨 **This alone does not stop abuse, and pretending otherwise would be
+ * worse than leaving the key in the app.** An unauthenticated HTTPS endpoint
+ * is a URL anyone can find in a proxy log and call, and the bill is the same.
+ * What closes it is **Firebase App Check**, which attests that the caller is a
+ * genuine build of this app — and does so without user accounts, which §7 of
+ * CLAUDE.md forbids. Until App Check is enabled the daily quota cap in Cloud
+ * Console is still the only thing bounding the damage. Keep it set.
+ *
+ * The field mask stays server-side and narrow for the same reason it was
+ * narrow in the client: a wider mask moves the call to a pricier SKU for data
+ * nothing renders.
+ */
+const ROUTES_ENDPOINT =
+  'https://routes.googleapis.com/directions/v2:computeRoutes';
+const ROUTES_FIELD_MASK =
+  'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline';
+const ALLOWED_TRAVEL_MODES = ['DRIVE', 'TRANSIT', 'WALK'];
+
+/** A latitude/longitude pair, or null if the shape is not exactly right. */
+function readLatLng(value) {
+  if (!value || typeof value !== 'object') return null;
+  const {latitude, longitude} = value;
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return null;
+  }
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude < -90 || latitude > 90) return null;
+  if (longitude < -180 || longitude > 180) return null;
+  return {latitude, longitude};
+}
+
+exports.computeRoute = onRequest(
+  {
+    secrets: [ROUTES_API_KEY],
+    timeoutSeconds: 30,
+    cors: true,
+    // A route request is cheap to serve and expensive to buy. Capping
+    // instances bounds what a burst can cost before anyone notices.
+    maxInstances: 10,
+  },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({error: 'method_not_allowed'});
+      return;
+    }
+
+    const body = req.body ?? {};
+    const origin = readLatLng(body.origin);
+    const destination = readLatLng(body.destination);
+    const travelMode = body.travelMode;
+
+    // Validate rather than forward. An open proxy that passes whatever it is
+    // given is a way to spend the project's quota on someone else's routes.
+    if (!origin || !destination) {
+      res.status(400).json({error: 'bad_coordinates'});
+      return;
+    }
+    if (!ALLOWED_TRAVEL_MODES.includes(travelMode)) {
+      res.status(400).json({error: 'bad_travel_mode'});
+      return;
+    }
+
+    const languageCode =
+      typeof body.languageCode === 'string' &&
+      /^[a-z]{2}(-[A-Za-z0-9]{2,8})?$/.test(body.languageCode)
+        ? body.languageCode
+        : 'en';
+
+    const upstreamBody = {
+      origin: {location: {latLng: origin}},
+      destination: {location: {latLng: destination}},
+      travelMode,
+      // Only legal for road vehicles; sending it for WALK or TRANSIT is a 400.
+      ...(travelMode === 'DRIVE' ? {routingPreference: 'TRAFFIC_AWARE'} : {}),
+      languageCode,
+      units: 'METRIC',
+    };
+
+    let upstream;
+    try {
+      upstream = await fetch(ROUTES_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': ROUTES_API_KEY.value(),
+          'X-Goog-FieldMask': ROUTES_FIELD_MASK,
+        },
+        body: JSON.stringify(upstreamBody),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (error) {
+      logger.error('computeRoute: upstream request failed', error);
+      res.status(502).json({error: 'upstream_unreachable'});
+      return;
+    }
+
+    if (!upstream.ok) {
+      // Deliberately not forwarding Google's body: it can name the project and
+      // quota state, which the client has no use for and an attacker does.
+      logger.error(`computeRoute: upstream returned ${upstream.status}`);
+      res.status(502).json({error: 'upstream_failed'});
+      return;
+    }
+
+    res.status(200).json(await upstream.json());
+  },
+);
+
 // Exported for the unit tests in functions/index.test.js — none of these touch
 // Firestore or the network.
 exports._internals = {
@@ -289,4 +429,6 @@ exports._internals = {
   THAI_PLACES,
   RUN_INTERVAL_MS,
   RUN_INTERVAL_MINUTES,
+  readLatLng,
+  ALLOWED_TRAVEL_MODES,
 };

@@ -1491,11 +1491,6 @@ class _PartnerCard extends StatelessWidget {
                         ? const Color(0xFF4CAF50)
                         : const Color(0xFFFF9800),
                   ),
-                  _Tag(
-                    label: appText(context, 'radar_badge_partner'),
-                    color: const Color(0xFF1565C0),
-                    icon: Icons.shield_rounded,
-                  ),
                   if (partner.isVerified)
                     _Tag(
                       label: appText(context, 'radar_badge_certified'),
@@ -1731,11 +1726,6 @@ class _PartnerDetailSheet extends StatelessWidget {
                           color: partner.priceTier == 'fair'
                               ? const Color(0xFF4CAF50)
                               : const Color(0xFFFF9800),
-                        ),
-                        _Tag(
-                          label: appText(context, 'radar_badge_partner'),
-                          color: const Color(0xFF1565C0),
-                          icon: Icons.shield_rounded,
                         ),
                         if (partner.isVerified)
                           _Tag(

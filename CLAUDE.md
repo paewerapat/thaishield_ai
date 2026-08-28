@@ -800,6 +800,55 @@ None ถูกต้อง** — ถ้าตั้งเป็น Android apps 
 
 ---
 
+## 7.4 Decisions taken 2026-08-29, and what is deferred
+
+Six findings were put to the client in one pass. Their answers, recorded so a
+deferral is never mistaken for an approval:
+
+| # | Finding | Decision |
+|---|---|---|
+| 1 | Gemini key exposed in a chat transcript | Client holds the real key; rotation is theirs to do |
+| 2 | newsdata query set 2 produced 7 junk articles out of 9 | **Dropped** — see `functions/index.js` |
+| 3 | The QA switch wipes a trial, and will wipe a real purchase in 2.8 | **Deferred to 2C** |
+| 4 | Routes key readable in the APK | **Moved behind a Cloud Function** — see below |
+| 5 | "About" heading and body prose are English-only | **Deferred to 2C**, task 2.6 |
+| 6 | "Partner Business" printed twice in one card | **Fixed** — the badge went, the header stayed |
+
+🚨 **3 and 5 are deferred, not resolved.** Do not close them, and do not let a
+later pass rediscover them as new.
+
+**Task 2.8 must fix #3 before wiring billing.** `PremiumProvider.qaLock()`
+calls `_store.clear()`, which destroys whatever entitlement is present rather
+than only the one the switch granted. Today that costs a 3-day trial that
+`trialUsed` then refuses to re-grant; once purchases are real it will silently
+drop a paid pass out of the local cache.
+
+### Route Suggestion now goes through a Cloud Function
+
+`RouteService` posts to `computeRoute` in `asia-southeast1` instead of calling
+`routes.googleapis.com` directly, and `ROUTES_API_KEY` is a Functions secret.
+The app ships no Routes key at all — `ApiKeys.googleRoutes` is gone, and so is
+the `--dart-define` in `tools/build-delivery.sh`.
+
+🚨 **The function is unauthenticated, and that is not the finished state.**
+Moving the key stops it leaking out of the APK; it does not stop anyone who
+finds the URL from spending the project's Routes quota — an open endpoint is
+arguably easier to abuse than a key someone has to unzip an APK for. **Firebase
+App Check** is what closes it, and it attests the app binary rather than a
+user, so it works under §7's no-accounts rule. Until it is enabled, **the daily
+quota cap in Cloud Console is the only bound on the damage — keep it set.**
+
+⚠️ **Nothing works until the function is deployed.** `tools/build-delivery.sh`
+now refuses to build unless `computeRoute` answers, because a build made before
+the deploy looks perfect and has a dead feature:
+
+```bash
+firebase functions:secrets:set ROUTES_API_KEY
+firebase deploy --only functions:computeRoute
+```
+
+---
+
 ## 7.5 Testing — the pyramid, and what it deliberately does not cover
 
 Added 2026-08-23. Before that the project had excellent **manual** checklists and

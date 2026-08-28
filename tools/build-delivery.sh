@@ -60,11 +60,42 @@ if [ -z "$ROUTES" ]; then
   ROUTES="__missing__"
 fi
 
+# ROUTES_API_KEY is deliberately absent: since 2026-08-29 it is a Cloud
+# Functions secret, not a build flag. It is still read above so a missing one
+# is noticed early — the deploy needs it even though the APK does not.
 DEFINES=(
   "--dart-define=GEMINI_API_KEY=$GEMINI"
   "--dart-define=GCS_STT_KEY=$STT"
-  "--dart-define=ROUTES_API_KEY=$ROUTES"
 )
+
+# Since 2026-08-29 the Routes key is a Functions secret and the app calls
+# `computeRoute` instead of Google directly. A build made before that function
+# is deployed looks perfect and has a dead Route Suggestion — the exact failure
+# this whole delivery has already been caught by twice. So ask the function
+# first, and refuse rather than warn: a warning in a long build log is a
+# warning nobody reads.
+echo "▸ ตรวจว่า Cloud Function เส้นทางถูก deploy แล้ว"
+ROUTE_FN="https://asia-southeast1-thaishield-ai-790eb.cloudfunctions.net/computeRoute"
+FN_CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -X POST "$ROUTE_FN"   -H 'Content-Type: application/json' -d '{}' || echo 000)
+# 400 is the healthy answer to a deliberately empty body: the function is up
+# and rejecting bad input. 404 means it was never deployed; 000 means no
+# network, which is not the function's fault and must not read as one.
+if [ "$FN_CODE" = "400" ]; then
+  echo "   ✅ function ตอบ 400 กับ body ว่าง = deploy แล้วและตรวจ input อยู่"
+elif [ "$FN_CODE" = "000" ]; then
+  echo "   ⚠️  ต่อเน็ตไม่ได้ ข้ามการตรวจนี้ — ยืนยันเองก่อนส่งไฟล์ให้ลูกค้า"
+else
+  echo
+  echo "  ❌ Cloud Function ยังไม่พร้อม (ตอบ $FN_CODE)"
+  echo "     ฟีเจอร์แนะนำเส้นทางจะใช้ไม่ได้ทั้งที่ build ผ่าน — หยุดไว้ก่อน"
+  echo
+  echo "     deploy ด้วย:"
+  echo "       cd $REPO"
+  echo "       firebase functions:secrets:set ROUTES_API_KEY"
+  echo "       firebase deploy --only functions:computeRoute"
+  echo
+  exit 1
+fi
 
 echo "▸ ตรวจสอบโค้ดก่อน build"
 flutter analyze
