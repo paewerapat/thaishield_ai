@@ -58,3 +58,9 @@ android/key.properties
 
 # Node (seed scripts)
 node_modules/
+
+# Firebase Functions secrets for the local emulator. `firebase emulators:start`
+# reads ROUTES_API_KEY and NEWSDATA_API_KEY from here, so this file holds real
+# keys in plain text and must never be committed.
+functions/.secret.local
+**/.secret.local
