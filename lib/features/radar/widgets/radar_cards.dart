@@ -181,7 +181,7 @@ class RadarZoneCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  zone.name,
+                  zone.localizedName(Localizations.localeOf(context).languageCode),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -260,7 +260,7 @@ class RadarPartnerCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  partner.name,
+                  partner.localizedName(Localizations.localeOf(context).languageCode),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

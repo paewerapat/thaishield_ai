@@ -670,7 +670,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       MaterialPageRoute(
         builder: (_) => RoutePreviewScreen(
           destination: LatLng(partner.lat, partner.lng),
-          destinationName: partner.name,
+          destinationName: partner.localizedName(Localizations.localeOf(context).languageCode),
         ),
       ),
     );
@@ -1226,7 +1226,7 @@ class _ZonePopup extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          zone.name,
+                          zone.localizedName(Localizations.localeOf(context).languageCode),
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -1506,7 +1506,7 @@ class _PartnerCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                partner.name,
+                partner.localizedName(Localizations.localeOf(context).languageCode),
                 style: const TextStyle(
                   color: Color(0xFF0D1B2A),
                   fontWeight: FontWeight.bold,
@@ -1733,7 +1733,7 @@ class _PartnerDetailSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      partner.name,
+                      partner.localizedName(Localizations.localeOf(context).languageCode),
                       style: const TextStyle(
                         color: Color(0xFF0D1B2A),
                         fontSize: 18,

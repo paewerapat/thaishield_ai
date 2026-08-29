@@ -79,6 +79,7 @@ RadarResult _result({
 }
 
 void main() {
+  _localizedNames();
   group('what the panel treats as an advisory', () {
     test('safe-rated areas are counted but never listed as alerts', () {
       // A "safe" area two streets away is not news. Listing it would push the
@@ -228,6 +229,64 @@ void main() {
           );
         }
       }
+    });
+  });
+}
+
+void _localizedNames() {
+  group('optional localized names', () {
+    // Names are optional in the CMS, unlike advisory text. A business name
+    // usually has no translation, and requiring six would produce the English
+    // copied five times — or an invented name for a real business, which is
+    // the sort of statement about an identified business the wording rules
+    // exist to prevent. So: use the official name where one was entered, and
+    // the canonical name everywhere else.
+    const zone = AlertZone(
+      id: 'siam',
+      name: 'Siam Square',
+      nameZh: '暹罗广场',
+      nameJa: 'サイアム・スクエア',
+      centerLat: 13.7,
+      centerLng: 100.5,
+      radiusKm: 1,
+      riskLevel: 'safe',
+      descriptionEn: 'en',
+      descriptionTh: 'th',
+    );
+
+    test('uses the official name when one exists', () {
+      expect(zone.localizedName('zh'), '暹罗广场');
+      expect(zone.localizedName('ja'), 'サイアム・スクエア');
+    });
+
+    test('falls back to the canonical name when none was entered', () {
+      // Korean and Russian were left blank, which is the ordinary case.
+      expect(zone.localizedName('ko'), 'Siam Square');
+      expect(zone.localizedName('ru'), 'Siam Square');
+      expect(zone.localizedName('th'), 'Siam Square');
+      expect(zone.localizedName('en'), 'Siam Square');
+    });
+
+    test('whitespace counts as blank, not as a name', () {
+      // A staff member tabbing through the form leaves spaces behind. Showing
+      // a blank where a place name belongs is worse than showing English.
+      const padded = PartnerLocation(
+        id: 'p1',
+        name: 'Blue Elephant',
+        nameKo: '   ',
+        lat: 13.7,
+        lng: 100.5,
+        type: 'restaurant',
+        rating: 4.5,
+        isVerified: true,
+        priceTier: 'fair',
+        imageUrl: '',
+      );
+      expect(padded.localizedName('ko'), 'Blue Elephant');
+    });
+
+    test('an unknown language code still gets a name', () {
+      expect(zone.localizedName('de'), 'Siam Square');
     });
   });
 }

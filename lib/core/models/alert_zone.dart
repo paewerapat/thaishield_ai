@@ -11,6 +11,11 @@ class AlertZone {
     required this.riskLevel,
     required this.descriptionEn,
     required this.descriptionTh,
+    this.nameTh = '',
+    this.nameZh = '',
+    this.nameKo = '',
+    this.nameRu = '',
+    this.nameJa = '',
     this.descriptionZh = '',
     this.descriptionKo = '',
     this.descriptionRu = '',
@@ -35,7 +40,36 @@ class AlertZone {
   final String descriptionRu;
   final String descriptionJa;
 
+
+  /// Optional official names. Empty is the normal case — see [localizedName].
+  final String nameTh;
+  final String nameZh;
+  final String nameKo;
+  final String nameRu;
+  final String nameJa;
+
   final List<LatLng> polygon;
+
+
+  /// The place's name in the reader's language, falling back to [name].
+  ///
+  /// Unlike the advisory text, these are **optional in the CMS**: a business
+  /// name usually has no translation, and forcing six would produce either the
+  /// English copied five times or — worse — an invented name for a real
+  /// business. They are filled only where an official name exists in that
+  /// language (Siam Square as 暹罗广场), and [name] carries every other case.
+  String localizedName(String langCode) {
+    final byLang = {
+      'th': nameTh,
+      'zh': nameZh,
+      'ko': nameKo,
+      'ru': nameRu,
+      'ja': nameJa,
+    };
+    final own = byLang[langCode];
+    if (own != null && own.trim().isNotEmpty) return own;
+    return name;
+  }
 
   /// The description in the reader's language, falling back to English.
   ///
@@ -68,6 +102,11 @@ class AlertZone {
       riskLevel:        d['risk_level'] ?? 'safe',
       descriptionEn:    d['description_en'] ?? '',
       descriptionTh:    d['description_th'] ?? '',
+      nameTh:           d['name_th'] ?? '',
+      nameZh:           d['name_zh'] ?? '',
+      nameKo:           d['name_ko'] ?? '',
+      nameRu:           d['name_ru'] ?? '',
+      nameJa:           d['name_ja'] ?? '',
       descriptionZh:    d['description_zh'] ?? '',
       descriptionKo:    d['description_ko'] ?? '',
       descriptionRu:    d['description_ru'] ?? '',

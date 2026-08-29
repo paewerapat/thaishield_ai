@@ -594,7 +594,7 @@ class _AdvisoryRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.zone.name,
+                  entry.zone.localizedName(Localizations.localeOf(context).languageCode),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -675,7 +675,7 @@ class _PartnerRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.partner.name,
+                  entry.partner.localizedName(Localizations.localeOf(context).languageCode),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

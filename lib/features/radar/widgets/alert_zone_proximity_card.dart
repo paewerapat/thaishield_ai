@@ -199,7 +199,7 @@ class _AlertZoneProximityCardState extends State<AlertZoneProximityCard>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  zone.name,
+                  zone.localizedName(Localizations.localeOf(context).languageCode),
                   style: const TextStyle(
                     color: Color(0xFF0D1B2A),
                     fontSize: 12.5,
