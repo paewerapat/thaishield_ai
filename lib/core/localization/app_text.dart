@@ -765,6 +765,60 @@ const Map<String, Map<String, String>> _appText = {
   // "Around you" panel on the Smart Map (item ข, approved 2026-08-22). Shares
   // the radar_group_* labels for the tiles, so the same area never gets two
   // different names on two screens.
+  // The "you are here" block at the top of the map sheet. From the V2 poster;
+  // the app knew the coordinates all along and never told the user what they
+  // were standing in.
+  'around_you_are_at': {
+    'th': 'คุณอยู่ที่นี่',
+    'en': 'You are here',
+    'zh': '您在这里',
+    'ko': '현재 위치',
+    'ru': 'Вы здесь',
+    'ja': '現在地',
+  },
+  'around_locating': {
+    'th': 'กำลังระบุชื่อพื้นที่…',
+    'en': 'Finding your area…',
+    'zh': '正在确定所在区域…',
+    'ko': '위치 확인 중…',
+    'ru': 'Определяем район…',
+    'ja': 'エリアを確認中…',
+  },
+  'around_address_unknown': {
+    'th': 'ไม่ทราบชื่อพื้นที่',
+    'en': 'Area name unavailable',
+    'zh': '无法获取区域名称',
+    'ko': '지역 이름을 확인할 수 없음',
+    'ru': 'Название района недоступно',
+    'ja': 'エリア名を取得できません',
+  },
+  // Deliberately says what is *not* known rather than implying safety. The
+  // app has no data for most of the map, and "no advisory here" must not be
+  // read as "checked and fine" (§10).
+  'around_no_zone': {
+    'th': 'ยังไม่มีข้อมูลพื้นที่ตรงจุดนี้',
+    'en': 'No area information for this spot',
+    'zh': '此处暂无区域信息',
+    'ko': '이 지점의 지역 정보 없음',
+    'ru': 'Нет данных по этой точке',
+    'ja': 'この地点の情報はありません',
+  },
+  'around_updated_at': {
+    'th': 'ข้อมูลอัปเดตล่าสุด {time} น.',
+    'en': 'Updated at {time}',
+    'zh': '数据更新于 {time}',
+    'ko': '{time} 업데이트',
+    'ru': 'Обновлено в {time}',
+    'ja': '{time} 更新',
+  },
+  'around_view_all': {
+    'th': 'ดูทั้งหมด',
+    'en': 'View all',
+    'zh': '查看全部',
+    'ko': '전체 보기',
+    'ru': 'Показать все',
+    'ja': 'すべて表示',
+  },
   'around_title': {
     'th': 'รอบตัวคุณในระยะ {radius}',
     'en': 'Around you within {radius}',

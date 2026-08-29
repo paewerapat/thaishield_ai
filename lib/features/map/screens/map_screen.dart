@@ -16,6 +16,7 @@ import '../../premium/widgets/premium_gate.dart';
 import '../../premium/screens/paywall_screen.dart';
 import '../../radar/models/radar_filters.dart';
 import '../../radar/models/radar_result.dart';
+import '../../radar/screens/radar_screen.dart';
 import '../../radar/services/radar_service.dart';
 import '../../radar/widgets/filter_panel.dart';
 import '../../route/screens/route_preview_screen.dart';
@@ -196,6 +197,20 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// it. Null until there is a position to scan around, which is what makes
   /// the sheet render nothing at all rather than an empty shell.
   RadarResult? _around;
+
+  /// Reverse-geocoded name for [_userPosition] — "Siam Square, Pathum Wan".
+  /// Null while the lookup is in flight; the sheet says so rather than
+  /// showing an empty line.
+  String? _aroundAddress;
+
+  /// The mapped area the user is standing inside, if any. Usually null: most
+  /// of the map is not covered, and the sheet states that as missing
+  /// information rather than as an all-clear.
+  RadarZoneEntry? _standingIn;
+
+  /// When [_around] was computed, so a sheet left open overnight cannot be
+  /// mistaken for current.
+  DateTime? _aroundUpdatedAt;
 
   /// Where the "around you" sheet currently sits, as a fraction of screen
   /// height, so the floating buttons can ride above its top edge.
@@ -473,8 +488,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         categories: _filters.categories,
         riskLevels: _filters.riskLevels,
       );
+      // Which zone the user is standing in, from the same in-memory cache the
+      // scan just used — no extra Firestore read.
+      final standing = await RadarService.instance.zoneAtOrNear(position);
       if (!mounted) return;
-      setState(() => _around = result);
+      setState(() {
+        _around = result;
+        _aroundUpdatedAt = DateTime.now();
+        _standingIn = standing != null && standing.distanceKm <= 0
+            ? standing
+            : null;
+      });
+      unawaited(_resolveAddress(position));
     } catch (_) {
       // The map itself already reports a load failure; a second message for
       // the sheet would be noise. Leaving the previous result up is better
@@ -651,6 +676,28 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Turns the coordinates into something a person recognises. Deliberately
+  /// fire-and-forget and failure-tolerant: the sheet is useful without it, and
+  /// a geocoder timeout must not hold up the counts.
+  Future<void> _resolveAddress(LatLng position) async {
+    try {
+      final marks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (!mounted || marks.isEmpty) return;
+      final p = marks.first;
+      final parts = [p.subLocality, p.locality, p.administrativeArea]
+          .where((s) => s != null && s.isNotEmpty)
+          .toList();
+      if (parts.isEmpty) return;
+      setState(() => _aroundAddress = parts.join(', '));
+    } catch (_) {
+      // Leaves the previous address, or the "finding your area" line. Saying
+      // nothing is better than replacing a good answer with an error.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -778,6 +825,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                   isPremium: context
                                       .watch<PremiumProvider>()
                                       .isPremium,
+                                  address: _aroundAddress,
+                                  standingIn: _standingIn,
+                                  updatedAt: _aroundUpdatedAt,
+                                  onViewAll: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const RadarScreen(),
+                                    ),
+                                  ),
                                   onShowEntry: _showAroundEntry,
                                   onUnlock: () => showPaywall(
                                     context,

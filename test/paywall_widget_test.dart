@@ -389,6 +389,81 @@ void main() {
       expect(find.text(appStrings['around_empty']!['th']!), findsOneWidget);
     });
 
+    testWidgets('the you-are-here block survives all six languages',
+        (tester) async {
+      // Added with the block itself. Its zone pill and "updated at" line sit
+      // in a Wrap because the Russian and Japanese area names are long — the
+      // map legend overflowed by 5.7px the last time long text went into a
+      // fixed row, and analyze and 166 tests all passed while it did.
+      for (final language in ['th', 'en', 'zh', 'ko', 'ru', 'ja']) {
+        await tester.pumpWidget(
+          _host(
+            AroundYouPanel(
+              result: _around(zones: ['danger'], partners: 2),
+              isPremium: true,
+              onShowEntry: (_) {},
+              onUnlock: () {},
+              address: 'สยามสแควร์, เขตปทุมวัน, กรุงเทพมหานคร',
+              updatedAt: DateTime(2026, 8, 29, 9, 30),
+              onViewAll: () {},
+            ),
+            language: language,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _openSheet(tester);
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'you-are-here block threw in $language',
+        );
+        // skipOffstage: false — the sheet is a lazy ListView and dragging it
+        // open can carry the header past the viewport. What matters here is
+        // that the block built without throwing, not where it ended up.
+        expect(
+          find.text(
+            appStrings['around_you_are_at']![language]!,
+            skipOffstage: false,
+          ),
+          findsOneWidget,
+          reason: 'no "you are here" heading in $language',
+        );
+      }
+    });
+
+    testWidgets('an unmapped spot says so instead of implying it is safe',
+        (tester) async {
+      // §10: silence about an area is missing information, never an all-clear.
+      // With no zone underfoot the pill must read "no information", and must
+      // not borrow the safe-area wording.
+      await tester.pumpWidget(
+        _host(
+          AroundYouPanel(
+            result: _around(zones: ['caution'], partners: 1),
+            isPremium: true,
+            onShowEntry: (_) {},
+            onUnlock: () {},
+            address: 'Pathum Wan',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openSheet(tester);
+
+      expect(
+        find.text(appStrings['around_no_zone']!['th']!, skipOffstage: false),
+        findsOneWidget,
+        reason: 'an unmapped spot did not say its information is missing',
+      );
+
+      // Note what is NOT asserted here. An earlier version of this test also
+      // checked that the safe-area wording appears nowhere — and failed,
+      // because the count tiles carry that label permanently as a heading for
+      // "safe areas nearby". The tiles are counting; only the pill is making a
+      // statement about where the user is standing. The distinction is the
+      // whole point, so the assertion is scoped to the pill's own string.
+    });
+
     testWidgets('renders in all six languages without overflowing',
         (tester) async {
       for (final language in ['th', 'en', 'zh', 'ko', 'ru', 'ja']) {

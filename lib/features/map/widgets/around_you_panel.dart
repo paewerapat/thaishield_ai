@@ -40,6 +40,10 @@ class AroundYouPanel extends StatelessWidget {
     required this.isPremium,
     required this.onShowEntry,
     required this.onUnlock,
+    this.address,
+    this.standingIn,
+    this.updatedAt,
+    this.onViewAll,
   });
 
   /// Null while the user's position is still unknown or the scan has not run.
@@ -55,6 +59,23 @@ class AroundYouPanel extends StatelessWidget {
   final void Function(RadarEntry entry) onShowEntry;
 
   final VoidCallback onUnlock;
+
+  /// Reverse-geocoded name of where the user is standing. Null while it is
+  /// still being looked up; the panel says so rather than showing a blank.
+  final String? address;
+
+  /// The mapped area the user is actually inside, if any. Null is the common
+  /// case — most of the map has no zone — and is stated as "no information
+  /// here", never as "safe" (§10).
+  final RadarZoneEntry? standingIn;
+
+  /// When the counts below were computed, so nobody reads a stale sheet as
+  /// current.
+  final DateTime? updatedAt;
+
+  /// Opens the full Radar. Null hides the "view all" links entirely rather
+  /// than showing a control that does nothing.
+  final VoidCallback? onViewAll;
 
   @override
   Widget build(BuildContext context) {
@@ -113,12 +134,21 @@ class AroundYouPanel extends StatelessWidget {
             children: [
               const _DragHandle(),
               const SizedBox(height: 10),
+              _YouAreHere(
+                address: address,
+                standingIn: standingIn,
+                updatedAt: updatedAt,
+              ),
+              const SizedBox(height: 14),
               _Header(radiusKm: current.radiusKm, isTh: isTh),
               const SizedBox(height: 12),
               _CountTiles(result: current, zones: zones, partners: partners),
               if (shownAdvisories.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                _SectionTitle(text: appText(context, 'around_alerts_title')),
+                _SectionTitle(
+                  text: appText(context, 'around_alerts_title'),
+                  onViewAll: onViewAll,
+                ),
                 const SizedBox(height: 8),
                 for (final entry in shownAdvisories)
                   _AdvisoryRow(
@@ -129,7 +159,10 @@ class AroundYouPanel extends StatelessWidget {
               ],
               if (shownPartners.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                _SectionTitle(text: appText(context, 'around_partners_title')),
+                _SectionTitle(
+                  text: appText(context, 'around_partners_title'),
+                  onViewAll: onViewAll,
+                ),
                 const SizedBox(height: 8),
                 for (final entry in shownPartners)
                   _PartnerRow(
@@ -182,6 +215,137 @@ class _DragHandle extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// "You are here" — the address, the mapped area the user is standing in, and
+/// when the numbers below were taken.
+///
+/// The poster this came from also carried a "safety index 95/100" here. That
+/// was dropped: scoring an area is exactly the judgement §10 forbids, and no
+/// data in this project could compute it honestly. What replaces it is the
+/// name of the area the user is actually inside, which is a fact.
+class _YouAreHere extends StatelessWidget {
+  const _YouAreHere({
+    required this.address,
+    required this.standingIn,
+    required this.updatedAt,
+  });
+
+  final String? address;
+  final RadarZoneEntry? standingIn;
+  final DateTime? updatedAt;
+
+  static const _riskColors = {
+    'safe': Color(0xFF2E7D32),
+    'caution': Color(0xFFEF6C00),
+    'danger': Color(0xFFC62828),
+  };
+
+  static const _riskKeys = {
+    'safe': 'radar_group_zone_safe',
+    'caution': 'radar_group_zone_caution',
+    'danger': 'radar_group_zone_danger',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final zone = standingIn;
+    final risk = zone?.zone.riskLevel;
+    // An unmapped spot is the ordinary case, not a good one. Grey says "no
+    // information"; green would say "checked and fine", which is a claim.
+    final colour = _riskColors[risk] ?? const Color(0xFF90A4AE);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 4, right: 8),
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1565C0),
+                shape: BoxShape.circle,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appText(context, 'around_you_are_at'),
+                    style: const TextStyle(
+                      color: _navy,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    address ?? appText(context, 'around_locating'),
+                    style: TextStyle(
+                      color: address == null
+                          ? const Color(0xFF90A4AE)
+                          : const Color(0xFF45585F),
+                      fontSize: 12.5,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Wrap, not Row: Russian and Japanese zone names are long, and a fixed
+        // row across a phone width is how the map legend overflowed once
+        // already.
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: colour.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colour.withValues(alpha: 0.35)),
+              ),
+              child: Text(
+                risk == null
+                    ? appText(context, 'around_no_zone')
+                    : appText(context, _riskKeys[risk]!),
+                style: TextStyle(
+                  color: colour,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (updatedAt != null)
+              Text(
+                appText(context, 'around_updated_at')
+                    .replaceFirst('{time}', _clock(updatedAt!)),
+                style: const TextStyle(
+                  color: Color(0xFF90A4AE),
+                  fontSize: 11,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static String _clock(DateTime at) {
+    final local = at.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
 
@@ -329,19 +493,45 @@ class _Tile extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.text});
+  const _SectionTitle({required this.text, this.onViewAll});
 
   final String text;
 
+  /// Null hides the link. A "view all" that goes nowhere is worse than none.
+  final VoidCallback? onViewAll;
+
   @override
   Widget build(BuildContext context) {
-    return Text(
+    final title = Text(
       text,
       style: const TextStyle(
         color: _navy,
         fontSize: 13,
         fontWeight: FontWeight.bold,
       ),
+    );
+
+    if (onViewAll == null) return title;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Flexible(child: title),
+        TextButton(
+          onPressed: onViewAll,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            minimumSize: const Size(0, 28),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: const Color(0xFF2E7D32),
+          ),
+          child: Text(
+            appText(context, 'around_view_all'),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }
