@@ -18,6 +18,8 @@ const {
   parsePubDate,
   queryForRun,
   QUERIES,
+  readLatLng,
+  ALLOWED_TRAVEL_MODES,
   RUN_INTERVAL_MS,
   RUN_INTERVAL_MINUTES,
 } = _internals;
@@ -217,5 +219,61 @@ test('parses pubDate as UTC, not local time', () => {
 test('parsePubDate returns null rather than an Invalid Date', () => {
   for (const value of [undefined, null, '', '   ', 'not a date']) {
     assert.equal(parsePubDate(value), null, String(value));
+  }
+});
+
+// ---------------------------------------------------------------------------
+// computeRoute input validation
+//
+// The proxy is an unauthenticated endpoint, so what it refuses to forward is
+// the only thing standing between a stranger and this project's Routes bill.
+// Every case below is a shape someone could post at it.
+// ---------------------------------------------------------------------------
+
+test('readLatLng accepts a well-formed pair', () => {
+  assert.deepEqual(readLatLng({latitude: 13.7466, longitude: 100.5347}), {
+    latitude: 13.7466,
+    longitude: 100.5347,
+  });
+  // The corners are legal coordinates and must not be rejected.
+  assert.ok(readLatLng({latitude: 90, longitude: 180}));
+  assert.ok(readLatLng({latitude: -90, longitude: -180}));
+  assert.ok(readLatLng({latitude: 0, longitude: 0}));
+});
+
+test('readLatLng rejects everything that is not a coordinate', () => {
+  for (const bad of [
+    undefined,
+    null,
+    'somewhere',
+    42,
+    [],
+    {},
+    {latitude: 13.7},
+    {longitude: 100.5},
+    // Strings are the interesting case: JSON from an attacker is not typed,
+    // and "13.7" would sail through a truthiness check.
+    {latitude: '13.7', longitude: '100.5'},
+    {latitude: NaN, longitude: 100.5},
+    {latitude: Infinity, longitude: 100.5},
+    {latitude: 91, longitude: 100.5},
+    {latitude: -91, longitude: 100.5},
+    {latitude: 13.7, longitude: 181},
+    {latitude: 13.7, longitude: -181},
+  ]) {
+    assert.equal(readLatLng(bad), null, `accepted ${JSON.stringify(bad)}`);
+  }
+});
+
+test('only the three travel modes the app offers are allowed', () => {
+  assert.deepEqual(ALLOWED_TRAVEL_MODES, ['DRIVE', 'TRANSIT', 'WALK']);
+
+  // TWO_WHEELER is the one to watch. The Routes API accepts it, and it is a
+  // reasonable thing to want in Thailand — but the Google Maps deep link has
+  // no equivalent and silently downgrades to driving, so the preview and the
+  // hand-off would disagree with no error anywhere. CLAUDE.md §4 records the
+  // decision to leave it out; this keeps it out.
+  for (const mode of ['TWO_WHEELER', 'BICYCLE', 'drive', '', null, undefined]) {
+    assert.equal(ALLOWED_TRAVEL_MODES.includes(mode), false, `allowed ${mode}`);
   }
 });
