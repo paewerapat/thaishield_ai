@@ -26,6 +26,9 @@ import 'package:thaishield_ai/features/premium/screens/paywall_screen.dart';
 import 'package:thaishield_ai/features/premium/services/entitlement_repository.dart';
 import 'package:thaishield_ai/features/premium/services/entitlement_store.dart';
 import 'package:thaishield_ai/features/radar/models/radar_result.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 /// Firestore is never reached in these tests — the panel and the paywall are
 /// both handed their data — but `PremiumProvider` holds a repository, so it
@@ -40,6 +43,34 @@ class _NullRepository implements EntitlementRepository {
 
   @override
   Future<Entitlement?> restoreBest(Iterable<String> purchaseIds) async => null;
+}
+
+/// Catches what the paywall's legal links actually try to open.
+///
+/// The store requirement is not "a label exists", it is "a reviewer can tap
+/// this and land on the terms". Only tapping proves that, so these tests go
+/// through url_launcher's platform interface rather than reading strings.
+class _RecordingLauncher extends UrlLauncherPlatform
+    with MockPlatformInterfaceMixin {
+  final List<String> launched = <String>[];
+
+  @override
+  LinkDelegate? get linkDelegate => null;
+
+  @override
+  Future<bool> canLaunch(String url) async => true;
+
+  @override
+  Future<bool> supportsMode(PreferredLaunchMode mode) async => true;
+
+  @override
+  Future<bool> supportsCloseForMode(PreferredLaunchMode mode) async => false;
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    launched.add(url);
+    return true;
+  }
 }
 
 Widget _host(Widget child, {String language = 'th', PremiumProvider? premium}) {
@@ -486,6 +517,101 @@ void main() {
           tester.takeException(),
           isNull,
           reason: 'panel threw in $language',
+        );
+      }
+    });
+  });
+
+  group('the store-required legal links', () {
+    // 🚨 The reason this group exists: the first attempt at guarding these
+    // links only asserted that two dictionary entries were non-empty. Deleting
+    // `const _LegalLinks()` from paywall_screen.dart left every test in the
+    // repo green, while producing exactly the build Apple rejects. A test that
+    // cannot fail when the feature is removed is not covering the feature.
+
+    late _RecordingLauncher launcher;
+    late UrlLauncherPlatform original;
+
+    setUp(() {
+      original = UrlLauncherPlatform.instance;
+      launcher = _RecordingLauncher();
+      UrlLauncherPlatform.instance = launcher;
+    });
+
+    tearDown(() => UrlLauncherPlatform.instance = original);
+
+    /// The paywall body is a `ListView`, so anything below the fold is never
+    /// built and `find.text` cannot see it. A phone-sized surface leaves the
+    /// links off-screen, which is a property of the test window and not of the
+    /// screen — so give the test a window tall enough to build the whole list.
+    Future<void> pumpTallPaywall(
+      WidgetTester tester, {
+      String language = 'th',
+    }) async {
+      tester.view.physicalSize = const Size(1080, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_host(const PaywallScreen(), language: language));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('both links are on the screen in every language',
+        (tester) async {
+      for (final language in ['th', 'en', 'zh', 'ko', 'ru', 'ja']) {
+        await pumpTallPaywall(tester, language: language);
+
+        for (final key in ['premium_terms_link', 'premium_privacy_link']) {
+          expect(
+            find.text(appStrings[key]![language]!),
+            findsOneWidget,
+            reason: '$key is not drawn in $language — the store rejects this',
+          );
+        }
+      }
+    });
+
+    testWidgets('tapping Terms opens the public terms page', (tester) async {
+      await pumpTallPaywall(tester);
+
+      await tester.tap(find.text(appStrings['premium_terms_link']!['th']!));
+      await tester.pumpAndSettle();
+
+      expect(launcher.launched, hasLength(1));
+      expect(launcher.launched.single, endsWith('/terms'));
+      expect(launcher.launched.single, startsWith('https://'));
+    });
+
+    testWidgets('tapping Privacy opens the public privacy page',
+        (tester) async {
+      await pumpTallPaywall(tester);
+
+      await tester.tap(find.text(appStrings['premium_privacy_link']!['th']!));
+      await tester.pumpAndSettle();
+
+      expect(launcher.launched, hasLength(1));
+      expect(launcher.launched.single, endsWith('/privacy'));
+      expect(launcher.launched.single, startsWith('https://'));
+    });
+
+    testWidgets('neither link sits behind the CMS login', (tester) async {
+      // Auth is enforced in the web admin's `app/admin/layout.tsx`, so a page
+      // under /admin redirects a signed-out visitor. A store reviewer has no
+      // account, so a link that lands there fails review just as surely as a
+      // dead one.
+      await pumpTallPaywall(tester);
+
+      for (final key in ['premium_terms_link', 'premium_privacy_link']) {
+        await tester.tap(find.text(appStrings[key]!['th']!));
+        await tester.pumpAndSettle();
+      }
+
+      expect(launcher.launched, hasLength(2));
+      for (final url in launcher.launched) {
+        expect(
+          Uri.parse(url).path.startsWith('/admin'),
+          isFalse,
+          reason: '$url is behind the admin login',
         );
       }
     });

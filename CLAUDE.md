@@ -582,6 +582,17 @@ design needed:
   offer and retire `PremiumProvider.startTrialIfEligible`, which exists because
   a consumable could not carry one. Until billing is wired it is the only trial
   a build has, so do not delete it before its replacement works.
+  - 🚨 **That move rewrites `premium_trial_note` in all six languages, in the
+    same commit.** The current copy says the trial ends and the app returns to
+    the free version by itself, and that billing starts only if the user picks
+    a plan and confirms — true of an in-app trial, and the exact opposite of a
+    store introductory offer, which converts into a paid subscription unless
+    the user cancels first. Shipping the mechanism without the copy tells every
+    user in their own language that they will not be charged, immediately
+    before charging them. `wording_test.dart` fails the moment
+    `startTrialIfEligible` disappears while that wording survives; the terms
+    page (`app/terms/page.tsx` §4 in the web admin) says the same thing twice
+    more and has no test at all.
 - **Restore is the store's job on both platforms.** This is the one clear gain:
   StoreKit refused to replay consumables, which is why iOS restore was accepted
   as broken on 2026-08-23. Subscriptions restore on iOS and Android alike, so

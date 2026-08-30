@@ -300,4 +300,46 @@ void main() {
       }
     });
   });
+
+  group('the trial copy and the trial mechanism must move together', () {
+    test('in-app trial wording does not outlive the in-app trial', () {
+      // The six `premium_trial_note` strings all promise the trial lapses by
+      // itself and that nothing is charged unless the user buys a plan. That
+      // holds only while the trial is granted in-app by
+      // `PremiumProvider.startTrialIfEligible`.
+      //
+      // Task 2.8 plans to move it to a store introductory offer, which
+      // auto-converts into a paid subscription instead. This fails the moment
+      // the in-app mechanism is deleted while the copy still says otherwise —
+      // which is the exact commit where the promise turns into a false one, in
+      // six languages at once.
+      final provider = File(
+        'lib/features/premium/providers/premium_provider.dart',
+      ).readAsStringSync();
+
+      if (provider.contains('startTrialIfEligible')) {
+        return; // the in-app trial is still what ships; the copy is accurate
+      }
+
+      const lapses = {
+        'th': 'กลับไปใช้เวอร์ชันฟรีเอง',
+        'en': 'on its own',
+        'zh': '回到免费版本',
+        'ko': '무료 버전으로',
+        'ru': 'вернётся к бесплатной',
+        'ja': '無料版に戻ります',
+      };
+
+      lapses.forEach((language, phrase) {
+        expect(
+          appStrings['premium_trial_note']![language]!.contains(phrase),
+          isFalse,
+          reason:
+              'the in-app trial is gone but $language still promises the trial '
+              'ends without a charge. A store introductory offer converts into '
+              'a paid subscription instead — rewrite all six strings.',
+        );
+      });
+    });
+  });
 }

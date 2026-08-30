@@ -17,10 +17,23 @@ class LocaleProvider extends ChangeNotifier {
     }
   }
 
+  /// Records the choice, and rebuilds only if it actually changed.
+  ///
+  /// 🚨 **The write must not be skipped when the value matches.** [_locale]
+  /// starts as English, so `setLocale(Locale('en'))` from the onboarding
+  /// screen used to hit an early `return` and never reach
+  /// `SharedPreferences` — which left [hasSelectedLocale] false forever and
+  /// showed the language picker again on every launch, but only for the people
+  /// who chose English. Found by on-device QA 2026-08-30; it had been there
+  /// since the first phase, because every test and every manual pass happened
+  /// to pick Thai.
+  ///
+  /// Notifying is what is conditional now, not persisting.
   Future<void> setLocale(Locale locale) async {
-    if (_locale == locale) return;
+    final changed = _locale != locale;
     _locale = locale;
-    notifyListeners();
+    if (changed) notifyListeners();
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kLocaleKey, locale.languageCode);
   }

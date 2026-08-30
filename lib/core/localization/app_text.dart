@@ -1234,6 +1234,23 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'продление каждые 30 дней',
     'ja': '30日ごとに自動更新',
   },
+  // 🚨 All six of these describe an **in-app** trial: it ends, the app drops
+  // back to free, and nothing is ever charged unless the user separately buys a
+  // plan. That is true today, because `PremiumProvider.startTrialIfEligible`
+  // grants it and no billing exists.
+  //
+  // It stops being true the moment task 2.8 moves the trial to a **store
+  // introductory offer**, which is the plan now that both products are
+  // subscriptions. A store trial does the opposite: it converts into a paid
+  // subscription automatically at the end unless the user cancels first. Ship
+  // that change without rewriting these six strings and the app tells every
+  // user, in their own language, that they will not be charged — immediately
+  // before charging them. That is a refund wave and a consumer-protection
+  // problem, not a copy nit.
+  //
+  // `wording_test.dart` has a tripwire that fails the moment
+  // `startTrialIfEligible` disappears while this copy still says the trial
+  // lapses on its own. Do not silence it; rewrite the strings.
   'premium_trial_note': {
     'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน โดยยังไม่มีการเรียกเก็บเงิน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง การสมัครสมาชิกจะเริ่มเก็บเงินก็ต่อเมื่อคุณเลือกแพ็กเกจและยืนยันการชำระเงินเท่านั้น',
     'en': 'New users get 3 days free and nothing is charged for them. When the trial ends the app returns to the free version on its own — a subscription only starts billing if you choose a plan and confirm the payment yourself.',

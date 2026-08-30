@@ -43,6 +43,13 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Both are already in the tree via url_launcher; declared here so the paywall
+  # widget test can swap in a fake launcher and prove the store-required Terms
+  # and Privacy links actually open something. Without that fake the only thing
+  # a test can check is that two dictionary entries are non-empty, which passes
+  # with both links deleted from the screen.
+  plugin_platform_interface: ^2.1.8
+  url_launcher_platform_interface: ^2.3.2
   flutter_launcher_icons: ^0.14.3
 
 # record 5.2.1 pins record_linux to '>=0.5.0 <1.0.0', so pub resolves 0.7.2 —

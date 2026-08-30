@@ -881,11 +881,17 @@ void main() {
       );
     });
 
-    test('the paywall carries the links both stores require', () {
+    test('the two store-required link labels are translated', () {
       // Apple rejects a subscription purchase screen without functional Terms
       // of Use and Privacy Policy links, and Play expects the same. A one-time
       // purchase screen needed neither, which is why they were absent until
       // 2026-08-30 — the obligation arrived with the billing model.
+      //
+      // 🚨 This checks the dictionary and nothing else. It passed with both
+      // links deleted from the screen, which is exactly the failure that gets
+      // a build rejected — the labels existing is not the links existing. What
+      // actually guards the screen is 'the store-required legal links' in
+      // paywall_widget_test.dart. Do not let this test stand in for that one.
       for (final key in ['premium_terms_link', 'premium_privacy_link']) {
         for (final language in _languages) {
           expect(

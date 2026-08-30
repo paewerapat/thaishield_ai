@@ -6,6 +6,7 @@ import '../../../core/localization/app_text.dart';
 import '../models/premium_feature.dart';
 import '../models/premium_plan.dart';
 import '../providers/premium_provider.dart';
+import 'package:thaishield_ai/core/constants/legal_urls.dart';
 
 const _headerGreen = Color(0xFF0A1810);
 const _pageGrey = Color(0xFFF3F5F7);
@@ -487,9 +488,9 @@ class _LegalLinks extends StatelessWidget {
   const _LegalLinks();
 
   static const _termsUrl =
-      'https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/terms';
+      LegalUrls.terms;
   static const _privacyUrl =
-      'https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/privacy';
+      LegalUrls.privacy;
 
   @override
   Widget build(BuildContext context) {

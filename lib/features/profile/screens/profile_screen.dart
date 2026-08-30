@@ -13,6 +13,7 @@ import '../../onboarding/screens/language_selection_screen.dart';
 import '../../premium/models/premium_plan.dart';
 import '../../premium/providers/premium_provider.dart';
 import '../../premium/screens/paywall_screen.dart';
+import 'package:thaishield_ai/core/constants/legal_urls.dart';
 
 /// The public privacy policy, served by the web admin outside its `/admin`
 /// tree so it needs no login (that repo's `app/privacy/page.tsx`).
@@ -22,7 +23,7 @@ import '../../premium/screens/paywall_screen.dart';
 /// user being able to reach it — hence the row in Profile. The same URL goes in
 /// the Play Console and App Store Connect listings; keep the three in step.
 const _privacyPolicyUrl =
-    'https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/privacy';
+    LegalUrls.privacy;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
