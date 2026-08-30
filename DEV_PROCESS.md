@@ -222,20 +222,31 @@ args: { change: "อธิบายสั้น ๆ ว่าแก้อะไ�
 > ข้อความที่มีผลผูกพัน (ราคา · การเรียกเก็บเงิน · การยกเลิก) ต้องให้ผู้ว่าจ้าง
 > อ่านก่อน ไม่ใช่หลัง
 
-## Client document — updated 2026-08-30? **No.**
+## Client document — updated 2026-08-31? **Yes.**
 
-The QA gate flags "no evidence the client doc was updated" as a defect, and it
-is right to: a price change the client has not been shown is a change they
-have not agreed to.
+**Rev.5 ออกแล้วเมื่อ 2026-08-31** และแทนที่ Rev.4 ทั้งฉบับ
 
-**Outstanding as of 2026-08-30.** The Rev.4 quotation and status document
-(Google Docs) still describes the two one-time passes at $7 and $10, the 3-day
-trial leading into a pass, and the iOS restore limitation the client accepted
-on 2026-08-23. All three are now wrong. The subscription decision, the $3.50
-weekly price and the removal of the iOS limitation have not been written into
-it.
+Doc ID `1_B0ELxwbRDYBoNpR8BN3_NdUIv3Gee_fvn68I6LJf8E` · อยู่โฟลเดอร์เดียวกับ Rev.4
+ซึ่งยังเก็บไว้เป็นหลักฐานสิ่งที่ตกลงกันไว้ ไม่ได้ลบ
 
-The developer cannot edit that document through the Drive integration — it has
-to be done through the browser, and a paste into it once wiped the file. So it
-is a deliberate, hands-on step, not something to assume happened. Record it
-here when it is done, with the date.
+สิ่งที่กลับด้านจาก Rev.4 และเป็นเหตุผลหลักที่ต้องออกฉบับใหม่:
+
+| หัวข้อ | Rev.4 | Rev.5 |
+|---|---|---|
+| รูปแบบสินค้า | บัตรผ่านจ่ายครั้งเดียว · "ห้ามสร้างเป็น Subscription" | **Auto-renewing subscription เท่านั้น** |
+| แพ็กเกจสั้น | 14 วัน $7 · `_2weeks` | รายสัปดาห์ $3.50 · `_weekly` |
+| กู้คืนบน iOS | ทำไม่ได้ ลูกค้ารับทราบ 23/08 | **ทำได้แล้ว** ข้อจำกัดหมดไปพร้อมการเปลี่ยนประเภทสินค้า |
+| Phase 2B | ส่งมอบไม่ครบ รอ Routes API key | **ส่งมอบครบแล้ว 28/08** |
+
+### 🚨 บทเรียนเรื่องการแก้เอกสารลูกค้า
+
+1. **Drive MCP แก้เนื้อใน Doc เดิมไม่ได้** `update_file` เปลี่ยนได้แค่ชื่อกับโฟลเดอร์
+   ตรวจซ้ำเมื่อ 2026-08-31 แล้ว ยังเป็นแบบนั้น · การ paste ผ่านเบราว์เซอร์เคยลบ
+   ไฟล์ทิ้งทั้งฉบับมาแล้วครั้งหนึ่ง **ออกฉบับใหม่ด้วย `create_file` เสมอ**
+   ปลอดภัยกว่า และได้เก็บฉบับเก่าไว้เป็นหลักฐานไปในตัว
+2. **ห้ามใส่ emoji** — แปลงแล้วกลายเป็น `ð¨` เห็นได้ชัดใน Rev.4 ที่ยังมีอยู่หลายจุด
+3. **หัวตารางที่อ่านกลับมาเป็น `\*\*ข้อความ\*\*` ไม่ใช่ของเสีย** — เป็นแค่ผลจากการ
+   แปลงกลับเป็น markdown ของ `read_file_content` เพราะตาราง markdown พก
+   ตัวหนาไม่ได้ · **ตรวจของจริงด้วย `download_file_content` แบบ `text/plain`
+   แล้วนับ `**` ในเนื้อ** ถ้าได้ 0 คือเอกสารสะอาด อย่าไปแก้ตามสิ่งที่เห็นตอนอ่าน
+
