@@ -33,9 +33,9 @@ const _premiumKeys = [
   'premium_feature_filter',
   'premium_feature_route',
   'premium_benefits_title',
-  'premium_plan_2weeks',
+  'premium_plan_weekly',
   'premium_plan_monthly',
-  'premium_period_2weeks',
+  'premium_period_weekly',
   'premium_period_monthly',
   'premium_trial_note',
   'premium_status_trial',
@@ -128,7 +128,7 @@ void main() {
 
     test('an entitlement expiring exactly now is over', () {
       final entitlement = Entitlement(
-        plan: PremiumPlan.twoWeeks,
+        plan: PremiumPlan.weekly,
         source: EntitlementSource.store,
         expiresAt: now,
       );
@@ -152,7 +152,7 @@ void main() {
 
     test('remaining time never goes negative', () {
       final entitlement = Entitlement(
-        plan: PremiumPlan.twoWeeks,
+        plan: PremiumPlan.weekly,
         source: EntitlementSource.store,
         expiresAt: now,
       );
@@ -173,7 +173,7 @@ void main() {
       // The purchase id is what the Firestore copy is filed under, so losing it
       // in a round trip would quietly break restore on a new device.
       final original = Entitlement(
-        plan: PremiumPlan.twoWeeks,
+        plan: PremiumPlan.weekly,
         source: EntitlementSource.store,
         expiresAt: DateTime.utc(2027, 1, 2, 3, 4, 5),
         purchaseId: 'GPA.1234-5678',
@@ -181,7 +181,7 @@ void main() {
 
       final restored = Entitlement.fromJson(original.toJson())!;
 
-      expect(restored.plan, PremiumPlan.twoWeeks);
+      expect(restored.plan, PremiumPlan.weekly);
       expect(restored.source, EntitlementSource.store);
       expect(restored.expiresAt, original.expiresAt);
       expect(restored.purchaseId, 'GPA.1234-5678');
@@ -288,24 +288,52 @@ void main() {
       expect(ids.length, PremiumPlan.values.length);
       // These strings have to match the products created in Play Console and
       // App Store Connect, so a rename here is a breaking change.
-      expect(PremiumPlan.twoWeeks.productId, 'thaishield_premium_2weeks');
+      // `_2weeks` is retired, not renamed. That id was documented as a
+      // consumable, and an id that once meant one product type must never be
+      // pointed at another — a product's type is irreversible in both stores.
+      expect(PremiumPlan.weekly.productId, 'thaishield_premium_weekly');
       expect(PremiumPlan.monthly.productId, 'thaishield_premium_monthly');
     });
 
-    test('both passes are one-time products, not subscriptions', () {
-      // Client decision 2026-08-22. If this ever flips, the products created in
-      // both stores are the wrong type and cannot be converted — only replaced
-      // under new ids.
+    test('both plans are auto-renewing subscriptions', () {
+      // Client decision 2026-08-30, replacing the one-time passes of
+      // 2026-08-22. This assertion is the reason the flip was cheap: call
+      // sites asked `isSubscription` instead of assuming, so there were no
+      // hardcoded beliefs to hunt down.
+      //
+      // 🚨 If this ever flips again, every product already created in either
+      // store is the wrong type and cannot be converted — only replaced under
+      // a new id, at the cost of a fresh review.
       for (final plan in PremiumPlan.values) {
-        expect(plan.isSubscription, isFalse, reason: plan.name);
+        expect(plan.isSubscription, isTrue, reason: plan.name);
         expect(plan.duration, greaterThan(Duration.zero), reason: plan.name);
       }
     });
 
-    test('the pass lengths and prices match what the client set', () {
-      expect(PremiumPlan.twoWeeks.duration, const Duration(days: 14));
+    test('the billing periods are ones the stores actually sell', () {
+      // Neither store offers a 14-day period — the choices are 1 week, 1, 2, 3
+      // and 6 months, and a year. That gap is what forced the original
+      // one-time-pass design, and it is why the short plan is weekly rather
+      // than a fortnight. A duration that is not on this list cannot be created
+      // as a subscription at all, so it is worth failing here rather than in
+      // the console.
+      const sellable = [
+        Duration(days: 7),
+        Duration(days: 30),
+        Duration(days: 60),
+        Duration(days: 90),
+        Duration(days: 180),
+        Duration(days: 365),
+      ];
+      for (final plan in PremiumPlan.values) {
+        expect(sellable, contains(plan.duration), reason: plan.name);
+      }
+    });
+
+    test('the plan lengths and prices match what the client set', () {
+      expect(PremiumPlan.weekly.duration, const Duration(days: 7));
       expect(PremiumPlan.monthly.duration, const Duration(days: 30));
-      expect(PremiumPlan.twoWeeks.priceUsd, 7);
+      expect(PremiumPlan.weekly.priceUsd, 3.5);
       expect(PremiumPlan.monthly.priceUsd, 10);
       expect(PremiumPlan.trialDuration, const Duration(days: 3));
     });
@@ -317,6 +345,8 @@ void main() {
       expect(PremiumPlan.fromProductId('unknown'), isNull);
       expect(PremiumPlan.fromProductId('thaishield_premium_yearly'), isNull);
       expect(PremiumPlan.fromProductId('thaishield_premium_lifetime'), isNull);
+      // The retired one, kept here so nobody quietly revives it.
+      expect(PremiumPlan.fromProductId('thaishield_premium_2weeks'), isNull);
     });
   });
 
@@ -399,7 +429,7 @@ void main() {
     test('a QA lock clears it again', () async {
       final provider = build();
       await provider.load();
-      await provider.qaUnlock(PremiumPlan.twoWeeks);
+      await provider.qaUnlock(PremiumPlan.weekly);
       expect(provider.isPremium, isTrue);
 
       await provider.qaLock();
@@ -509,13 +539,13 @@ void main() {
 
         final at = DateTime.utc(2026, 9, 1, 8);
         await provider.grantPurchase(
-          plan: PremiumPlan.twoWeeks,
+          plan: PremiumPlan.weekly,
           purchaseId: 'GPA.abc',
           purchasedAt: at,
         );
 
         final entitlement = provider.entitlement!;
-        expect(entitlement.expiresAt, at.add(const Duration(days: 14)));
+        expect(entitlement.expiresAt, at.add(const Duration(days: 7)));
         expect(entitlement.purchaseId, 'GPA.abc');
         expect(entitlement.source, EntitlementSource.store);
         expect(repository.saved.single.purchaseId, 'GPA.abc');
@@ -570,7 +600,7 @@ void main() {
         }.entries) {
           await repository.save(
             Entitlement(
-              plan: PremiumPlan.twoWeeks,
+              plan: PremiumPlan.weekly,
               source: EntitlementSource.store,
               expiresAt: entry.value,
               purchaseId: entry.key,
@@ -597,7 +627,7 @@ void main() {
 
         await repository.save(
           Entitlement(
-            plan: PremiumPlan.twoWeeks,
+            plan: PremiumPlan.weekly,
             source: EntitlementSource.store,
             expiresAt: DateTime.utc(2026, 8, 1),
             purchaseId: 'GPA.older',
@@ -727,45 +757,88 @@ void main() {
       expect(platform, contains('ios'));
     });
 
-    test('restore is not promised on iOS, where it cannot work', () {
-      // Accepted limitation, 2026-08-23: a one-time pass is a consumable, and
-      // Apple never replays consumables — so the remaining days of a pass
-      // cannot be recovered on a new iPhone. Android is fine, because an
-      // unconsumed purchase is still returned by Play.
+    test('restore is promised on both platforms, because it now works', () {
+      // Inverted 2026-08-30. The old assertion pinned the opposite: a one-time
+      // pass is a consumable, Apple never replays consumables, and so the
+      // remaining days could not be recovered on a new iPhone. That was an
+      // accepted limitation on 2026-08-23 and the copy had to disclose it.
       //
-      // This is pinned because the earlier copy promised restore on both
-      // platforms. Saying so is a billing claim the app cannot honour on half
-      // its installs, and the user only finds out after losing time they paid
-      // for.
+      // Subscriptions restore on iOS and Android alike, so the limitation is
+      // gone — and a note still warning about it would now be scaring users off
+      // something that works. What survives is the part that is still true:
+      // entitlements do not cross between the two platforms, because that is a
+      // property of the store account rather than of the product type.
       for (final language in _languages) {
         final text = appStrings['premium_platform_note']![language]!;
         expect(
-          text.toLowerCase().contains('ios') || text.contains('iOS'),
+          text.contains('Android') || text.contains('android'),
           isTrue,
-          reason: '$language must name the platform the limit applies to',
+          reason: '$language must still say the purchase does not cross platforms',
         );
       }
 
       final english = appStrings['premium_platform_note']!['en']!.toLowerCase();
-      expect(english, contains('does not restore'));
-      expect(english, contains('on android you can restore'));
+      expect(english, contains('does not transfer between android and ios'));
+      expect(
+        english.contains('does not restore'),
+        isFalse,
+        reason: 'the iOS restore limitation no longer exists and must not be implied',
+      );
     });
 
-    test('the copy does not promise a renewal that cannot happen', () {
-      // Both products are one-time passes. Wording carried over from the
-      // subscription plans would be a billing claim the app cannot honour, and
-      // both stores treat a wrong billing disclosure as a rejection.
+    test('the copy discloses the renewal, because there is one now', () {
+      // Inverted 2026-08-30. This used to assert the opposite — that no string
+      // promised a renewal — because both products were one-time passes and a
+      // renewal claim would have been a billing disclosure the app could not
+      // honour. Now the products renew, and the omission is the violation:
+      // both stores reject a subscription screen that does not say it renews,
+      // and a user who is charged again without being told asks for a refund.
       final legal = appStrings['premium_legal_note']!['en']!.toLowerCase();
-      expect(legal, contains('single payment'));
-      expect(legal, contains('nothing renews'));
+      expect(legal, contains('auto-renewing'));
+      expect(legal, contains('charged automatically'));
+      // Where to cancel, which is the store and not this app.
+      expect(legal, contains('cancel'));
+      expect(legal, contains('store'));
+      // And that cancelling keeps the period already paid for — the part users
+      // are most often surprised by, and the one that generates refunds when
+      // it is left out.
+      expect(legal, contains('already paid'));
 
-      for (final key in ['premium_legal_note', 'premium_trial_note']) {
-        for (final language in _languages) {
-          final text = appStrings[key]![language]!.toLowerCase();
+      expect(
+        legal.contains('single payment') || legal.contains('nothing renews'),
+        isFalse,
+        reason: 'the one-time-pass wording survived the switch to subscriptions',
+      );
+
+      // The five non-English columns get checked for substance, not just for
+      // being non-empty. A blank check would pass a paragraph that says
+      // anything at all, and this is the string both stores review — a
+      // translation that quietly drops the renewal is the failure this test
+      // exists for, and it looks exactly like a filled-in field.
+      //
+      // Each language names the word its own disclosure has to contain. These
+      // are the renewal and the cancellation, the two facts a reviewer looks
+      // for and the two a user complains about when they are missing.
+      const mustSay = {
+        'th': ['ต่ออายุอัตโนมัติ', 'ยกเลิก'],
+        'zh': ['自动续订', '取消'],
+        'ko': ['자동 갱신', '해지'],
+        'ru': ['автоматическ', 'отмен'],
+        'ja': ['自動更新', '解約'],
+      };
+
+      for (final language in _languages) {
+        final text = appStrings['premium_legal_note']![language]!;
+        expect(
+          text.trim(),
+          isNotEmpty,
+          reason: 'the renewal disclosure is missing in $language',
+        );
+        for (final phrase in mustSay[language] ?? const <String>[]) {
           expect(
-            text.contains('auto-renew') || text.contains('automatically renew'),
-            isFalse,
-            reason: '$key ($language) still promises a renewal',
+            text.contains(phrase),
+            isTrue,
+            reason: 'the $language disclosure never says "$phrase"',
           );
         }
       }

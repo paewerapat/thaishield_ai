@@ -342,7 +342,15 @@ class _PlanCard extends StatelessWidget {
   /// Phase 2C replaces this with `ProductDetails.price` — the store's own
   /// localised, tax-inclusive string — so no formatting effort is worth
   /// spending here beyond the currency symbol.
-  static String _price(int usd) => '\$$usd';
+  /// Drops a trailing `.0` so the monthly reads "$10" rather than "$10.0",
+  /// while the weekly still reads "$3.5". Prices gained a decimal when the
+  /// short plan moved to a weekly subscription.
+  static String _price(double usd) {
+    final text = usd == usd.roundToDouble()
+        ? usd.toStringAsFixed(0)
+        : usd.toStringAsFixed(2);
+    return '\$$text';
+  }
 
   @override
   Widget build(BuildContext context) {

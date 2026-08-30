@@ -9,10 +9,12 @@ enum EntitlementSource {
 
   /// The 3-day trial the app grants a new install (`PremiumPlan.trialDuration`).
   ///
-  /// The stores cannot run this for us: a store-run free trial attaches to a
-  /// subscription, and both products are one-time passes. So the app grants it,
-  /// which also means a reinstall can earn another one — see
-  /// `PremiumProvider.startTrialIfEligible`.
+  /// 🚨 **Superseded, and kept only until billing exists.** A store-run free
+  /// trial attaches to a subscription, and both products became subscriptions
+  /// on 2026-08-30 — so task 2.8 should replace this with a store introductory
+  /// offer, which also closes the hole where a reinstall earns another trial.
+  /// It survives because a build with no billing wired has no other way to
+  /// reach the paid state. See `PremiumProvider.startTrialIfEligible`.
   trial,
 
   /// The debug override (§ "QA unlock" in `PremiumProvider`). Never written in
@@ -27,11 +29,17 @@ enum EntitlementSource {
 /// SDK has answered, without flashing the paywall at someone who has paid.
 /// Phase 2C must re-verify against the store on launch and overwrite it.
 ///
-/// Every entitlement expires — [expiresAt] is non-null — because both products
-/// are fixed-length passes (see [PremiumPlan]) and the trial is 3 days. There
-/// is deliberately no way to express "access forever": the lifetime plan was
-/// cancelled on 2026-08-22, and a record with no expiry would be an unbounded
-/// grant that any corrupted file could hand out.
+/// Every entitlement expires — [expiresAt] is non-null. There is deliberately
+/// no way to express "access forever": the lifetime plan was cancelled on
+/// 2026-08-22 and stayed cancelled on 2026-08-30, and a record with no expiry
+/// would be an unbounded grant that any corrupted file could hand out.
+///
+/// ⚠️ **Since the products became subscriptions, [expiresAt] means less than it
+/// used to.** For a fixed-length pass it was the whole truth. For a
+/// subscription it is only the end of the period the store last confirmed —
+/// a cancellation, refund, pause or failed payment can end access sooner, and
+/// none of them are visible here. Task 2.8 must fill this from what the store
+/// reports and re-check on every launch, never from `PremiumPlan.duration`.
 class Entitlement {
   const Entitlement({
     required this.plan,

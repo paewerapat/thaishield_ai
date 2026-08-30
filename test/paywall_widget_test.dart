@@ -155,7 +155,9 @@ void main() {
       await tester.pumpWidget(_host(const PaywallScreen()));
       await tester.pumpAndSettle();
 
-      expect(find.text('\$7'), findsOneWidget);
+      // $3.50 keeps its decimal, $10 drops the trailing zero — the weekly
+      // plan gained a fractional price when it stopped being a 14-day pass.
+      expect(find.text('\$3.50'), findsOneWidget);
       expect(find.text('\$10'), findsOneWidget);
       expect(find.textContaining('฿'), findsNothing);
     });
@@ -223,21 +225,21 @@ void main() {
       );
       expect(
         find.descendant(
-          of: cardFor(PremiumPlan.twoWeeks),
+          of: cardFor(PremiumPlan.weekly),
           matching: find.byIcon(Icons.radio_button_unchecked_rounded),
         ),
         findsOneWidget,
       );
 
       await tester.tap(
-        find.text(appStrings[PremiumPlan.twoWeeks.titleKey]!['th']!),
+        find.text(appStrings[PremiumPlan.weekly.titleKey]!['th']!),
       );
       await tester.pumpAndSettle();
 
       // …and the selection actually moved.
       expect(
         find.descendant(
-          of: cardFor(PremiumPlan.twoWeeks),
+          of: cardFor(PremiumPlan.weekly),
           matching: find.byIcon(Icons.radio_button_checked_rounded),
         ),
         findsOneWidget,

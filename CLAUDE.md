@@ -226,7 +226,12 @@ so a dish can be addressed directly by id (`pad_thai`) instead of querying.
 
 ```
 id           string    // == document ID
-name         string
+name         string    // the canonical name, always present
+name_th      string    // optional official name — "" is the normal case
+name_zh      string
+name_ko      string
+name_ru      string
+name_ja      string
 lat          number
 lng          number
 type         string    // one of the 11 categories below
@@ -272,10 +277,19 @@ image_url    string    // may be "" — see below
 
 ```
 id              string
-name            string
+name            string           // the canonical name, always present
+name_th         string           // optional official name — "" is the normal case
+name_zh         string
+name_ko         string
+name_ru         string
+name_ja         string
 risk_level      string           // "safe" | "caution" | "danger"
-description_en  string
+description_en  string           // all six are REQUIRED in the CMS
 description_th  string
+description_zh  string
+description_ko  string
+description_ru  string
+description_ja  string
 polygon         array<GeoPoint>  // ← GeoPoint, NOT {lat,lng} maps
 center_lat      number           // derived
 center_lng      number           // derived
@@ -319,17 +333,21 @@ The CMS neither reads nor writes this collection.
 <doc id>      string     // the store's own transaction id: Play purchaseToken,
                          // StoreKit originalTransactionId. Not a user id — the
                          // app has no identity to file this under (§7).
-product_id    string     // thaishield_premium_2weeks | thaishield_premium_monthly
+product_id    string     // thaishield_premium_weekly | thaishield_premium_monthly
 expires_at    timestamp  // when the pass runs out
 platform      string     // label only, for support; entitlements never cross platforms
 recorded_at   timestamp  // serverTimestamp, so a wrong device clock cannot backdate it
 ```
 
-Exists because both products are **one-time consumables**, and neither store replays a
-consumable with its remaining days on a new device — Play stops returning it once
-consumed, StoreKit does not restore consumables at all. Without this, "Restore Purchases"
-(agreed scope, task 2.8) would have nothing to restore and a user who changed phone on day
-3 of a 14-day pass would simply lose the rest.
+🚨 **This collection is now obsolete and 2.8 should retire it.** It was built because the
+products were one-time consumables, which neither store replays with their remaining days
+on a new device — so "Restore Purchases" had nothing to restore. Since 2026-08-30 both
+products are auto-renewing subscriptions, and both stores answer that question themselves.
+
+Nothing reads it at runtime yet, so it is being left in place rather than deleted in the
+same change that flipped the billing model. Task 2.8 should stop writing to it and drop
+`create` to `if false` in §9. **Do not build anything new on it**, and do not treat a
+document here as proof of payment — it never was one.
 
 Read `lib/features/premium/services/entitlement_repository.dart` before touching it, and
 §9 for why the rules look the way they do. The CMS neither reads nor writes this
@@ -429,9 +447,10 @@ things they asked for in prose are **fixes**, while the poster around them is no
 | ✅ | Locate the user when the Map opens · blue dot · 1 km ring | **Done 2026-08-20** — see below |
 | ✅ | Prices ฿99 / ฿799 / ฿1,999 | **Superseded 2026-08-22.** The client replaced the whole plan set with two USD passes — see "The plans changed on 2026-08-22". Do not use these figures |
 | ✅ | "รอบตัวคุณในระยะ 1 กม." data (safe / caution / alert / partners) | Already built — **Safety Radar, 2A task 2.1**, default radius 1 km. The poster puts it *inside* the Map screen; ours is a separate screen off the Home tab |
-| ⚠️ | **Place search that works** | Current search is `geocoding.locationFromAddress` — an *address* geocoder, so POI names (malls, restaurants, attractions) frequently miss. Doing this properly needs **Google Places** (Autocomplete + Details), a new paid API. **Not quoted** |
-| ⚠️ | Category icon row, "คุณอยู่ที่นี่" address panel, count tiles, nearby lists, category cards *with photos* | Data mostly exists; this is UI assembly. The photo cards also need a new CMS field. **Not quoted** |
-| ✅ | **Free trial** | **Built 2026-08-22, as 3 days rather than 7.** Granted in-app by `PremiumProvider.startTrialIfEligible`, because a store-run trial only attaches to a subscription and both products are one-time passes |
+| ⏳ | **Place search that works** | Current search is `geocoding.locationFromAddress` — an *address* geocoder, so POI names (malls, restaurants, attractions) frequently miss. Needs **Google Places** (Autocomplete + Details), a new paid API. **Approved 2026-08-30, not started, still not quoted.** Until it lands, "search finds nothing" ships |
+| ✅ | **"คุณอยู่ที่นี่" address panel, count tiles, nearby lists** | **Built 2026-08-29, not charged.** The panel carries the reverse-geocoded area name, the zone the user is standing in, when the counts were taken, and "view all" into the Radar — see `around_you_panel.dart`. An unmapped spot says its information is missing, in grey, never in green (§10) |
+| ⏳ | **Category icon row · category cards with photos** | Approved 2026-08-30, **not started**. UI assembly on data that mostly exists; the photo cards also need a new image field in the CMS. Still **not quoted** |
+| ✅ | **Free trial** | **Built 2026-08-22, as 3 days rather than 7**, granted in-app because a store trial only attaches to a subscription and the products were one-time passes at the time. Since 2026-08-30 they are subscriptions again, so task 2.8 should move this to a store introductory offer and retire `PremiumProvider.startTrialIfEligible` — it survives meanwhile because a build with no billing has no other way to reach the paid state |
 | 🚨 | **ดัชนีความปลอดภัย 95/100** | **Conflicts with §10.** Scoring an area is precisely the judgement the wording rules exist to prevent, and no data in this project can compute it. The four count tiles beside it already convey "what is around you" without rating anywhere |
 | 🚨 | **Smart Alerts** (alerts fired by location) | **Conflicts with §7** — no background/geofencing notifications. 2A task 2.2 was agreed as foreground, on-open only |
 | 🚨 | **Offline Map** | Google Maps SDK terms forbid caching tiles. Real offline maps mean replacing the map engine (Mapbox / MapLibre) — a rewrite of every map surface in the app |
@@ -517,49 +536,70 @@ size of this project.
 | 2.4 | **Route Suggestion** — Google Directions API integration, route preview UI, travel-mode toggle, "Open in Google Maps" deep link | 1 week | ✅ code complete 2026-08-19, pending device QA — `lib/features/route/` |
 | 2.5 | **Paywall / plan-comparison screen** + client-side feature gating for Radar details, Filter and Route Suggestion | 3–4 days | ✅ code complete 2026-08-19; **rebuilt for the new packages 2026-08-22** — see below |
 
-**🚨 The plans changed on 2026-08-22 — read this before touching `lib/features/premium/`.**
+**🚨 The plans changed again on 2026-08-30 — read this before touching
+`lib/features/premium/` or either store console.**
 
-Monthly / Yearly / Lifetime in THB are gone. There are now **two one-time passes in USD**:
-`thaishield_premium_2weeks` ($7, 14 days) and `thaishield_premium_monthly` ($10, 30 days).
-Create both in Play Console and App Store Connect as **consumables**, not subscriptions —
-a product's type cannot be changed afterwards, only replaced under a new id.
+There are now **two auto-renewing subscriptions in USD**:
+`thaishield_premium_weekly` ($3.50, 7 days) and `thaishield_premium_monthly`
+($10, 30 days). Create both in Play Console and App Store Connect as
+**auto-renewing subscriptions**.
 
-Three things follow from consumables that did not apply to subscriptions, and each one is
-a place where a reasonable-looking change would break something real:
+🚨 **A product's type cannot be changed after it is created, only replaced under
+a new id.** This block has now been rewritten twice, and the previous rewrite
+left the old instruction in place — the QA gate caught it on 2026-08-23 and
+filed it critical, because following the stale half burns an id permanently.
+**If any earlier text in this file tells you to create consumables, it is wrong
+and should be deleted, not obeyed.**
 
-- **The app owns the clock.** A subscription reports its own renewal state; a consumable is
-  a single event. `Entitlement.expiresAt` is now non-null and computed from
-  `PremiumPlan.duration`. There is deliberately no way to express "never expires".
-- **The app owns the trial.** A store-run free trial can only attach to a subscription, so
-  the 3-day trial is granted by `PremiumProvider.startTrialIfEligible` against a
-  per-install flag. A reinstall earns another one; that hole is known and accepted, because
-  closing it needs an account (§7 forbids) or a server-side device record (out of scope).
-- **Restore needs a record of our own** — hence the `entitlements` collection in §3. When
-  2.8 wires Play Billing, **acknowledge but do not consume** a purchase until the pass
-  expires: a consumed purchase stops being returned by `queryPurchases`, which is what
-  makes restore possible at all on Android.
+`thaishield_premium_2weeks` is retired and must never be created. Nothing was
+created in either console before this change (product creation is gated on the
+banking profile, which is still outstanding), so no id was burned.
 
-`PremiumProvider.grantPurchase` and `restoreFromPurchaseIds` are already written and
-tested; 2.8 only has to feed them what the store SDK returns.
+**Why the 14-day pass became weekly.** Neither store sells a 14-day billing
+period — the choices are 1 week, 1 month, 2, 3, 6 months and a year — and that
+gap is the whole reason the original design used one-time passes. Asked on
+2026-08-30 to make both plans cancellable, the client chose to move the short
+plan to weekly rather than run two billing models on one screen.
 
-**🚨 Restore does not work on iOS, and the client accepted that (2026-08-23).** StoreKit
-never replays consumables, so `restorePurchases()` returns no transaction id for a pass
-and there is nothing to look the Firestore record up by. Android is fine — an unconsumed
-purchase is still returned by `queryPurchases`, which is the other reason 2.8 must
-acknowledge but not consume until the pass expires. StoreKit 2's `Transaction.all` would
-return consumables, but requiring it was judged not worth the platform floor for a 14- or
-30-day pass.
+⚠️ **Auto-renewal is a poor fit for this audience, and that was put to the
+client before they chose it.** A tourist who visits for a fortnight and flies
+home keeps being charged until they remember to cancel, which becomes refund
+requests and one-star reviews. It was their call. What the code owes them is
+copy that states the renewal plainly rather than burying it — `premium_legal_note`
+now names the renewal, the charge, where to cancel, and that access runs to the
+end of the paid period.
 
-What accepting it obliged us to do, and what must not be undone:
+Three things follow from subscriptions, each the reverse of what the consumable
+design needed:
 
-- `premium_platform_note` now says something **different per platform** — restore works on
-  Android, does not on iOS. A test pins that. Do not simplify it back into one promise
-  about both stores: that is a billing claim the app cannot honour on half its installs,
-  and the user only discovers it after losing time they paid for.
-- If support ever needs to reinstate an iOS pass by hand, the Firestore record is keyed by
-  the store transaction id — but nothing in the app shows that id to the user yet. Adding
-  a visible reference code to Profile is the obvious mitigation if refund requests
-  actually appear; it was proposed and deliberately not built.
+- **The store owns the clock.** A subscription reports its own renewal state.
+  `Entitlement` records what the store said; it must not compute an end date
+  from `PremiumPlan.duration`, which now only describes what the plan sells. A
+  subscription can be cancelled, refunded, paused or lapse on a failed payment,
+  and none of those are visible from a duration.
+- **The store can own the trial.** A store-run free trial attaches to a
+  subscription, so 2.8 should move the 3-day trial to a store introductory
+  offer and retire `PremiumProvider.startTrialIfEligible`, which exists because
+  a consumable could not carry one. Until billing is wired it is the only trial
+  a build has, so do not delete it before its replacement works.
+- **Restore is the store's job on both platforms.** This is the one clear gain:
+  StoreKit refused to replay consumables, which is why iOS restore was accepted
+  as broken on 2026-08-23. Subscriptions restore on iOS and Android alike, so
+  that limitation is gone and `premium_platform_note` no longer claims it.
+
+🚨 **The `entitlements` Firestore collection (§3, §9) exists only because
+consumables were not replayable.** With subscriptions the store answers the
+question it was built to answer. Task 2.8 should stop writing to it and drop
+`create` to `if false` rather than leaving a half-used collection that looks
+like proof of payment. It is not being deleted in this change because nothing
+reads it yet at runtime and removing storage is not something to do in the same
+commit as changing a billing model.
+
+⚠️ Once billing is live the figure **shown** must come from
+`ProductDetails.price` — the store's own localised, tax-inclusive string —
+never from `PremiumPlan.priceUsd`, which cannot follow a currency, a regional
+tax rule, or a price change. `premium_price_note` already tells the user that
+the store's price is the one they pay.
 
 **What 2.4 actually added**
 
@@ -631,16 +671,19 @@ both return `StoreOutcome.notAvailableYet` today and the paywall already handles
 value of that enum. Task 2.8 replaces those two method bodies and adds a store-driven
 refresh. **No screen changes.**
 
-🚨 **Prices, product ids and product types moved on 2026-08-22 — the only correct copy of
-them is the block above** ("The plans changed on 2026-08-22"). Two passes, both USD, both
-**consumables**: `thaishield_premium_2weeks` and `thaishield_premium_monthly`. The
-`_yearly` and `_lifetime` ids are cancelled and must never be created.
+🚨 **Prices, product ids and product types moved again on 2026-08-30 — the only correct
+copy of them is the block above** ("The plans changed again on 2026-08-30"). Two
+**auto-renewing subscriptions**, both USD: `thaishield_premium_weekly` and
+`thaishield_premium_monthly`. The `_2weeks`, `_yearly` and `_lifetime` ids are cancelled
+and must never be created.
 
-This paragraph used to carry the ฿99 / ฿799 / ฿1,999 figures and told whoever set up the
-store to create monthly and yearly as **subscriptions**. It was left behind when the new
-block was added, and the QA gate caught it on 2026-08-23 — filed as critical, because a
-product's type is irreversible in both stores: following the old instruction burns the
-`thaishield_premium_monthly` id permanently and costs a fresh store review to recover.
+This paragraph has now been wrong twice, in the same way, and that is worth keeping on the
+page. It first carried the ฿99 / ฿799 / ฿1,999 figures and told whoever set up the store to
+create subscriptions; the 2026-08-22 rewrite left it behind and the QA gate caught it on
+2026-08-23, filed critical. It then said consumables, and was stale again within eight days
+when the model flipped back. **A product's type is irreversible in both stores** — an id
+created from a stale paragraph is burned, and recovering it costs a fresh store review. If
+this file ever states the product type in two places again, delete one of them.
 
 ⚠️ Once billing is live the figure **shown** must come from `ProductDetails.price` — the
 store's own localised, tax-inclusive string — never from the constant in `PremiumPlan`,
@@ -762,6 +805,29 @@ None ถูกต้อง** — ถ้าตั้งเป็น Android apps 
 - ราคานี้เป็น **ค่าพัฒนาซอฟต์แวร์เท่านั้น** ไม่รวมค่าโดเมน / Cloud Server รายปี และไม่รวม
   ส่วนแบ่งรายได้ Google/Apple (15–30% ต่อรายการ)
 - หากต้องการแบ่งย่อยกว่านี้ ให้แตกจากงวดที่ 4 ก่อน (2C มีงานย่อย 3 ชิ้นที่แยกส่งมอบได้)
+
+---
+
+### การเปลี่ยนแปลงที่ตกลงเมื่อ 2026-08-30
+
+| เรื่อง | เดิม | ใหม่ |
+|---|---|---|
+| รูปแบบสินค้า | บัตรผ่านจ่ายครั้งเดียว 2 แบบ | **Subscription ต่ออายุอัตโนมัติ 2 แบบ** |
+| แพ็กเกจสั้น | 14 วัน $7 | **รายสัปดาห์ $3.50** (ไม่มีรอบ 14 วันให้เลือกในสโตร์) |
+| แพ็กเกจยาว | 30 วัน $10 | **รายเดือน $10** |
+| กู้คืนบน iOS | ทำไม่ได้ ลูกค้ายอมรับ 23/08 | **ทำได้แล้ว** — ข้อจำกัดหมดไปพร้อมการเปลี่ยนประเภทสินค้า |
+
+🚨 **งานที่อนุมัติเพิ่มเมื่อ 2026-08-30 และยังไม่ได้เริ่ม — อยู่นอกวงเงิน 32,000 บาท**
+
+- ค้นหาสถานที่ด้วย **Google Places** (API ใหม่ มีค่าใช้จ่ายต่อการเรียก)
+- **แถวไอคอนหมวดหมู่** บนหน้าแผนที่
+- **การ์ดหมวดหมู่พร้อมรูป** — ต้องเพิ่มช่องอัปโหลดรูปใน CMS ด้วย
+
+ลูกค้าอนุมัติให้ทำ "ทุกอย่างที่ไม่มีความเสี่ยงทางกฎหมาย" · **Smart Alerts และ Offline
+Map ถูกตัดออกในการสนทนาเดียวกัน** — Offline Map เพราะการเก็บแผนที่ Google ไว้ในเครื่อง
+ผิดเงื่อนไขการใช้งาน ซึ่งเข้าข่ายความเสี่ยงทางกฎหมายตามเกณฑ์ที่ลูกค้าตั้งเอง
+
+⚠️ ยังไม่ได้ตกลงราคาสำหรับสามรายการข้างบน — ต้องคุยก่อนเริ่ม ไม่ใช่ตอนส่งมอบ
 
 ---
 

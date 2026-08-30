@@ -34,16 +34,14 @@ enum StoreOutcome {
 /// and the App Store hold the identity: a purchase attaches to the **Google
 /// account / Apple ID**, not to the handset.
 ///
-/// That alone was enough while the plans were subscriptions. It is not enough
-/// now. Both products are **one-time consumables** (see [PremiumPlan]), and
-/// consumables are not replayed on a new device the way a subscription is — so
-/// each purchase is also filed in Firestore under its store transaction id
-/// ([EntitlementRepository]) and a restore reads it back. Three layers, in
-/// order of authority:
+/// Both products are **auto-renewing subscriptions** again since 2026-08-30
+/// (see [PremiumPlan]), and the store account is enough on its own: a
+/// subscription is replayed on a new device by `restorePurchases()` on both
+/// platforms. Two layers now, in order of authority:
 ///
-/// 1. **The store receipt** — the truth. 2C validates it.
-/// 2. **Firestore** — how much time is left, readable from any device.
-/// 3. **[EntitlementStore]** — a local cache so the app opens correctly
+/// 1. **The store** — the truth, including cancellation, refund, pause and a
+///    lapse on a failed payment, none of which any local record can know.
+/// 2. **[EntitlementStore]** — a local cache so the app opens correctly
 ///    offline and does not flash the paywall at someone who has paid.
 ///
 /// Entitlements still do not cross between Android and iOS, which the paywall
@@ -121,10 +119,15 @@ class PremiumProvider extends ChangeNotifier {
   /// Grants the 3-day trial, once per install, to someone who has never had a
   /// pass.
   ///
-  /// The stores cannot do this for us — a store-run free trial only attaches to
-  /// a subscription, and both products are one-time passes — so the app grants
-  /// it and owns the clock. Called from the first screen after [load], not from
-  /// `main()`, so a user who already bought something is never touched by it.
+  /// 🚨 **Superseded, but not yet replaceable.** A store-run free trial
+  /// attaches to a subscription, and both products became subscriptions on
+  /// 2026-08-30 — so 2.8 should move this to a store introductory offer and
+  /// delete this method. It survives because a build with no billing wired has
+  /// no other way to reach the paid state, and deleting it before its
+  /// replacement works would leave the trial untestable.
+  ///
+  /// Called from the first screen after [load], not from `main()`, so a user
+  /// who already subscribed is never touched by it.
   ///
   /// Refuses when: the trial was already used on this install, or anything is
   /// currently active. It deliberately does **not** check Firestore first —
@@ -146,37 +149,35 @@ class PremiumProvider extends ChangeNotifier {
   /// flow. Everything around it — the paywall, the gates, the Profile card —
   /// is already written against this signature.
   ///
-  /// What 2.8 has to do, in order, once the store confirms a purchase:
-  ///   1. build the [Entitlement] with `expiresAt = now + plan.duration` and
-  ///      the store's transaction id as `purchaseId`;
-  ///   2. `await grantPurchase(...)` below, which caches it and files it;
-  ///   3. **acknowledge but do not consume** the Play purchase until the pass
-  ///      expires — a consumed purchase stops being returned by
-  ///      `queryPurchases`, which is what makes a restore possible at all.
+  /// What 2.8 has to do, once the store confirms a purchase:
+  ///   1. build the [Entitlement] from **what the store reported** — the
+  ///      subscription's own expiry date, not `now + plan.duration`. A
+  ///      subscription can be cancelled, refunded, paused or lapse on a failed
+  ///      payment, and a duration knows none of that;
+  ///   2. `await grantPurchase(...)` below, which caches it;
+  ///   3. **acknowledge** the Play purchase. Never consume it — a subscription
+  ///      is not a consumable, and consuming one is not a thing to do.
+  ///
+  /// ⚠️ `grantPurchase` still derives the expiry from `plan.duration`, which is
+  /// only correct while nothing real is wired. 2.8 must give it the store's
+  /// date instead; the signature already takes one.
   Future<StoreOutcome> purchase(PremiumPlan plan) async {
     return StoreOutcome.notAvailableYet;
   }
 
-  /// "Restore Purchases". Required by both stores, and it has real work to do
-  /// here: a consumable pass bought on another phone is only recoverable
-  /// through the Firestore copy.
+  /// "Restore Purchases". Required by both stores.
   ///
-  /// 2C wires this to `InAppPurchase.restorePurchases()`, collects the
-  /// transaction ids the store replays, and hands them to
-  /// [restoreFromPurchaseIds].
+  /// 2C wires this to `InAppPurchase.restorePurchases()` and grants whatever
+  /// active subscription the store reports.
   ///
-  /// 🚨 **On iOS this will find nothing, and that is accepted.** StoreKit does
-  /// not replay consumables, so `restorePurchases()` returns no transaction id
-  /// for a pass and there is nothing to look the Firestore record up by. On
-  /// Android the same call works, because an unconsumed purchase is still
-  /// returned by `queryPurchases` — which is exactly why 2.8 must acknowledge
-  /// but **not consume** a Play purchase until the pass expires.
-  ///
-  /// The client accepted this on 2026-08-23 rather than requiring StoreKit 2.
-  /// The obligation that came with accepting it is that the app says so before
-  /// anyone pays: `premium_platform_note` states the limit per platform, and a
-  /// test pins that it keeps doing so. Do not "fix" that copy back to a single
-  /// promise about both stores.
+  /// ✅ **This works on iOS and Android alike since 2026-08-30.** It did not
+  /// while the products were one-time consumables: StoreKit never replays a
+  /// consumable, so an iPhone had nothing to restore, and the client accepted
+  /// that on 2026-08-23. Subscriptions are replayed on both platforms, so the
+  /// limitation is gone — `premium_platform_note` no longer discloses it, and
+  /// the test that used to pin the disclosure now pins its absence. **Do not
+  /// reintroduce the per-platform warning:** it would now scare users away
+  /// from something that works.
   Future<StoreOutcome> restore() async {
     return StoreOutcome.notAvailableYet;
   }

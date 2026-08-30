@@ -25,11 +25,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Cross-device record of a purchased pass, filed under the store's own
-    // transaction id (see EntitlementRepository). Needed because both products
-    // are one-time consumables, which the stores do not replay on a new device
-    // the way a subscription is replayed — without this, "Restore Purchases"
-    // has nothing to restore.
+    // Cross-device record of a purchase, filed under the store's own
+    // transaction id (see EntitlementRepository).
+    //
+    // 🚨 **Obsolete since 2026-08-30.** It existed because the products were
+    // one-time consumables, which the stores do not replay on a new device the
+    // way a subscription is replayed — so "Restore Purchases" had nothing to
+    // restore. Both products are auto-renewing subscriptions now and both
+    // stores answer that question themselves. Task 2.8 should stop writing
+    // here and drop `create` to `if false`; nothing reads it at runtime yet.
+    //
+    // The product id list below is kept correct in the meantime rather than
+    // left pointing at a retired id, because a rule that silently rejects
+    // every write is a worse failure than one that is merely unnecessary.
     //
     // 🚨 These rules are permissive on purpose and are NOT a security boundary.
     // The app has no Firebase Auth (§7), so there is no identity to check
@@ -49,7 +57,7 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly(
                          ['product_id', 'expires_at', 'platform', 'recorded_at'])
                     && request.resource.data.product_id in [
-                         'thaishield_premium_2weeks',
+                         'thaishield_premium_weekly',
                          'thaishield_premium_monthly'
                        ]
                     && request.resource.data.expires_at is timestamp;

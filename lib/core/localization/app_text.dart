@@ -1197,28 +1197,50 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Что входит',
     'ja': '含まれる機能',
   },
-  // Both passes are one-time purchases (client decision 2026-08-22), so the
-  // titles name a length rather than a billing cycle — "Monthly" would read as
-  // a subscription to most people, which is exactly what this is not.
-  'premium_plan_2weeks': {
-    'th': 'บัตรผ่าน 14 วัน', 'en': '14-Day Pass', 'zh': '14 天通行证', 'ko': '14일 이용권', 'ru': 'Пропуск на 14 дней', 'ja': '14日パス',
+  // Both plans are auto-renewing subscriptions (client decision 2026-08-30),
+  // so the titles name the billing cycle rather than a length. They used to do
+  // the opposite, for the opposite reason: while these were one-time passes,
+  // "Monthly" would have read as a subscription to most people, which is
+  // exactly what they were not. Now it is exactly what they are.
+  'premium_plan_weekly': {
+    'th': 'รายสัปดาห์',
+    'en': 'Weekly',
+    'zh': '按周订阅',
+    'ko': '주간 구독',
+    'ru': 'Еженедельно',
+    'ja': '週額プラン',
+  },
+  'premium_period_weekly': {
+    'th': 'ต่ออายุอัตโนมัติทุก 7 วัน',
+    'en': 'renews every 7 days',
+    'zh': '每 7 天自动续订',
+    'ko': '7일마다 자동 갱신',
+    'ru': 'продление каждые 7 дней',
+    'ja': '7日ごとに自動更新',
   },
   'premium_plan_monthly': {
-    'th': 'บัตรผ่าน 30 วัน', 'en': '30-Day Pass', 'zh': '30 天通行证', 'ko': '30일 이용권', 'ru': 'Пропуск на 30 дней', 'ja': '30日パス',
-  },
-  'premium_period_2weeks': {
-    'th': 'จ่ายครั้งเดียว ใช้ได้ 14 วัน', 'en': 'one-time, 14 days', 'zh': '一次性付款，14 天', 'ko': '1회 결제, 14일', 'ru': 'разовый платёж, 14 дней', 'ja': '買い切り・14日間',
+    'th': 'รายเดือน',
+    'en': 'Monthly',
+    'zh': '按月订阅',
+    'ko': '월간 구독',
+    'ru': 'Ежемесячно',
+    'ja': '月額プラン',
   },
   'premium_period_monthly': {
-    'th': 'จ่ายครั้งเดียว ใช้ได้ 30 วัน', 'en': 'one-time, 30 days', 'zh': '一次性付款，30 天', 'ko': '1회 결제, 30일', 'ru': 'разовый платёж, 30 дней', 'ja': '買い切り・30日間',
+    'th': 'ต่ออายุอัตโนมัติทุก 30 วัน',
+    'en': 'renews every 30 days',
+    'zh': '每 30 天自动续订',
+    'ko': '30일마다 자동 갱신',
+    'ru': 'продление каждые 30 дней',
+    'ja': '30日ごとに自動更新',
   },
   'premium_trial_note': {
-    'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง ไม่มีการเรียกเก็บเงินใด ๆ',
-    'en': 'New users get 3 days free. When it ends the app returns to the free version on its own and nothing is charged.',
-    'zh': '新用户可免费试用 3 天。到期后应用会自动回到免费版本，不会产生任何扣款。',
-    'ko': '신규 사용자는 3일간 무료로 사용할 수 있습니다. 기간이 끝나면 앱이 자동으로 무료 버전으로 돌아가며 결제되지 않습니다.',
-    'ru': 'Новым пользователям — 3 дня бесплатно. По окончании приложение само возвращается к бесплатной версии, ничего не списывается.',
-    'ja': '新規のお客様は3日間無料でご利用いただけます。期間が終わるとアプリは自動的に無料版に戻り、料金は発生しません。',
+    'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน โดยยังไม่มีการเรียกเก็บเงิน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง การสมัครสมาชิกจะเริ่มเก็บเงินก็ต่อเมื่อคุณเลือกแพ็กเกจและยืนยันการชำระเงินเท่านั้น',
+    'en': 'New users get 3 days free and nothing is charged for them. When the trial ends the app returns to the free version on its own — a subscription only starts billing if you choose a plan and confirm the payment yourself.',
+    'zh': '新用户可免费使用 3 天，期间不收取任何费用。试用结束后应用会自动回到免费版本；只有在您选择方案并确认付款后，订阅才会开始计费。',
+    'ko': '신규 사용자는 3일간 무료로 이용할 수 있으며 이 기간에는 요금이 청구되지 않습니다. 체험이 끝나면 앱은 자동으로 무료 버전으로 돌아가며, 구독은 직접 요금제를 선택하고 결제를 확인한 경우에만 청구가 시작됩니다.',
+    'ru': 'Новым пользователям доступны 3 дня бесплатно, оплата за них не взимается. По окончании пробного периода приложение само вернётся к бесплатной версии — списания начнутся, только если вы выберете тариф и подтвердите оплату.',
+    'ja': '新規ユーザーは3日間無料でご利用いただけ、その間の料金はかかりません。無料期間が終わるとアプリは自動的に無料版に戻ります。サブスクリプションはご自身でプランを選び支払いを確認した場合にのみ課金が始まります。',
   },
   'premium_badge_recommended': {
     'th': 'คุ้มที่สุด', 'en': 'Best value', 'zh': '最超值', 'ko': '최고 가성비', 'ru': 'Выгоднее всего', 'ja': 'いちばんお得',
@@ -1232,7 +1254,12 @@ const Map<String, Map<String, String>> _appText = {
     'ja': '実際にお支払いいただく金額は、お住まいの国の Google Play または App Store に表示される価格です。通貨や税により、ここに表示された金額と異なる場合があります。',
   },
   'premium_cta': {
-    'th': 'สมัคร Premium', 'en': 'Get Premium', 'zh': '获取 Premium', 'ko': 'Premium 시작하기', 'ru': 'Получить Premium', 'ja': 'Premium を利用する',
+    'th': 'สมัครสมาชิก',
+    'en': 'Subscribe',
+    'zh': '订阅',
+    'ko': '구독하기',
+    'ru': 'Оформить подписку',
+    'ja': '登録する',
   },
   'premium_store_unavailable': {
     'th': 'ระบบชำระเงินจะเปิดใช้งานในเวอร์ชันถัดไป',
@@ -1253,30 +1280,35 @@ const Map<String, Map<String, String>> _appText = {
   'premium_restore': {
     'th': 'กู้คืนการซื้อ', 'en': 'Restore Purchases', 'zh': '恢复购买', 'ko': '구매 복원', 'ru': 'Восстановить покупки', 'ja': '購入を復元',
   },
-  // ⚠️ Says something different for each platform on purpose. Restoring a
-  // one-time pass works on Android, where an unconsumed purchase is still
-  // returned by the store, and does not work on iOS, which never replays
-  // consumables. Promising restore on both — as this string used to — is a
-  // billing claim the app cannot honour on half its installs, and the refund
-  // request lands after the user has already lost the time they paid for.
+  // ⚠️ Says the same thing for both platforms again, which it did not between
+  // 2026-08-22 and 2026-08-30. While the products were one-time passes,
+  // restore worked on Android and could not work on iOS — StoreKit never
+  // replays a consumable — and the string had to disclose that split or make a
+  // billing claim it could not honour on half its installs. Subscriptions are
+  // replayed on both, so the split is gone. What is still true, and still
+  // stated, is that a purchase does not cross between Android and iOS: that is
+  // a property of the store account, not of the product type.
   'premium_platform_note': {
-    'th': 'การซื้อจะผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้ซื้อ และไม่สามารถโอนข้ามระหว่าง Android และ iOS · บน Android หากติดตั้งใหม่หรือเปลี่ยนเครื่อง กดกู้คืนการซื้อเพื่อใช้เวลาที่เหลือต่อได้ · บน iOS บัตรผ่านเป็นสินค้าแบบจ่ายครั้งเดียวซึ่งระบบของ Apple ไม่รองรับการกู้คืน จึงแนะนำให้ใช้ในเครื่องเดิมจนหมดอายุ',
-    'en': 'Your purchase is tied to the Google Play or Apple ID account you buy it with, and does not transfer between Android and iOS. On Android you can restore the remaining time after reinstalling or moving to a new phone. On iOS a pass is a one-time product that Apple does not restore, so plan to use it on the device you bought it on.',
-    'zh': '购买将绑定到您用于付款的 Google Play 或 Apple ID 账户，且无法在 Android 与 iOS 之间转移。在 Android 上，重装或更换手机后可恢复剩余时间；在 iOS 上，通行证属于一次性商品，Apple 不支持恢复，建议在原设备上用完。',
-    'ko': '구매는 결제에 사용한 Google Play 또는 Apple ID 계정에 연결되며 Android와 iOS 사이에는 이전되지 않습니다. Android에서는 재설치하거나 기기를 바꿔도 남은 기간을 복원할 수 있습니다. iOS에서는 이용권이 1회성 상품이라 Apple이 복원을 지원하지 않으므로 구매한 기기에서 사용하시기 바랍니다.',
-    'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена, и не переносится между Android и iOS. На Android оставшееся время можно восстановить после переустановки или смены телефона. На iOS пропуск — разовый товар, который Apple не восстанавливает, поэтому используйте его на том устройстве, где купили.',
-    'ja': '購入は決済に使用した Google Play または Apple ID のアカウントに紐づき、Android と iOS の間では引き継げません。Android では再インストールや機種変更後に残り期間を復元できます。iOS ではパスが買い切り商品のため Apple の復元に対応しておらず、購入した端末でのご利用をおすすめします。',
+    'th': 'การสมัครสมาชิกผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้สมัคร และไม่สามารถโอนข้ามระหว่าง Android และ iOS · หากติดตั้งใหม่หรือเปลี่ยนเครื่องภายในระบบเดิม กดกู้คืนการซื้อเพื่อใช้ต่อได้ทั้งสองระบบ',
+    'en': 'Your subscription is tied to the Google Play or Apple ID account you subscribe with, and does not transfer between Android and iOS. Within the same platform you can restore it after reinstalling or moving to a new phone — this works on both.',
+    'zh': '订阅与您订阅时使用的 Google Play 或 Apple ID 账户绑定，无法在 Android 与 iOS 之间转移。在同一平台内重新安装或更换手机后，可通过“恢复购买”继续使用，两个平台均支持。',
+    'ko': '구독은 가입에 사용한 Google Play 또는 Apple ID 계정에 연결되며 Android와 iOS 간에는 이전되지 않습니다. 같은 플랫폼 안에서는 재설치하거나 기기를 바꾼 뒤 구매 복원으로 계속 이용할 수 있으며, 양쪽 모두에서 작동합니다.',
+    'ru': 'Подписка привязана к аккаунту Google Play или Apple ID, через который она оформлена, и не переносится между Android и iOS. В пределах одной платформы её можно восстановить после переустановки или смены телефона — это работает на обеих.',
+    'ja': 'サブスクリプションは登録に使用した Google Play または Apple ID のアカウントに紐づき、Android と iOS の間では引き継げません。同じプラットフォーム内であれば、再インストールや機種変更のあとに「購入を復元」で継続できます。これは両方で利用できます。',
   },
-  // Both stores require the billing model to be stated next to the price. With
-  // one-time passes the disclosure is the opposite of the usual one: the point
-  // is that nothing renews, so there is nothing to remember to cancel.
+  // Both stores require the billing model to be stated next to the price, and
+  // review a subscription screen for it. Four things have to appear: that it
+  // renews, what account is charged, where to cancel — the store, not this app
+  // — and that access runs to the end of the period already paid for. The last
+  // is the one users are most often surprised by and the one that turns into
+  // refund requests when it is left out.
   'premium_legal_note': {
-    'th': 'ทั้งสองแพ็กเกจเป็นการจ่ายครั้งเดียว ไม่มีการต่ออายุอัตโนมัติและไม่มีการตัดเงินซ้ำ เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรี หากต้องการใช้ต่อสามารถซื้อใหม่ได้',
-    'en': 'Both passes are a single payment. Nothing renews and nothing is charged again — when a pass ends the app returns to the free version, and you can buy another one to carry on.',
-    'zh': '两种通行证均为一次性付款，不会自动续订，也不会重复扣款。到期后应用会回到免费版本，如需继续使用可再次购买。',
-    'ko': '두 이용권 모두 1회 결제입니다. 자동 갱신도 추가 결제도 없으며, 기간이 끝나면 앱은 무료 버전으로 돌아갑니다. 계속 사용하려면 다시 구매하시면 됩니다.',
-    'ru': 'Оба пропуска — разовый платёж. Ничего не продлевается и не списывается повторно: по окончании приложение возвращается к бесплатной версии, а продолжить можно, купив новый пропуск.',
-    'ja': 'どちらのパスも買い切りです。自動更新も追加の請求もありません。期間が終わるとアプリは無料版に戻り、続けてご利用の場合はあらためてご購入いただけます。',
+    'th': 'ทั้งสองแพ็กเกจเป็นการสมัครสมาชิกแบบต่ออายุอัตโนมัติ ระบบจะเรียกเก็บเงินผ่านบัญชี Google Play หรือ Apple ID ที่ใช้สมัคร และจะเก็บเงินรอบถัดไปโดยอัตโนมัติเมื่อครบกำหนด จนกว่าคุณจะยกเลิก · ยกเลิกได้ตลอดเวลาจากหน้าตั้งค่าการสมัครสมาชิกของสโตร์ ไม่ได้ยกเลิกในแอปนี้ · เมื่อยกเลิกแล้วยังใช้ต่อได้จนครบรอบที่จ่ายเงินไปแล้ว หลังจากนั้นแอปจะกลับไปใช้เวอร์ชันฟรี',
+    'en': 'Both plans are auto-renewing subscriptions. Payment is charged to the Google Play or Apple ID account you subscribe with, and the next period is charged automatically when the current one ends, until you cancel. You can cancel at any time from the subscription settings in the store — not in this app — and you keep access until the end of the period you have already paid for, after which the app returns to the free version.',
+    'zh': '两种方案均为自动续订订阅。费用将从您订阅时使用的 Google Play 或 Apple ID 账户扣除，当前周期结束时会自动扣取下一期费用，直到您取消为止。您可以随时在商店的订阅设置中取消（不在本应用内取消），取消后仍可使用至已付费周期结束，之后应用将回到免费版本。',
+    'ko': '두 요금제 모두 자동 갱신 구독입니다. 결제는 구독에 사용한 Google Play 또는 Apple ID 계정으로 청구되며, 현재 기간이 끝나면 다음 기간 요금이 자동으로 청구됩니다. 언제든지 스토어의 구독 설정에서 해지할 수 있으며(이 앱에서는 해지할 수 없습니다), 해지 후에도 이미 결제한 기간이 끝날 때까지 이용할 수 있고 이후에는 무료 버전으로 돌아갑니다.',
+    'ru': 'Оба тарифа — подписки с автоматическим продлением. Оплата списывается с аккаунта Google Play или Apple ID, через который оформлена подписка, и следующий период оплачивается автоматически по окончании текущего, пока вы не отмените подписку. Отменить можно в любой момент в настройках подписок магазина — не в этом приложении — доступ сохраняется до конца оплаченного периода, после чего приложение вернётся к бесплатной версии.',
+    'ja': 'どちらのプランも自動更新のサブスクリプションです。料金は登録に使用した Google Play または Apple ID のアカウントに請求され、現在の期間が終了すると 解約するまで次の期間の料金が自動的に請求されます。解約はストアのサブスクリプション設定からいつでも可能です（本アプリ内では解約できません）。解約後も支払い済みの期間の終了までご利用いただけ、その後は無料版に戻ります。',
   },
   'premium_status_free_title': {
     'th': 'อัปเกรดเป็น Premium',

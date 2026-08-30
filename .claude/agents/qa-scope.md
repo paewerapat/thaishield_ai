@@ -37,10 +37,28 @@ a finding: *"doc not updated"* is a defect, not a chore.
 
 ## 3. Store and contract facts that must not drift
 
-- Product ids: `thaishield_premium_2weeks`, `thaishield_premium_monthly`, both
-  **Consumable**. The `_yearly` and `_lifetime` ids are cancelled — flag any
-  reference that resurrects them.
-- Prices: 7 USD and 10 USD. Any THB figure on the paywall is stale.
+🚨 **This section deliberately does not restate the product ids, types or
+prices.** It used to, and on 2026-08-30 that copy went stale within hours of a
+billing-model change — leaving the file the gate judges from asserting the
+opposite of the truth, so a run would have reported the correct new work as
+drift and offered to restore the retired products. The gate found it, in itself.
+
+`CLAUDE.md` §4, the block headed "The plans changed", is the single source. Read
+it at the start of every run and treat it as the baseline, exactly as
+CLAUDE.md's own instruction says: *"If this file ever states the product type in
+two places again, delete one of them."* That instruction applies here too.
+
+What to check, without holding a copy of the answer:
+
+- Every product id, price and product type stated anywhere in either repo agrees
+  with that CLAUDE.md block — `lib/features/premium/`, `firestore.rules`,
+  `QA_PHASE_2B.md`, `DELIVERY_2B.md` and the tests included.
+- 🚨 **A product's type is irreversible in both stores.** An id created from a
+  stale line is burned and costs a fresh store review to replace. Any file that
+  names a type is a candidate for this defect; treat a second statement of it as
+  critical even when it happens to agree today.
+- Cancelled ids are never resurrected. Flag any reference that brings one back.
+- Any THB figure on the paywall is stale — prices are USD.
 - Payment milestones and amounts in `CLAUDE.md` §5 must match the client doc.
 
 Report findings most severe first. Say explicitly when scope and documentation
