@@ -73,6 +73,22 @@ class _RecordingLauncher extends UrlLauncherPlatform
   }
 }
 
+/// Both store-required links must point at the site this project actually
+/// publishes, over https.
+///
+/// Asserting only that a URL ends in `/terms` lets it be moved to any host in
+/// the world with the suite still green — including one nobody controls, which
+/// on a page stating billing terms is worse than a dead link.
+void _expectOurPublicSite(String url) {
+  final uri = Uri.parse(url);
+  expect(uri.scheme, 'https', reason: '$url is not served over https');
+  expect(
+    uri.host,
+    'thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app',
+    reason: '$url is not on the site this project publishes',
+  );
+}
+
 Widget _host(Widget child, {String language = 'th', PremiumProvider? premium}) {
   return ChangeNotifierProvider<PremiumProvider>.value(
     value: premium ?? PremiumProvider(repository: _NullRepository()),
@@ -578,8 +594,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(launcher.launched, hasLength(1));
-      expect(launcher.launched.single, endsWith('/terms'));
-      expect(launcher.launched.single, startsWith('https://'));
+      expect(Uri.parse(launcher.launched.single).path, '/terms');
+      _expectOurPublicSite(launcher.launched.single);
     });
 
     testWidgets('tapping Privacy opens the public privacy page',
@@ -590,8 +606,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(launcher.launched, hasLength(1));
-      expect(launcher.launched.single, endsWith('/privacy'));
-      expect(launcher.launched.single, startsWith('https://'));
+      expect(Uri.parse(launcher.launched.single).path, '/privacy');
+      _expectOurPublicSite(launcher.launched.single);
     });
 
     testWidgets('neither link sits behind the CMS login', (tester) async {
