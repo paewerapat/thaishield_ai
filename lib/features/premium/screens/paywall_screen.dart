@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/localization/app_text.dart';
@@ -171,6 +172,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 _FootNote(text: appText(context, 'premium_platform_note')),
                 const SizedBox(height: 8),
                 _FootNote(text: appText(context, 'premium_legal_note')),
+                const SizedBox(height: 10),
+                const _LegalLinks(),
               ],
             ),
           ),
@@ -466,6 +469,78 @@ class _FootNote extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(color: Colors.grey[600], fontSize: 10.5, height: 1.4),
+    );
+  }
+}
+
+/// Terms of Use and Privacy Policy, side by side under the disclosure.
+///
+/// 🚨 **Both stores require these on a subscription purchase screen, and Apple
+/// rejects builds without them.** They were not here before 2026-08-30 because
+/// a one-time purchase screen does not need them — the requirement arrived with
+/// the switch to auto-renewing plans, which is exactly the kind of obligation
+/// that rides along with a billing-model change and gets missed.
+///
+/// Opened in the browser rather than a webview so the address bar is visible:
+/// a legal document whose origin the reader cannot confirm is worth less.
+class _LegalLinks extends StatelessWidget {
+  const _LegalLinks();
+
+  static const _termsUrl =
+      'https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/terms';
+  static const _privacyUrl =
+      'https://thaishield-admin--thaishield-ai-790eb.asia-southeast1.hosted.app/privacy';
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
+      children: [
+        _LegalLink(
+          label: appText(context, 'premium_terms_link'),
+          url: _termsUrl,
+        ),
+        const Text(
+          '·',
+          style: TextStyle(color: Color(0xFF90A4AE), fontSize: 11),
+        ),
+        _LegalLink(
+          label: appText(context, 'premium_privacy_link'),
+          url: _privacyUrl,
+        ),
+      ],
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.url});
+
+  final String label;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: () => launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        minimumSize: const Size(0, 28),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: const Color(0xFF4FC3F7),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11.5,
+          decoration: TextDecoration.underline,
+        ),
+      ),
     );
   }
 }

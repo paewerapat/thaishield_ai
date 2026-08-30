@@ -1302,6 +1302,26 @@ const Map<String, Map<String, String>> _appText = {
   // — and that access runs to the end of the period already paid for. The last
   // is the one users are most often surprised by and the one that turns into
   // refund requests when it is left out.
+  // 🚨 Both stores require a subscription purchase screen to link its terms and
+  // its privacy policy, and Apple rejects builds that do not. Added 2026-08-30
+  // with the switch to subscriptions — a one-time purchase screen did not need
+  // them, which is why they were never here.
+  'premium_terms_link': {
+    'th': 'เงื่อนไขการใช้งาน',
+    'en': 'Terms of Use',
+    'zh': '使用条款',
+    'ko': '이용약관',
+    'ru': 'Условия использования',
+    'ja': '利用規約',
+  },
+  'premium_privacy_link': {
+    'th': 'นโยบายความเป็นส่วนตัว',
+    'en': 'Privacy Policy',
+    'zh': '隐私政策',
+    'ko': '개인정보 처리방침',
+    'ru': 'Политика конфиденциальности',
+    'ja': 'プライバシーポリシー',
+  },
   'premium_legal_note': {
     'th': 'ทั้งสองแพ็กเกจเป็นการสมัครสมาชิกแบบต่ออายุอัตโนมัติ ระบบจะเรียกเก็บเงินผ่านบัญชี Google Play หรือ Apple ID ที่ใช้สมัคร และจะเก็บเงินรอบถัดไปโดยอัตโนมัติเมื่อครบกำหนด จนกว่าคุณจะยกเลิก · ยกเลิกได้ตลอดเวลาจากหน้าตั้งค่าการสมัครสมาชิกของสโตร์ ไม่ได้ยกเลิกในแอปนี้ · เมื่อยกเลิกแล้วยังใช้ต่อได้จนครบรอบที่จ่ายเงินไปแล้ว หลังจากนั้นแอปจะกลับไปใช้เวอร์ชันฟรี',
     'en': 'Both plans are auto-renewing subscriptions. Payment is charged to the Google Play or Apple ID account you subscribe with, and the next period is charged automatically when the current one ends, until you cancel. You can cancel at any time from the subscription settings in the store — not in this app — and you keep access until the end of the period you have already paid for, after which the app returns to the free version.',
@@ -1334,13 +1354,21 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Premium активен',
     'ja': 'Premium 有効',
   },
+  // 🚨 "Renews on", not "Valid until". For a fixed-length pass those were the
+  // same date; for an auto-renewing subscription they are opposites — the day
+  // access would have ended is the day money is taken instead. Telling a
+  // subscriber their access "ends" on the day they are charged again is the
+  // kind of surprise that produces a refund request and a one-star review.
+  //
+  // The date itself is the end of the period the store last confirmed, so it
+  // is the right date; only the sentence around it was wrong.
   'premium_status_expires': {
-    'th': 'ใช้ได้ถึง {date}',
-    'en': 'Valid until {date}',
-    'zh': '有效期至 {date}',
-    'ko': '{date}까지 이용 가능',
-    'ru': 'Действует до {date}',
-    'ja': '{date} まで有効',
+    'th': 'ต่ออายุอัตโนมัติวันที่ {date}',
+    'en': 'Renews on {date}',
+    'zh': '将于 {date} 自动续订',
+    'ko': '{date}에 자동 갱신',
+    'ru': 'Продлится {date}',
+    'ja': '{date} に自動更新',
   },
   // Someone on the trial has not paid, so the Profile card says so rather than
   // showing the same "Premium active" line a purchase gets — otherwise the

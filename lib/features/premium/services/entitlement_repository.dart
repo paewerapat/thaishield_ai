@@ -3,21 +3,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/entitlement.dart';
 import '../models/premium_plan.dart';
 
-/// The durable, cross-device copy of a purchased pass.
+/// The durable, cross-device copy of a purchase.
 ///
-/// ## Why this exists
+/// 🚨 **Obsolete since 2026-08-30 — task 2.8 should retire this, not build on
+/// it.**
 ///
-/// Both products are **one-time consumables** ([PremiumPlan]), and consumables
-/// are not restorable the way a subscription is. Play stops returning a
-/// purchase once it is consumed, and StoreKit does not replay consumables at
-/// all. Without a record of our own, a user who changes phone — or reinstalls —
-/// on day 3 of a 14-day pass simply loses the other 11 days, and the app has no
-/// way to tell them apart from someone who never paid. "Restore Purchases" is
-/// in the agreed scope of task 2.8, so it has to actually restore something.
+/// ## Why it existed
 ///
-/// So each purchase is filed here under the store's own transaction id, and a
-/// restore is: ask the store what this account bought → look the ids up here →
-/// take the furthest expiry.
+/// The products were **one-time consumables**, which are not restorable the way
+/// a subscription is: Play stops returning a purchase once it is consumed, and
+/// StoreKit does not replay consumables at all. Without a record of our own, a
+/// user who changed phone on day 3 of a 14-day pass lost the other 11 days and
+/// looked identical to someone who never paid. "Restore Purchases" is in the
+/// agreed scope of task 2.8, so it had to restore something.
+///
+/// ## Why it is no longer needed
+///
+/// Both products are **auto-renewing subscriptions** again ([PremiumPlan]), and
+/// both stores replay those to the same account on a new device. The store now
+/// answers the question this collection was built to answer, and answers it
+/// better — it knows about cancellation, refund, pause and failed payment,
+/// none of which a stored expiry date can see.
+///
+/// Nothing reads it at runtime, so it is left in place rather than deleted in
+/// the same change that flipped the billing model. 2.8 should stop writing to
+/// it and drop `create` to `if false` in `firestore.rules`. **Do not treat a
+/// document here as proof of payment** — it never was one.
 ///
 /// ## What it is keyed by, and why not by user
 ///

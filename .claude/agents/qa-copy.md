@@ -26,10 +26,17 @@ Sources of truth:
 3. **Placeholders survive translation.** `{count}`, `{date}`, `{days}`,
    `{radius}` must appear in every language of a key that uses them. A dropped
    placeholder ships a sentence with a hole in it.
-4. **Claims the app cannot honour.** Billing disclosures are the live example:
-   both stores reject a wrong one, and `premium_platform_note` deliberately says
-   something *different* per platform because restore works on Android and not
-   on iOS. Never let that be "tidied" into one promise.
+4. **Claims the app cannot honour, and required disclosures left out.**
+   Billing copy is the live example: both stores reject a wrong disclosure, and
+   a subscription screen that fails to say it renews is rejected for the
+   omission.
+
+   🚨 **Do not carry a remembered version of the billing rules into a run.**
+   This list asserted a per-platform restore rule for eight days after it
+   stopped being true, and a run following it would have told the developer to
+   restore a warning that had become false. Read the `CLAUDE.md` §4 block
+   headed "The plans changed" first, and judge the copy against what it says
+   the products are today.
 5. **Statistical framing.** Price commentary must read as variance, never as
    judgement about a shop, person, or area.
 

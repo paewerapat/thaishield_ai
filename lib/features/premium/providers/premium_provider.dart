@@ -159,8 +159,9 @@ class PremiumProvider extends ChangeNotifier {
   ///      is not a consumable, and consuming one is not a thing to do.
   ///
   /// ⚠️ `grantPurchase` still derives the expiry from `plan.duration`, which is
-  /// only correct while nothing real is wired. 2.8 must give it the store's
-  /// date instead; the signature already takes one.
+  /// only correct while nothing real is wired. 2.8 must use the store's date
+  /// instead — and that means **changing `grantPurchase`'s signature**, which
+  /// takes `purchasedAt` and not an expiry. It does not already accept one.
   Future<StoreOutcome> purchase(PremiumPlan plan) async {
     return StoreOutcome.notAvailableYet;
   }

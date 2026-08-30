@@ -167,3 +167,21 @@ args: { change: "อธิบายสั้น ๆ ว่าแก้อะไ�
 - [ ] `CLAUDE.md` ของทุก repo ที่แตะ อัปเดตแล้ว
 - [ ] เอกสารลูกค้า Rev.4 อัปเดตแล้ว
 - [ ] commit ทั้งสอง repo (ยังไม่ push — ตามข้อตกลงกับผู้ว่าจ้าง)
+
+## Client document — updated 2026-08-30? **No.**
+
+The QA gate flags "no evidence the client doc was updated" as a defect, and it
+is right to: a price change the client has not been shown is a change they
+have not agreed to.
+
+**Outstanding as of 2026-08-30.** The Rev.4 quotation and status document
+(Google Docs) still describes the two one-time passes at $7 and $10, the 3-day
+trial leading into a pass, and the iOS restore limitation the client accepted
+on 2026-08-23. All three are now wrong. The subscription decision, the $3.50
+weekly price and the removal of the iOS limitation have not been written into
+it.
+
+The developer cannot edit that document through the Drive integration — it has
+to be done through the browser, and a paste into it once wiped the file. So it
+is a deliberate, hands-on step, not something to assume happened. Record it
+here when it is done, with the date.

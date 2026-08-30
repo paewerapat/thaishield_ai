@@ -1067,9 +1067,12 @@ edited in Firebase Console → Firestore Database → Rules.
 - The CMS writes via the Admin SDK and needs no rule changes. Any future authenticated
   write access must be scoped to that specific case — **never** broaden the public rule to
   allow writes from the Flutter app.
-- 🚨 **`entitlements` is the one exception, and it is temporary.** It is the only
-  collection an app client may write to, because a one-time pass has to be recoverable on
-  a second device and the app has no identity to file it under (§7). Reads are open — a
+- 🚨 **`entitlements` is the one exception, and it is now obsolete as well as
+  temporary.** It is the only collection an app client may write to. It existed because a
+  one-time pass had to be recoverable on a second device and the app has no identity to
+  file it under (§7) — but the products became auto-renewing subscriptions on 2026-08-30
+  and both stores replay those themselves, so the question it answered is answered better
+  elsewhere. Task 2.8 should stop writing to it and drop `create` to `if false`. Reads are open — a
   store transaction id identifies nobody and is not guessable — and `create` is shape-
   checked to a known product id plus a timestamp, with `update`/`delete` refused so an
   existing record cannot be extended. **This is not a security boundary**: the store

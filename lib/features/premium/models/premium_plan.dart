@@ -34,8 +34,13 @@
 ///    fixed-length pass and is only approximately right for a subscription —
 ///    it cannot see a cancellation, refund, pause or failed payment. That is
 ///    harmless while `purchase()` is a stub returning `notAvailableYet`, and
-///    it is task 2.8's job to pass the store's own date instead. The signature
-///    already accepts one.
+///    it is task 2.8's job to use the store's own date instead.
+///
+///    ⚠️ `grantPurchase` takes `purchasedAt`, not an expiry — so 2.8 has to
+///    change the signature, not just pass a different argument. An earlier
+///    version of this note claimed the signature already accepted one; it does
+///    not, and believing it would have produced a subscription whose end date
+///    is a guess.
 /// 2. **The stores can run the free trial**, because a store trial attaches to
 ///    a subscription. `PremiumProvider.startTrialIfEligible` stays until 2.8
 ///    wires billing — it is the only trial that exists in a build with no

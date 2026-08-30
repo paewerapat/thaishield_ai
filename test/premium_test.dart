@@ -844,6 +844,59 @@ void main() {
       }
     });
 
+    test('the status card says the date is a renewal, not an ending', () {
+      // A real user-facing bug the QA gate caught, not a documentation one.
+      // For a fixed-length pass, "valid until 30/9" and the end of access were
+      // the same date. For an auto-renewing subscription they are opposites:
+      // the day access would have stopped is the day money is taken instead.
+      // Telling a subscriber their access ends on the day they are charged
+      // again is what produces a refund request and a one-star review.
+      const renews = {
+        'th': 'ต่ออายุ',
+        'en': 'Renews',
+        'zh': '续订',
+        'ko': '갱신',
+        'ru': 'Продлится',
+        'ja': '更新',
+      };
+      for (final language in _languages) {
+        final text = appStrings['premium_status_expires']![language]!;
+        expect(
+          text.contains(renews[language]!),
+          isTrue,
+          reason: '$language does not say the date is a renewal: $text',
+        );
+        expect(
+          text.contains('{date}'),
+          isTrue,
+          reason: '$language lost the date placeholder',
+        );
+      }
+
+      final english = appStrings['premium_status_expires']!['en']!.toLowerCase();
+      expect(
+        english.contains('valid until') || english.contains('expires'),
+        isFalse,
+        reason: 'the pass wording survived the switch to subscriptions',
+      );
+    });
+
+    test('the paywall carries the links both stores require', () {
+      // Apple rejects a subscription purchase screen without functional Terms
+      // of Use and Privacy Policy links, and Play expects the same. A one-time
+      // purchase screen needed neither, which is why they were absent until
+      // 2026-08-30 — the obligation arrived with the billing model.
+      for (final key in ['premium_terms_link', 'premium_privacy_link']) {
+        for (final language in _languages) {
+          expect(
+            appStrings[key]?[language]?.trim(),
+            isNotEmpty,
+            reason: '$key is missing in $language',
+          );
+        }
+      }
+    });
+
     test('the trial copy says what happens when it ends', () {
       // A trial that quietly stops is a support ticket; a trial that appears to
       // start a charge is a refund request. The English has to rule both out.
