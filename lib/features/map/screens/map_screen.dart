@@ -21,6 +21,7 @@ import '../../radar/services/radar_service.dart';
 import '../../radar/widgets/filter_panel.dart';
 import '../../route/screens/route_preview_screen.dart';
 import '../widgets/around_you_panel.dart';
+import '../services/marker_icons.dart';
 
 class _Suggestion {
   const _Suggestion(this.label, this.coords, [this.zoom = 13.0]);
@@ -365,6 +366,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       final (:partners, :zones) =
           await RadarService.instance.load(forceRefresh: forceRefresh);
 
+      // Rasterise the badges once, off the marker loop. Drawing inside the
+      // loop would redo the same eleven bitmaps for every pin on screen.
+      final ratio = MediaQuery.devicePixelRatioOf(context);
+      await MarkerIcons.instance.warmUp(ratio);
+      if (!mounted) return;
+
       final markers = <Marker>{};
       for (final partner in partners) {
         _partnersById[partner.id] = partner;
@@ -372,9 +379,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           Marker(
             markerId: MarkerId(partner.id),
             position: LatLng(partner.lat, partner.lng),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              partnerCategoryMarkerHue[partner.category] ??
-                  BitmapDescriptor.hueAzure,
+            // The poster's pins: one glyph per category, on the group colour.
+            // Falls back to the stock teardrop if rasterising ever fails, so a
+            // drawing problem cannot empty the map.
+            icon: await MarkerIcons.instance.forCategory(
+              partner.category,
+              ratio,
             ),
             onTap: () => setState(() {
               _selectedPartner = partner;

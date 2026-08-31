@@ -11,6 +11,7 @@ import '../models/travel_alert.dart';
 import '../screens/safety_tips_screen.dart';
 import '../screens/travel_alerts_list_screen.dart';
 import '../services/travel_alert_service.dart';
+import '../../premium/widgets/premium_promo.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({
@@ -72,6 +73,27 @@ class HomeTab extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: _buildUsefulTools(context),
               ),
+              // The Home tab had no mention of Premium at all — the client
+              // reported it as "the home screen is very empty" on 2026-08-31,
+              // and they were right: nothing on this screen told a user the
+              // paid tier existed, or what it does.
+              //
+              // 🚨 Shown in every state, including while the trial is running.
+              // A fresh install is on trial from its first launch, so anything
+              // conditional on "not premium" is invisible to exactly the people
+              // who have not paid yet. That mistake is what made the whole
+              // paywall unreachable for three days.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                child: Column(
+                  children: const [
+                    PremiumHomeCard(),
+                    SizedBox(height: 12),
+                    PremiumFeaturesStrip(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),

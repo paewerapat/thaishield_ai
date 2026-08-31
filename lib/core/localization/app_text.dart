@@ -1438,6 +1438,49 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Разблокировано для тестирования (QA)',
     'ja': 'テスト用に解除中 (QA)',
   },
+  // The Home upsell and the feature strip, added 2026-08-31.
+  //
+  // 🚨 These may only advertise features that exist and are actually gated:
+  // the Radar past its free limit, the Filter panel, and Route Suggestion. The
+  // design poster's premium band lists AI Local Insights, Offline Map and
+  // Smart Alerts as well — all three were cancelled, so putting them here
+  // would be selling a subscription on things the app does not do. If a
+  // feature is added to the strip, add it to `PremiumFeature` first.
+  'premium_promo_headline': {
+    'th': 'ปลดล็อกข้อมูลรอบตัวคุณแบบเต็ม',
+    'en': 'Unlock everything around you',
+    'zh': '解锁您周围的完整信息',
+    'ko': '주변 정보를 모두 열어보세요',
+    'ru': 'Откройте всё, что вокруг вас',
+    'ja': '周辺の情報をすべて見る',
+  },
+  'premium_promo_body': {
+    'th': 'ดูผลรอบตัวครบทุกรายการ กรองตามหมวดหมู่ และดูเส้นทางพร้อมเวลาเดินทาง',
+    'en': 'Every nearby result, filters by category, and routes with travel times.',
+    'zh': '查看周边全部结果、按类别筛选，以及路线和所需时间。',
+    'ko': '주변의 모든 결과, 카테고리 필터, 경로와 예상 소요 시간까지.',
+    'ru': 'Все результаты поблизости, фильтры по категориям, маршруты и время в пути.',
+    'ja': '周辺のすべての結果、カテゴリー絞り込み、ルートと所要時間。',
+  },
+  // Shown while the free trial is running. It states the days left and what
+  // happens at the end — it must not imply a charge is coming, because the
+  // in-app trial does not convert into one. See `premium_trial_note`.
+  'premium_promo_trial_headline': {
+    'th': 'คุณกำลังใช้ฟีเจอร์สมาชิกอยู่ตอนนี้',
+    'en': 'You are using the member features right now',
+    'zh': '您目前正在使用会员功能',
+    'ko': '지금 멤버 기능을 사용하고 계십니다',
+    'ru': 'Сейчас вам доступны функции подписки',
+    'ja': '現在、メンバー機能をご利用中です',
+  },
+  'premium_strip_title': {
+    'th': 'ฟีเจอร์สำหรับสมาชิก',
+    'en': 'Member features',
+    'zh': '会员功能',
+    'ko': '멤버 기능',
+    'ru': 'Функции подписки',
+    'ja': 'メンバー機能',
+  },
   'premium_upgrade_action': {
     'th': 'ดูแพ็กเกจ', 'en': 'View plans', 'zh': '查看套餐', 'ko': '플랜 보기', 'ru': 'Тарифы', 'ja': 'プランを見る',
   },
