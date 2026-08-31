@@ -14,6 +14,7 @@ import '../../premium/models/premium_plan.dart';
 import '../../premium/providers/premium_provider.dart';
 import '../../premium/screens/paywall_screen.dart';
 import 'package:thaishield_ai/core/constants/legal_urls.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// The public privacy policy, served by the web admin outside its `/admin`
 /// tree so it needs no login (that repo's `app/privacy/page.tsx`).
@@ -33,6 +34,32 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  /// The build's real version, read from the package at runtime.
+  ///
+  /// 🚨 It used to be the literal `1.0.0`, in two places, while the app was on
+  /// 1.1.0+24. The displayed one was untidy; the one in the feedback email was
+  /// worse — every bug report a user sent named a version that had not shipped
+  /// for weeks, so support would have been reading the wrong build. Anything
+  /// that states the version now reads it from here.
+  String? _version;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _version = '${info.version} (${info.buildNumber})');
+    } catch (_) {
+      // A version string is not worth an error state; the tile just stays
+      // blank rather than claiming a number nobody checked.
+    }
+  }
+
   bool _loadingLocation = false;
   String? _address;
   String? _locationError;
@@ -90,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       path: 'dev@thaishieldapp.com',
       queryParameters: {
         'subject': 'ThaiShield AI – Feedback',
-        'body': 'App version: 1.0.0\n\n[Please describe your feedback, issue, or suggestion here]',
+        'body': 'App version: ${_version ?? 'unknown'}\n\n[Please describe your feedback, issue, or suggestion here]',
       },
     );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -135,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       Icons.info_outline,
                       appText(context, 'profile_about_title'),
-                      'Version 1.0.0',
+                      _version == null ? '' : 'Version $_version',
                     ),
                     if (kDebugMode) ...[
                       const SizedBox(height: 12),

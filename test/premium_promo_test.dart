@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:thaishield_ai/core/localization/app_text.dart';
 import 'package:thaishield_ai/features/premium/models/entitlement.dart';
-import 'package:thaishield_ai/features/premium/models/premium_feature.dart';
 import 'package:thaishield_ai/features/premium/models/premium_plan.dart';
 import 'package:thaishield_ai/features/premium/providers/premium_provider.dart';
 import 'package:thaishield_ai/features/premium/services/entitlement_repository.dart';
@@ -43,59 +42,6 @@ Widget _host(Widget child, {String language = 'th', PremiumProvider? premium}) {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  group('the feature strip only sells what exists', () {
-    testWidgets('it names every gated feature and nothing else',
-        (tester) async {
-      await tester.pumpWidget(_host(const PremiumFeaturesStrip()));
-      await tester.pumpAndSettle();
-
-      for (final feature in PremiumFeature.values) {
-        expect(
-          find.text(appStrings[feature.headlineKey]!['th']!),
-          findsOneWidget,
-          reason: '${feature.name} is gated but not advertised',
-        );
-      }
-    });
-
-    testWidgets('it does not advertise the cancelled features', (tester) async {
-      // 🚨 The design poster's premium band lists six things. Three were
-      // cancelled outright — AI Local Insights, Offline Map and Smart Alerts —
-      // and a fourth, "real-time updates, 24 hours", describes news that
-      // already refreshes every ten minutes for everyone, free. Copying that
-      // band would be taking a subscription for four things the app does not
-      // do, from a tourist, in six languages.
-      await tester.pumpWidget(_host(const PremiumFeaturesStrip()));
-      await tester.pumpAndSettle();
-
-      const cancelled = [
-        'AI Local Insights',
-        'Offline Map',
-        'Smart Alerts',
-        'ออฟไลน์',
-        'แจ้งเตือนอัตโนมัติ',
-      ];
-      for (final phrase in cancelled) {
-        expect(
-          find.textContaining(phrase),
-          findsNothing,
-          reason: 'the strip advertises "$phrase", which does not exist',
-        );
-      }
-    });
-
-    testWidgets('renders in all six languages without overflowing',
-        (tester) async {
-      for (final language in _languages) {
-        await tester.pumpWidget(
-          _host(const PremiumFeaturesStrip(), language: language),
-        );
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull, reason: language);
-      }
-    });
-  });
-
   group('the Home card', () {
     testWidgets('invites a free user to the plans', (tester) async {
       final provider = PremiumProvider(repository: _NullRepository());
@@ -104,8 +50,9 @@ void main() {
       await tester.pumpWidget(_host(const PremiumHomeCard(), premium: provider));
       await tester.pumpAndSettle();
 
+      expect(find.text('PREMIUM'), findsOneWidget);
       expect(
-        find.text(appStrings['premium_promo_headline']!['th']!),
+        find.text(appStrings['premium_strip_title']!['th']!),
         findsOneWidget,
       );
       expect(find.text(appStrings['premium_cta']!['th']!), findsOneWidget);
@@ -124,10 +71,9 @@ void main() {
       await tester.pumpWidget(_host(const PremiumHomeCard(), premium: provider));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text(appStrings['premium_promo_trial_headline']!['th']!),
-        findsOneWidget,
-      );
+      // Says how long is left, rather than pretending nothing is happening.
+      expect(find.textContaining('เหลือ'), findsOneWidget);
+      expect(find.text('PREMIUM'), findsOneWidget);
     });
 
     testWidgets('says something true to a subscriber, and still links out',
@@ -153,6 +99,30 @@ void main() {
         find.text(appStrings['premium_upgrade_action']!['th']!),
         findsOneWidget,
       );
+    });
+
+    testWidgets('never advertises a feature that was cancelled',
+        (tester) async {
+      // 🚨 The poster's card promises "real-time in-depth data". That is AI
+      // Local Insights, which was cancelled, and the 24-hour updates, which
+      // describe news that is already free for everyone. The layout is the
+      // poster's; the words must not be.
+      await tester.pumpWidget(_host(const PremiumHomeCard()));
+      await tester.pumpAndSettle();
+
+      for (final phrase in [
+        'AI Local Insights',
+        'Offline Map',
+        'Smart Alerts',
+        'เรียลไทม์',
+        'ออฟไลน์',
+      ]) {
+        expect(
+          find.textContaining(phrase),
+          findsNothing,
+          reason: 'the card advertises "$phrase", which the app does not do',
+        );
+      }
     });
 
     testWidgets('renders in all six languages without overflowing',

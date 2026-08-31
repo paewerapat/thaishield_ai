@@ -1438,14 +1438,14 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Разблокировано для тестирования (QA)',
     'ja': 'テスト用に解除中 (QA)',
   },
-  // The Home upsell and the feature strip, added 2026-08-31.
+  // The Home Premium card, added 2026-08-31 and restyled the same day to the
+  // design poster's top-right treatment.
   //
-  // 🚨 These may only advertise features that exist and are actually gated:
-  // the Radar past its free limit, the Filter panel, and Route Suggestion. The
-  // design poster's premium band lists AI Local Insights, Offline Map and
-  // Smart Alerts as well — all three were cancelled, so putting them here
-  // would be selling a subscription on things the app does not do. If a
-  // feature is added to the strip, add it to `PremiumFeature` first.
+  // 🚨 The poster's own card reads "real-time in-depth data", which describes
+  // AI Local Insights (cancelled) and "real-time updates, 24 hours" (news the
+  // app already refreshes every ten minutes for everyone, free). These say what
+  // is actually behind the paywall instead. Only advertise gated features —
+  // if one is added here, add it to `PremiumFeature` first.
   // The design poster's row of category shortcuts across the top of the map.
   // The eleven category names it uses are the existing `cat_*` keys, so only
   // the two ends of the row are new.
@@ -1474,14 +1474,6 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Ещё',
     'ja': 'その他',
   },
-  'premium_promo_headline': {
-    'th': 'ปลดล็อกข้อมูลรอบตัวคุณแบบเต็ม',
-    'en': 'Unlock everything around you',
-    'zh': '解锁您周围的完整信息',
-    'ko': '주변 정보를 모두 열어보세요',
-    'ru': 'Откройте всё, что вокруг вас',
-    'ja': '周辺の情報をすべて見る',
-  },
   'premium_promo_body': {
     'th': 'ดูผลรอบตัวครบทุกรายการ กรองตามหมวดหมู่ และดูเส้นทางพร้อมเวลาเดินทาง',
     'en': 'Every nearby result, filters by category, and routes with travel times.',
@@ -1493,14 +1485,6 @@ const Map<String, Map<String, String>> _appText = {
   // Shown while the free trial is running. It states the days left and what
   // happens at the end — it must not imply a charge is coming, because the
   // in-app trial does not convert into one. See `premium_trial_note`.
-  'premium_promo_trial_headline': {
-    'th': 'คุณกำลังใช้ฟีเจอร์สมาชิกอยู่ตอนนี้',
-    'en': 'You are using the member features right now',
-    'zh': '您目前正在使用会员功能',
-    'ko': '지금 멤버 기능을 사용하고 계십니다',
-    'ru': 'Сейчас вам доступны функции подписки',
-    'ja': '現在、メンバー機能をご利用中です',
-  },
   'premium_strip_title': {
     'th': 'ฟีเจอร์สำหรับสมาชิก',
     'en': 'Member features',

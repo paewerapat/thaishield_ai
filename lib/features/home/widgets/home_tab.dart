@@ -85,13 +85,7 @@ class HomeTab extends StatelessWidget {
               // paywall unreachable for three days.
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                child: Column(
-                  children: const [
-                    PremiumHomeCard(),
-                    SizedBox(height: 12),
-                    PremiumFeaturesStrip(),
-                  ],
-                ),
+                child: const PremiumHomeCard(),
               ),
               const SizedBox(height: 8),
             ],
