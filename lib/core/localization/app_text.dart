@@ -1259,6 +1259,27 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Новым пользователям доступны 3 дня бесплатно, оплата за них не взимается. По окончании пробного периода приложение само вернётся к бесплатной версии — списания начнутся, только если вы выберете тариф и подтвердите оплату.',
     'ja': '新規ユーザーは3日間無料でご利用いただけ、その間の料金はかかりません。無料期間が終わるとアプリは自動的に無料版に戻ります。サブスクリプションはご自身でプランを選び支払いを確認した場合にのみ課金が始まります。',
   },
+  // The plan block's heading, from the design poster's pricing section.
+  'premium_choose_plan': {
+    'th': 'เลือกแพ็กเกจที่เหมาะกับคุณ',
+    'en': 'Choose the plan that suits you',
+    'zh': '选择适合您的方案',
+    'ko': '나에게 맞는 요금제를 선택하세요',
+    'ru': 'Выберите подходящий тариф',
+    'ja': 'ご自分に合うプランをお選びください',
+  },
+  // True since 2026-08-30: both plans are auto-renewing subscriptions, so
+  // there is a renewal to stop. It was not true between 22 and 30 August, when
+  // they were one-time passes with nothing to cancel — do not restore this
+  // line if the products ever change type again.
+  'premium_cancel_anytime': {
+    'th': 'ยกเลิกได้ตลอดเวลาที่หน้าตั้งค่าของร้านค้า',
+    'en': 'Cancel any time in your store settings',
+    'zh': '可随时在商店设置中取消',
+    'ko': '스토어 설정에서 언제든지 해지할 수 있습니다',
+    'ru': 'Отменить можно в любой момент в настройках магазина',
+    'ja': 'ストアの設定からいつでも解約できます',
+  },
   'premium_badge_recommended': {
     'th': 'คุ้มที่สุด', 'en': 'Best value', 'zh': '最超值', 'ko': '최고 가성비', 'ru': 'Выгоднее всего', 'ja': 'いちばんお得',
   },

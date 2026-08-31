@@ -125,14 +125,47 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 for (final feature in PremiumFeature.values)
                   _BenefitRow(text: appText(context, feature.headlineKey)),
                 const SizedBox(height: 20),
-                for (final plan in PremiumPlan.values) ...[
-                  _PlanCard(
-                    plan: plan,
-                    selected: plan == _selected,
-                    onTap: () => setState(() => _selected = plan),
+                Text(
+                  appText(context, 'premium_choose_plan'),
+                  style: const TextStyle(
+                    color: _navy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 10),
-                ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  appText(context, 'premium_cancel_anytime'),
+                  style: const TextStyle(
+                    color: Color(0xFF90A4AE),
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Side by side, as the poster draws them, rather than stacked
+                // rows. IntrinsicHeight keeps the two cards the same height
+                // whichever language is longer — the period line runs to two
+                // lines in Russian and one in Thai.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final plan in PremiumPlan.values) ...[
+                        Expanded(
+                          child: _PlanCard(
+                            plan: plan,
+                            selected: plan == _selected,
+                            onTap: () => setState(() => _selected = plan),
+                          ),
+                        ),
+                        if (plan != PremiumPlan.values.last)
+                          const SizedBox(width: 10),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
                 const SizedBox(height: 2),
                 _FootNote(text: appText(context, 'premium_trial_note')),
                 const SizedBox(height: 8),
@@ -378,7 +411,7 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isRecommended = plan == PremiumPlan.recommended;
     // No trial badge on a plan card. The 3 free days are granted to a new
-    // install on first launch — buying this pass grants nothing free, so a
+    // install on first launch — buying this plan grants nothing free, so a
     // "3 days free" badge on the price is an offer the purchase never honours.
     // Flagged by the QA gate 2026-08-23. The accurate version of the same
     // message is `premium_trial_note`, rendered under the cards.
@@ -387,88 +420,103 @@ class _PlanCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: selected ? const Color(0xFFF1F8F2) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? _green : const Color(0xFFE0E0E0),
             width: selected ? 2 : 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              selected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              color: selected ? _green : const Color(0xFFB0BEC5),
-              size: 21,
+            // The poster puts a ribbon across the top of the plan it wants
+            // chosen. Both cards reserve the same strip so they line up
+            // whether or not it is drawn.
+            SizedBox(
+              height: 22,
+              child: isRecommended
+                  ? Container(
+                      width: double.infinity,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: _gold,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        appText(context, 'premium_badge_recommended'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF3E2B00),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      children: [
+                        Text(
                           appText(context, plan.titleKey),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: _navy,
-                            fontSize: 14.5,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      if (isRecommended) ...[
-                        const SizedBox(width: 7),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
+                        const SizedBox(height: 6),
+                        Text(
+                          _price(plan.priceUsd),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: _navy,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            height: 1.1,
                           ),
-                          decoration: BoxDecoration(
-                            color: _gold,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            appText(context, 'premium_badge_recommended'),
-                            style: const TextStyle(
-                              color: Color(0xFF3E2B00),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          appText(context, plan.periodKey),
+                          textAlign: TextAlign.center,
+                          // Two lines: "renews every 30 days" is one line in
+                          // Thai and two in Russian, and a clipped billing
+                          // period is the wrong thing to clip.
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF90A4AE),
+                            fontSize: 10.5,
+                            height: 1.3,
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          appText(context, plan.periodKey),
-                          style: const TextStyle(
-                            color: Color(0xFF90A4AE),
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _price(plan.priceUsd),
-              style: const TextStyle(
-                color: _navy,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 10),
+                    Icon(
+                      selected
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: selected ? _green : const Color(0xFFB0BEC5),
+                      size: 20,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
