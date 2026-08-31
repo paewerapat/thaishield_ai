@@ -53,7 +53,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final info = await PackageInfo.fromPlatform();
       if (!mounted) return;
-      setState(() => _version = '${info.version} (${info.buildNumber})');
+      // The name alone. `pubspec.yaml` keeps the patch number and the build
+      // number identical, so 1.1.25 already tells you it is build 25 — and
+      // `version_test.dart` fails if that ever stops being true. Printing both
+      // read as "1.1.0 (25)", which looks like two versions and prompted the
+      // question.
+      setState(() => _version = info.version);
     } catch (_) {
       // A version string is not worth an error state; the tile just stays
       // blank rather than claiming a number nobody checked.

@@ -2,7 +2,16 @@ name: thaishield_ai
 description: "ThaiShield AI - Travel Safety Companion"
 publish_to: 'none'
 
-version: 1.1.0+25
+# 🚨 The patch number and the build number are kept identical on purpose.
+#
+# `1.1.0+25` used to mean version name 1.1.0 with build 25 — two different
+# things, and only the build was being bumped, so the name every user and the
+# store would see had been frozen at 1.1.0 for weeks while the build climbed.
+# Tying them together makes the one number people quote unambiguous: 1.1.25 is
+# build 25, and Profile can print the name alone.
+#
+# `test/version_test.dart` fails if they ever drift apart. Bump BOTH.
+version: 1.1.25+25
 environment:
   sdk: ^3.12.0
 
