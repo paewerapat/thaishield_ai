@@ -1,19 +1,47 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/entitlement.dart';
+import '../services/billing_service.dart';
 import '../models/premium_plan.dart';
 import '../services/entitlement_repository.dart';
 import '../services/entitlement_store.dart';
 
-/// What a purchase or restore attempt did. Phase 2B only ever produces
-/// [notAvailableYet]; the other values exist so 2C fills in a switch the UI
-/// already handles rather than reshaping the call sites.
+/// What a purchase or restore attempt did.
+///
+/// Every value here has its own sentence on screen, in all six languages,
+/// because "something went wrong" is the message that generates a support
+/// email. A user who cancelled, a user whose card is still clearing and a user
+/// in a country where the store has no products are three different people.
 enum StoreOutcome {
-  /// Billing is not wired yet (Phase 2C, task 2.8).
+  /// No [BillingService] was given to this provider, so this build cannot
+  /// talk to a store at all.
+  ///
+  /// 🚨 In production this means someone forgot to inject one in `main.dart`,
+  /// not that billing is unfinished — `main_wiring_test.dart` fails if that
+  /// happens. It stays a distinct value so that mistake never reaches a user
+  /// disguised as [failed].
   notAvailableYet,
+
   success,
   cancelled,
   failed,
+
+  /// Accepted, but not paid for yet — a slow card, a parent's approval, cash
+  /// at a convenience store. **Access is not granted.** The purchase completes
+  /// on its own later, through the stream, possibly after the app has been
+  /// closed and reopened.
+  pending,
+
+  /// The device has no usable store: signed out of Google/Apple, billing
+  /// unsupported in the region, or an emulator without Play Services.
+  storeUnavailable,
+
+  /// The store is reachable but does not know this product. Today that is the
+  /// normal answer everywhere, because the products cannot be created until
+  /// the Payments Profile exists (CLAUDE.md §5).
+  productUnavailable,
 
   /// The store had nothing to give back. Distinct from [failed] because
   /// "you have no purchases on this account" is a normal answer that deserves
@@ -47,12 +75,46 @@ enum StoreOutcome {
 /// Entitlements still do not cross between Android and iOS, which the paywall
 /// says out loud (`premium_platform_note`).
 class PremiumProvider extends ChangeNotifier {
-  PremiumProvider({EntitlementStore? store, EntitlementRepository? repository})
-      : _store = store ?? EntitlementStore.instance,
-        _repository = repository ?? EntitlementRepository.instance;
+  PremiumProvider({
+    EntitlementStore? store,
+    EntitlementRepository? repository,
+    BillingService? billing,
+  })  : _store = store ?? EntitlementStore.instance,
+        _repository = repository ?? EntitlementRepository.instance,
+        // The field is private and the named argument is not, so they cannot
+        // share one name and an initializing formal is not available.
+        // ignore: prefer_initializing_formals
+        _billing = billing;
 
   final EntitlementStore _store;
   final EntitlementRepository _repository;
+
+  /// 🚨 **Null by default, on purpose.** Constructing [InAppPurchaseBilling]
+  /// here would open a platform channel inside every widget test that builds a
+  /// screen, and there are dozens. `main.dart` injects the real one;
+  /// `main_wiring_test.dart` fails if that line is ever removed, which is the
+  /// only thing standing between "billing works" and "every user is quietly
+  /// told the store is unavailable".
+  final BillingService? _billing;
+
+  StreamSubscription<List<BillingPurchase>>? _purchaseSubscription;
+
+  /// Completed by whichever stream event resolves the purchase the user is
+  /// waiting on. The store answers asynchronously and sometimes minutes later,
+  /// so [purchase] cannot simply await [BillingService.buy].
+  Completer<StoreOutcome>? _awaitingPurchase;
+  String? _awaitingProductId;
+
+  /// Restores arrive as zero or more stream events with no "that is all"
+  /// marker, so [restore] collects for a bounded window and then decides.
+  Completer<StoreOutcome>? _awaitingRestore;
+
+  /// How long to wait for the store to answer before telling the user nothing
+  /// happened. Generous, because a real payment sheet can sit open while
+  /// someone finds their card; a pending purchase resolves through the stream
+  /// afterwards regardless of this timeout.
+  static const purchaseTimeout = Duration(minutes: 5);
+  static const restoreTimeout = Duration(seconds: 12);
 
   /// How many Safety Radar results the free tier shows before the upsell card.
   /// Enough to prove the feature works, few enough that a busy area is
@@ -114,6 +176,165 @@ class PremiumProvider extends ChangeNotifier {
     _entitlement = await _store.read();
     _loaded = true;
     notifyListeners();
+
+    _listenForPurchases();
+  }
+
+  /// Subscribes for the whole session, not just while the paywall is open.
+  ///
+  /// 🚨 Purchases arrive here that nobody is waiting for: a card that clears an
+  /// hour later, a subscription renewing, a family-sharing grant, a purchase
+  /// made on another device. Play also redelivers anything that was never
+  /// acknowledged. Listening only during the purchase screen loses all of
+  /// those, and an unacknowledged Play purchase is **refunded automatically
+  /// after three days** — the user pays, gets nothing, and the money goes back
+  /// while the app looks broken.
+  void _listenForPurchases() {
+    final billing = _billing;
+    if (billing == null || _purchaseSubscription != null) return;
+
+    _purchaseSubscription = billing.purchaseUpdates.listen(
+      _onPurchaseUpdates,
+      onError: (_) {
+        // A broken stream must not take the app down, and must not be
+        // mistaken for a refusal: whoever is waiting is told it failed, and
+        // free features carry on working.
+        _resolvePurchase(StoreOutcome.failed);
+      },
+    );
+  }
+
+  Future<void> _onPurchaseUpdates(List<BillingPurchase> purchases) async {
+    for (final purchase in purchases) {
+      if (purchase.status == BillingPurchaseStatus.pending) {
+        // Deliberately no access and no completion. Telling the store the
+        // goods were delivered before it has the money is how a pending
+        // purchase turns into a free subscription.
+        if (purchase.productId == _awaitingProductId) {
+          _resolvePurchase(StoreOutcome.pending);
+        }
+        continue;
+      }
+
+      if (purchase.grantsAccess) {
+        final plan = PremiumPlan.fromProductId(purchase.productId);
+        if (plan == null) {
+          // A product id this build does not know — a retired plan replayed
+          // from an old purchase, or a store misconfiguration. Complete it so
+          // the store stops redelivering, but grant nothing.
+          await _completeQuietly(purchase);
+          continue;
+        }
+
+        await grantPurchase(
+          plan: plan,
+          purchaseId: purchase.purchaseId,
+          expiresAt: _horizonFor(plan),
+        );
+      }
+
+      // Acknowledge every terminal state, including errors and cancellations:
+      // an unacknowledged purchase is redelivered forever and, on Play, is
+      // refunded after three days.
+      await _completeQuietly(purchase);
+
+      if (purchase.productId == _awaitingProductId) {
+        _resolvePurchase(_outcomeFor(purchase));
+      }
+      if (purchase.status == BillingPurchaseStatus.restored) {
+        _resolveRestore(StoreOutcome.success);
+      }
+    }
+  }
+
+  /// How long access is granted for when the store confirms a subscription.
+  ///
+  /// 🚨 **This is a cache horizon, not the real renewal date.** A client cannot
+  /// learn when a subscription actually renews — that needs Play's Developer
+  /// API or Apple's verifyReceipt, called from somewhere the user does not
+  /// control. Until the receipt-validation Cloud Function can be deployed
+  /// (blocked on the Firebase role, same as `computeRoute`), this is the
+  /// honest approximation:
+  ///
+  /// - both stores only report subscriptions that are **active right now**, so
+  ///   a confirmation means the current period has not ended;
+  /// - the period is at most [PremiumPlan.duration] long;
+  /// - the app re-confirms with the store on every launch, so the horizon is
+  ///   pushed forward continuously while the subscription lives.
+  ///
+  /// What this over-grants: someone who cancels and then never opens the app
+  /// online again keeps access until the horizon — at most one billing period.
+  /// That is the specific cost of not having server validation, and it is the
+  /// reason to deploy that function rather than a detail to leave undocumented.
+  ///
+  /// It deliberately does **not** use the purchase date. On a restore that is
+  /// the *original* subscription date, so a user six months into a monthly plan
+  /// would be handed an expiry five months in the past and locked out of
+  /// something they are paying for.
+  DateTime _horizonFor(PremiumPlan plan) =>
+      DateTime.now().toUtc().add(plan.duration);
+
+  StoreOutcome _outcomeFor(BillingPurchase purchase) {
+    switch (purchase.status) {
+      case BillingPurchaseStatus.purchased:
+      case BillingPurchaseStatus.restored:
+        return StoreOutcome.success;
+      case BillingPurchaseStatus.cancelled:
+        return StoreOutcome.cancelled;
+      case BillingPurchaseStatus.pending:
+        return StoreOutcome.pending;
+      case BillingPurchaseStatus.error:
+        return StoreOutcome.failed;
+    }
+  }
+
+  /// Acknowledging must never be what breaks a purchase the user already made.
+  Future<void> _completeQuietly(BillingPurchase purchase) async {
+    if (!purchase.pendingCompletePurchase) return;
+    try {
+      await _billing?.complete(purchase);
+    } catch (_) {
+      // The store will redeliver; nothing here is worth losing access over.
+    }
+  }
+
+  void _resolvePurchase(StoreOutcome outcome) {
+    final waiting = _awaitingPurchase;
+    _awaitingPurchase = null;
+    _awaitingProductId = null;
+    if (waiting != null && !waiting.isCompleted) waiting.complete(outcome);
+  }
+
+  void _resolveRestore(StoreOutcome outcome) {
+    final waiting = _awaitingRestore;
+    if (waiting != null && !waiting.isCompleted) waiting.complete(outcome);
+  }
+
+  /// Real, localised store prices for the paywall — "฿129.00" rather than the
+  /// USD figure compiled into [PremiumPlan].
+  ///
+  /// Returns an empty list whenever the store cannot answer, which is the
+  /// normal case today because neither store has these products yet. The
+  /// paywall falls back to the compiled figure and keeps its note explaining
+  /// that the store's price is what is actually charged.
+  Future<List<BillingProduct>> storeProducts() async {
+    final billing = _billing;
+    if (billing == null) return const [];
+    try {
+      if (!await billing.isAvailable()) return const [];
+      return await billing.queryProducts(
+        PremiumPlan.values.map((p) => p.productId).toSet(),
+      );
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  void dispose() {
+    _purchaseSubscription?.cancel();
+    _billing?.dispose();
+    super.dispose();
   }
 
   /// Grants the 3-day trial, once per install, to someone who has never had a
@@ -145,70 +366,132 @@ class PremiumProvider extends ChangeNotifier {
     return true;
   }
 
-  /// Phase 2C, task 2.8 replaces this body with the Play Billing / StoreKit
-  /// flow. Everything around it — the paywall, the gates, the Profile card —
-  /// is already written against this signature.
+  /// Buys [plan] through the store.
   ///
-  /// What 2.8 has to do, once the store confirms a purchase:
-  ///   1. build the [Entitlement] from **what the store reported** — the
-  ///      subscription's own expiry date, not `now + plan.duration`. A
-  ///      subscription can be cancelled, refunded, paused or lapse on a failed
-  ///      payment, and a duration knows none of that;
-  ///   2. `await grantPurchase(...)` below, which caches it;
-  ///   3. **acknowledge** the Play purchase. Never consume it — a subscription
-  ///      is not a consumable, and consuming one is not a thing to do.
-  ///
-  /// ⚠️ `grantPurchase` still derives the expiry from `plan.duration`, which is
-  /// only correct while nothing real is wired. 2.8 must use the store's date
-  /// instead — and that means **changing `grantPurchase`'s signature**, which
-  /// takes `purchasedAt` and not an expiry. It does not already accept one.
+  /// Opening the sheet and paying for it are two different events, sometimes
+  /// days apart, so this waits on the purchase stream rather than on
+  /// [BillingService.buy]. A [StoreOutcome.pending] answer is not a failure:
+  /// the purchase resolves later through [_onPurchaseUpdates], even if the app
+  /// is closed in the meantime.
   Future<StoreOutcome> purchase(PremiumPlan plan) async {
-    return StoreOutcome.notAvailableYet;
+    final billing = _billing;
+    if (billing == null) return StoreOutcome.notAvailableYet;
+
+    // Never leave a previous attempt hanging: the user pressed buy again.
+    _resolvePurchase(StoreOutcome.cancelled);
+
+    try {
+      if (!await billing.isAvailable()) return StoreOutcome.storeUnavailable;
+
+      final products = await billing.queryProducts({plan.productId});
+      final product = products
+          .where((p) => p.id == plan.productId)
+          .cast<BillingProduct?>()
+          .firstWhere((p) => p != null, orElse: () => null);
+      if (product == null) return StoreOutcome.productUnavailable;
+
+      final completer = Completer<StoreOutcome>();
+      _awaitingPurchase = completer;
+      _awaitingProductId = plan.productId;
+
+      if (!await billing.buy(product)) {
+        _resolvePurchase(StoreOutcome.failed);
+        return StoreOutcome.failed;
+      }
+
+      return await completer.future.timeout(
+        purchaseTimeout,
+        // Not a failure of the purchase — only of our waiting for it. If it
+        // does land later the stream still grants access.
+        onTimeout: () => StoreOutcome.pending,
+      );
+    } catch (_) {
+      _resolvePurchase(StoreOutcome.failed);
+      return StoreOutcome.failed;
+    } finally {
+      _awaitingPurchase = null;
+      _awaitingProductId = null;
+    }
   }
+
 
   /// "Restore Purchases". Required by both stores.
   ///
-  /// 2C wires this to `InAppPurchase.restorePurchases()` and grants whatever
-  /// active subscription the store reports.
-  ///
-  /// ✅ **This works on iOS and Android alike since 2026-08-30.** It did not
-  /// while the products were one-time consumables: StoreKit never replays a
+  /// ✅ **Works on iOS and Android alike since 2026-08-30.** It did not while
+  /// the products were one-time consumables: StoreKit never replays a
   /// consumable, so an iPhone had nothing to restore, and the client accepted
   /// that on 2026-08-23. Subscriptions are replayed on both platforms, so the
   /// limitation is gone — `premium_platform_note` no longer discloses it, and
   /// the test that used to pin the disclosure now pins its absence. **Do not
-  /// reintroduce the per-platform warning:** it would now scare users away
-  /// from something that works.
+  /// reintroduce the per-platform warning:** it would scare users away from
+  /// something that works.
+  ///
+  /// The store sends restored purchases as ordinary stream events with no
+  /// "that is all" marker, so this waits a bounded window and reports
+  /// [StoreOutcome.nothingToRestore] if none arrive. Access is granted by
+  /// [_onPurchaseUpdates] as each one lands, not here — so a restore that
+  /// completes just after the window still works, it just is not what the
+  /// snackbar reported.
   Future<StoreOutcome> restore() async {
-    return StoreOutcome.notAvailableYet;
+    final billing = _billing;
+    if (billing == null) return StoreOutcome.notAvailableYet;
+
+    try {
+      if (!await billing.isAvailable()) return StoreOutcome.storeUnavailable;
+
+      final completer = Completer<StoreOutcome>();
+      _awaitingRestore = completer;
+
+      await billing.restore();
+
+      return await completer.future.timeout(
+        restoreTimeout,
+        onTimeout: () => StoreOutcome.nothingToRestore,
+      );
+    } catch (_) {
+      return StoreOutcome.failed;
+    } finally {
+      _awaitingRestore = null;
+    }
   }
 
-  /// Applies a confirmed purchase. Split out from [purchase] so 2C wires the
-  /// store SDK to a method that is already covered by tests.
+
+  /// Applies a confirmed purchase.
   ///
-  /// Writes the local cache first: the pass must survive the app closing even
-  /// if Firestore is unreachable at that moment.
+  /// Takes [expiresAt] from the caller rather than computing it. That is the
+  /// change task 2.8 was told to make: the old signature took `purchasedAt`
+  /// and derived `now + plan.duration`, which is right for a fixed-length pass
+  /// and wrong for a subscription — and catastrophically wrong on a restore,
+  /// where the purchase date is the *original* subscription date and would
+  /// hand a paying customer an expiry months in the past. See [_horizonFor]
+  /// for what the caller should pass and why a client cannot do better without
+  /// server-side receipt validation.
+  ///
+  /// 🚨 Never shortens access. A renewal, a restore and a redelivered purchase
+  /// all arrive here, and the store can report the same subscription many
+  /// times in a session; taking the later expiry means none of them can cut
+  /// short a period the user has already paid for.
   Future<void> grantPurchase({
     required PremiumPlan plan,
     required String purchaseId,
-    DateTime? purchasedAt,
+    required DateTime expiresAt,
   }) async {
-    final start = (purchasedAt ?? DateTime.now()).toUtc();
+    final expiry = expiresAt.toUtc();
+    final current = _entitlement;
+    final keepExisting = current != null &&
+        current.source == EntitlementSource.store &&
+        current.expiresAt.isAfter(expiry);
+
     final entitlement = Entitlement(
       plan: plan,
       source: EntitlementSource.store,
-      expiresAt: start.add(plan.duration),
+      expiresAt: keepExisting ? current.expiresAt : expiry,
       purchaseId: purchaseId,
     );
 
     _entitlement = entitlement;
     await _store.write(entitlement);
     notifyListeners();
-
-    // Best-effort, and last: this is what makes the pass recoverable on
-    // another device, but failing it must not cost the user the purchase they
-    // just made.
-    await _repository.save(entitlement);
   }
 
   /// Rebuilds access from purchases the store says this account owns.

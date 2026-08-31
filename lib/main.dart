@@ -8,6 +8,7 @@ import 'features/home/screens/home_screen.dart';
 import 'features/premium/providers/premium_provider.dart';
 import 'features/onboarding/screens/language_selection_screen.dart';
 import 'firebase_options.dart';
+import 'features/premium/services/billing_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +22,17 @@ void main() async {
 
   // Loaded before the first frame, like the locale, so no screen ever has to
   // render an "entitlement unknown" state. See PremiumProvider.isLoaded.
-  final premiumProvider = PremiumProvider();
+  //
+  // 🚨 `billing:` is what connects the app to Google Play and StoreKit.
+  // PremiumProvider defaults it to null so that widget tests can build screens
+  // without opening a platform channel — which means dropping this argument
+  // does not break a single test, does not fail analyze, and does not crash
+  // anything. It just makes every purchase and every restore answer
+  // "billing is not available in this build", quietly, forever.
+  //
+  // `test/main_wiring_test.dart` reads this file and fails if the argument
+  // disappears. Do not delete that test to make a refactor pass.
+  final premiumProvider = PremiumProvider(billing: InAppPurchaseBilling());
   await premiumProvider.load();
 
   runApp(

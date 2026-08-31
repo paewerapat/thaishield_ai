@@ -1278,13 +1278,45 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Оформить подписку',
     'ja': '登録する',
   },
+  // Rewritten 2026-08-31 when billing was actually wired. It used to read
+  // "purchases open in a later version", which was true while `purchase()` was
+  // a stub and became a lie the moment the store was connected: this now fires
+  // when the *device* cannot reach a store — signed out of Google/Apple,
+  // billing unsupported in the region, an emulator with no Play Services — and
+  // telling those users to wait for a future version would leave them waiting
+  // for something that already shipped.
   'premium_store_unavailable': {
-    'th': 'ระบบชำระเงินจะเปิดใช้งานในเวอร์ชันถัดไป',
-    'en': 'Purchases open in a later version.',
-    'zh': '购买功能将在后续版本开放。',
-    'ko': '결제 기능은 다음 버전에서 제공됩니다.',
-    'ru': 'Покупки станут доступны в следующей версии.',
-    'ja': '購入機能は今後のバージョンで提供されます。',
+    'th': 'เชื่อมต่อร้านค้าไม่ได้ กรุณาตรวจสอบว่าคุณลงชื่อเข้าใช้ Google Play หรือ App Store อยู่ แล้วลองอีกครั้ง',
+    'en': 'Could not reach the store. Check that you are signed in to Google Play or the App Store, then try again.',
+    'zh': '无法连接到应用商店。请确认您已登录 Google Play 或 App Store，然后重试。',
+    'ko': '스토어에 연결할 수 없습니다. Google Play 또는 App Store에 로그인되어 있는지 확인한 후 다시 시도해 주세요.',
+    'ru': 'Не удалось связаться с магазином. Убедитесь, что вы вошли в Google Play или App Store, и попробуйте ещё раз.',
+    'ja': 'ストアに接続できませんでした。Google Play または App Store にログインしているかご確認のうえ、もう一度お試しください。',
+  },
+  // A purchase the store has accepted but not yet collected payment for — a
+  // card still clearing, a parent's approval, cash at a convenience store.
+  // Nothing is unlocked and nothing has gone wrong, so this must not read like
+  // an error; it also must not promise access, because the payment can still
+  // fail.
+  'premium_purchase_pending': {
+    'th': 'ร้านค้ากำลังยืนยันการชำระเงินของคุณ เมื่อยืนยันเสร็จแอปจะเปิดให้ใช้งานเองโดยไม่ต้องซื้อซ้ำ',
+    'en': 'The store is still confirming your payment. Access opens on its own once it does — no need to buy again.',
+    'zh': '商店正在确认您的付款。确认完成后，应用会自动开通，无需重复购买。',
+    'ko': '스토어에서 결제를 확인하는 중입니다. 확인이 끝나면 자동으로 이용할 수 있으며, 다시 구매하실 필요는 없습니다.',
+    'ru': 'Магазин ещё подтверждает оплату. Как только это произойдёт, доступ откроется сам — покупать повторно не нужно.',
+    'ja': 'ストアがお支払いを確認しています。確認が完了すると自動的にご利用いただけます。再度購入する必要はありません。',
+  },
+  // The store answered, and does not sell this product. Today that is the
+  // normal answer everywhere, because the products cannot be created until the
+  // client's Payments Profile exists (CLAUDE.md §5). It says nothing about the
+  // user's device, so it must not send them to check their sign-in.
+  'premium_product_unavailable': {
+    'th': 'แพ็กเกจนี้ยังไม่เปิดจำหน่ายในร้านค้าของประเทศคุณ',
+    'en': 'This plan is not on sale in your store yet.',
+    'zh': '此方案尚未在您所在国家或地区的商店上架。',
+    'ko': '이 요금제는 아직 해당 국가의 스토어에서 판매되지 않습니다.',
+    'ru': 'Этот тариф пока не продаётся в магазине вашей страны.',
+    'ja': 'このプランはお住まいの国のストアではまだ販売されていません。',
   },
   'premium_restore_none': {
     'th': 'ไม่พบการซื้อในบัญชีนี้',

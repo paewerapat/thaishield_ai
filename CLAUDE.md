@@ -759,6 +759,54 @@ picks up automatically.
 which is the build-commands section — a reviewer following that reference would have
 checked the wrong thing and concluded the copy was fine.
 
+#### Task 2.8 — where it actually stands (2026-08-31)
+
+**The client side is built and tested. Two things are left, and neither is code
+this project can finish alone.**
+
+| Piece | State |
+|---|---|
+| `BillingService` + `InAppPurchaseBilling` | ✅ built — `lib/features/premium/services/billing_service.dart` |
+| `purchase()` / `restore()` on the store | ✅ built, 17 tests in `test/billing_test.dart` |
+| Acknowledge (never consume) | ✅ built and pinned by test |
+| Pending purchases, cancellations, errors, retired product ids | ✅ each has its own outcome and its own copy in six languages |
+| Store-localised prices on the paywall | ✅ `PremiumProvider.storeProducts()` |
+| Firestore restore copy | ✅ retired — nothing writes it |
+| **Receipt validation** | ❌ needs a Cloud Function; see below |
+| **A real purchase, end to end** | ❌ needs products in the stores, which needs the Payments Profile (§5) |
+
+🚨 **`PremiumProvider` takes its `BillingService` as an optional argument that
+defaults to null.** That is what lets every widget test build a screen without
+opening a platform channel — and it means *forgetting to pass one in
+`main.dart` is completely silent*: the app compiles, analyze is clean, every
+test passes, and every user is quietly told billing is unavailable forever.
+`test/main_wiring_test.dart` reads `main.dart` and fails if the argument goes
+missing. **Do not delete that test to make a refactor pass.**
+
+🚨 **`grantPurchase` takes `expiresAt` now, not `purchasedAt`.** The old
+signature computed `purchasedAt + plan.duration`, which is right for a
+fixed-length pass and wrong for a subscription — and on a *restore*, where the
+store reports the original subscription date, it would hand someone six months
+into a monthly plan an expiry five months in the past and lock them out of what
+they are paying for. `PremiumProvider._horizonFor` documents what is passed
+instead and exactly what it over-grants.
+
+**What receipt validation would buy, and what its absence costs.** A client
+cannot learn the real renewal date; that needs Play's Developer API or Apple's
+verifyReceipt, called from somewhere the user does not control. Without it the
+app grants access for one plan period from each confirmation and re-confirms on
+every launch. The gap: someone who cancels and never opens the app online again
+keeps access until the horizon — at most one billing period. That is the
+specific, bounded cost of not having the function, and the reason to build it
+rather than a detail to leave unsaid.
+
+**The 3-day trial is still granted in-app** (`startTrialIfEligible`). Moving it
+to a store introductory offer is still the plan and is still not done. When it
+happens, `premium_trial_note` must be rewritten in all six languages in the same
+commit, and so must §4 of the web admin's `/terms` page — an in-app trial lapses,
+a store offer converts into a paid subscription. `wording_test.dart` fails the
+moment the mechanism goes while the copy stays.
+
 **Definition of done (2C):**
 - Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on
   iOS via cloud CI.

@@ -70,6 +70,24 @@ class _PaywallScreenState extends State<PaywallScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(appText(context, 'premium_restore_none'))),
         );
+      case StoreOutcome.pending:
+        // Bought but not paid for yet — a slow card, a parent's approval, cash
+        // at a convenience store. Nothing is unlocked and nothing has gone
+        // wrong, so the screen stays open and says what is happening. An error
+        // message here would send someone to support over a working purchase.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appText(context, 'premium_purchase_pending'))),
+        );
+      case StoreOutcome.productUnavailable:
+        // The store is reachable and does not sell this. Today that is the
+        // normal answer everywhere, because the products cannot be created
+        // until the client's Payments Profile exists.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(appText(context, 'premium_product_unavailable')),
+          ),
+        );
+      case StoreOutcome.storeUnavailable:
       case StoreOutcome.notAvailableYet:
       case StoreOutcome.failed:
         ScaffoldMessenger.of(context).showSnackBar(

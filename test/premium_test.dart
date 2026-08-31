@@ -467,9 +467,12 @@ void main() {
       expect(provider.daysRemaining, 0);
     });
 
-    test('purchase and restore report that billing is not live yet', () async {
-      // Phase 2C task 2.8 replaces these two bodies; the paywall already
-      // handles every value of the enum.
+    test('a provider with no billing service says exactly that', () async {
+      // `build()` deliberately passes no BillingService, the way every widget
+      // test does. This is the state main.dart must never ship in — see
+      // main_wiring_test.dart, which fails if the wiring is dropped — and it
+      // has its own outcome so the mistake can never reach a user disguised as
+      // a payment failure.
       final provider = build();
       expect(
         await provider.purchase(PremiumPlan.monthly),
@@ -516,6 +519,7 @@ void main() {
         await provider.grantPurchase(
           plan: PremiumPlan.monthly,
           purchaseId: 'GPA.paid',
+          expiresAt: DateTime.utc(2026, 10, 1),
         );
 
         expect(await provider.startTrialIfEligible(), isFalse);
@@ -533,22 +537,67 @@ void main() {
     });
 
     group('grantPurchase', () {
-      test('dates the pass from the purchase and files it', () async {
+      test('uses the expiry it is given, not one it works out', () async {
+        // The old signature took `purchasedAt` and computed
+        // `purchasedAt + plan.duration`. That is right for a fixed-length pass
+        // and wrong for a subscription — and on a restore, where the store
+        // reports the *original* subscription date, it handed a paying
+        // customer an expiry months in the past.
         final provider = build();
         await provider.load();
 
-        final at = DateTime.utc(2026, 9, 1, 8);
+        final expiry = DateTime.utc(2026, 9, 8, 8);
         await provider.grantPurchase(
           plan: PremiumPlan.weekly,
           purchaseId: 'GPA.abc',
-          purchasedAt: at,
+          expiresAt: expiry,
         );
 
         final entitlement = provider.entitlement!;
-        expect(entitlement.expiresAt, at.add(const Duration(days: 7)));
+        expect(entitlement.expiresAt, expiry);
         expect(entitlement.purchaseId, 'GPA.abc');
         expect(entitlement.source, EntitlementSource.store);
-        expect(repository.saved.single.purchaseId, 'GPA.abc');
+      });
+
+      test('no longer files the purchase in Firestore', () async {
+        // The collection existed because one-time consumables are not
+        // restorable and the app needed a record of its own. Subscriptions are
+        // replayed by both stores, so the store answers that question now —
+        // and answers it better, because it knows about cancellation, refund,
+        // pause and failed payment. Writing a copy would only create a second,
+        // staler answer that no rule can protect.
+        final provider = build();
+        await provider.load();
+        await provider.grantPurchase(
+          plan: PremiumPlan.monthly,
+          purchaseId: 'GPA.abc',
+          expiresAt: DateTime.utc(2026, 10, 1),
+        );
+
+        expect(repository.saved, isEmpty);
+      });
+
+      test('a later confirmation never shortens access already paid for',
+          () async {
+        // Renewals, restores and Play redeliveries all land here, repeatedly
+        // within one session. Taking the later expiry means none of them can
+        // cut short a period the user has bought.
+        final provider = build();
+        await provider.load();
+
+        final far = DateTime.utc(2026, 12, 1);
+        await provider.grantPurchase(
+          plan: PremiumPlan.monthly,
+          purchaseId: 'GPA.abc',
+          expiresAt: far,
+        );
+        await provider.grantPurchase(
+          plan: PremiumPlan.monthly,
+          purchaseId: 'GPA.abc',
+          expiresAt: DateTime.utc(2026, 9, 15),
+        );
+
+        expect(provider.entitlement!.expiresAt, far);
       });
 
       test('survives a reload from the local cache alone', () async {
@@ -557,6 +606,7 @@ void main() {
         await provider.grantPurchase(
           plan: PremiumPlan.monthly,
           purchaseId: 'GPA.abc',
+          expiresAt: DateTime.utc(2026, 10, 1),
         );
 
         final reloaded = build();
@@ -621,7 +671,7 @@ void main() {
         await provider.grantPurchase(
           plan: PremiumPlan.monthly,
           purchaseId: 'GPA.local',
-          purchasedAt: DateTime.utc(2026, 9),
+          expiresAt: DateTime.utc(2026, 10),
         );
         final before = provider.entitlement!.expiresAt;
 
