@@ -346,6 +346,25 @@ exports.computeRoute = onRequest(
     secrets: [ROUTES_API_KEY],
     timeoutSeconds: 30,
     cors: true,
+    // 🚨 Stated here rather than left to the deploy.
+    //
+    // Firebase makes an HTTPS function public only when it *creates* it, never
+    // when it updates one — it says so in the deploy output and it is easy to
+    // read past. This function was created on 2026-08-31 by a deploy whose
+    // IAM step failed for lack of a role, so it existed and answered 403 to
+    // everyone, including the app. Two later deploys reported "Successful
+    // update operation" and changed nothing about that, because updates do not
+    // touch the invoker policy. Declaring it in code is what makes the
+    // permission survive a redeploy and be visible in review.
+    //
+    // Public is deliberate: the app has no accounts (CLAUDE.md §7), so there
+    // is no caller identity to check. What bounds the damage is the API
+    // restriction on the key, `maxInstances` below, and the daily quota cap in
+    // Cloud Console. **Firebase App Check is the real fix** and is still not
+    // done — it attests the app binary rather than a user, so it works under
+    // the no-accounts rule.
+    invoker: 'public',
+
     // A route request is cheap to serve and expensive to buy. Capping
     // instances bounds what a burst can cost before anyone notices.
     maxInstances: 10,
