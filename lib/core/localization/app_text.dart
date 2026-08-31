@@ -1446,6 +1446,25 @@ const Map<String, Map<String, String>> _appText = {
   // Smart Alerts as well — all three were cancelled, so putting them here
   // would be selling a subscription on things the app does not do. If a
   // feature is added to the strip, add it to `PremiumFeature` first.
+  // The design poster's row of category shortcuts across the top of the map.
+  // The eleven category names it uses are the existing `cat_*` keys, so only
+  // the two ends of the row are new.
+  'map_category_all': {
+    'th': 'ทั้งหมด',
+    'en': 'All',
+    'zh': '全部',
+    'ko': '전체',
+    'ru': 'Все',
+    'ja': 'すべて',
+  },
+  'map_category_more': {
+    'th': 'เพิ่มเติม',
+    'en': 'More',
+    'zh': '更多',
+    'ko': '더보기',
+    'ru': 'Ещё',
+    'ja': 'その他',
+  },
   'premium_promo_headline': {
     'th': 'ปลดล็อกข้อมูลรอบตัวคุณแบบเต็ม',
     'en': 'Unlock everything around you',

@@ -543,13 +543,49 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Which single category the quick row is showing, or null for all of them.
+  ///
+  /// Held separately from [_filters] so the row can show what *it* selected
+  /// without trying to reverse-engineer it out of an arbitrary filter set the
+  /// premium panel may have produced. Opening the panel clears it.
+  PartnerCategory? _quickCategory;
+
+  /// The poster's category shortcuts.
+  ///
+  /// 🚨 **This is free, and the Filter panel it sits next to is not.** That was
+  /// a deliberate call and it should be checked with the client rather than
+  /// assumed: the row narrows the map to **one** category, while the panel
+  /// does multi-select *and* the three zone-risk toggles, which is the part
+  /// worth paying for. Making the row premium instead would put a padlock on
+  /// six of the first things a new user sees, and the poster draws it as plain
+  /// navigation. If the client would rather it were gated, wrap this in
+  /// `ensurePremium(context, PremiumFeature.filterPanel)` — one line — and
+  /// nothing else changes.
+  void _selectQuickCategory(PartnerCategory? category) {
+    setState(() {
+      _quickCategory = category;
+      _filters = _filters.copyWith(
+        categories: category == null
+            ? PartnerCategory.values.toSet()
+            : {category},
+      );
+    });
+    unawaited(_refreshAround());
+    unawaited(_loadMapData());
+  }
+
   Future<void> _openFilterPanel() async {
     if (!await ensurePremium(context, PremiumFeature.filterPanel)) return;
     if (!mounted) return;
 
     final updated = await showRadarFilterPanel(context, _filters);
     if (updated == null || !mounted) return;
-    setState(() => _filters = updated);
+    setState(() {
+      _filters = updated;
+      // The panel can express things the row cannot, so the row stops
+      // claiming to represent the current filter.
+      _quickCategory = null;
+    });
     unawaited(_refreshAround());
   }
 
@@ -717,6 +753,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           children: [
             _MapHeader(onSettingsTap: _openMapSettings),
             _LegendRow(),
+            _CategoryQuickRow(
+              selected: _quickCategory,
+              onSelect: _selectQuickCategory,
+              onMore: _openFilterPanel,
+            ),
             Expanded(
               child: _loading
                   ? const Center(
@@ -1118,6 +1159,130 @@ class _PremiumEntry extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The design poster's row of category shortcuts, under the legend.
+///
+/// Six entries plus "all" and "more", scrolling horizontally — the poster shows
+/// six and a "…" and this is that, with the overflow going to the full Filter
+/// panel rather than to a second row.
+///
+/// 🚨 Horizontally scrollable, not a fixed [Row]. Eight labels in six languages
+/// go through here, and the legend directly above it overflowed by 5.7px in
+/// Thai once while analyze and 166 tests all stayed green.
+class _CategoryQuickRow extends StatelessWidget {
+  const _CategoryQuickRow({
+    required this.selected,
+    required this.onSelect,
+    required this.onMore,
+  });
+
+  final PartnerCategory? selected;
+  final ValueChanged<PartnerCategory?> onSelect;
+  final VoidCallback onMore;
+
+  /// The six the poster names, in its order. The other five categories stay
+  /// reachable through "more" — a row of eleven would scroll past anything a
+  /// thumb wants to reach.
+  static const _shown = <PartnerCategory>[
+    PartnerCategory.restaurant,
+    PartnerCategory.hotel,
+    PartnerCategory.transport,
+    PartnerCategory.attraction,
+    PartnerCategory.shopping,
+    PartnerCategory.pharmacy,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          children: [
+            _QuickChip(
+              icon: Icons.apps_rounded,
+              label: appText(context, 'map_category_all'),
+              selected: selected == null,
+              onTap: () => onSelect(null),
+            ),
+            for (final category in _shown)
+              _QuickChip(
+                icon: partnerCategoryIcon[category] ?? Icons.place_rounded,
+                label: appText(context, 'cat_${category.value}'),
+                selected: selected == category,
+                onTap: () => onSelect(category),
+              ),
+            _QuickChip(
+              icon: Icons.more_horiz_rounded,
+              label: appText(context, 'map_category_more'),
+              selected: false,
+              onTap: onMore,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickChip extends StatelessWidget {
+  const _QuickChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = selected ? const Color(0xFF2E7D32) : const Color(0xFF607D8B);
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 68,
+          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE8F5E9) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? const Color(0xFF2E7D32) : const Color(0xFFE0E6EA),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 19, color: tint),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: tint,
+                  fontSize: 9.5,
+                  height: 1.15,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

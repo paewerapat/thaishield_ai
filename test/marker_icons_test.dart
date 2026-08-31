@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:thaishield_ai/core/localization/app_text.dart';
 import 'package:thaishield_ai/core/models/partner_category.dart';
 import 'package:thaishield_ai/features/map/services/marker_icons.dart';
 
@@ -94,6 +95,34 @@ void main() {
       for (final category in PartnerCategory.values) {
         expect(partnerCategoryIcon[category], isA<IconData>(),
             reason: '${category.name} has no icon');
+      }
+    });
+  });
+
+  group('the map category shortcut row', () {
+    // The row reads its labels as `cat_<value>`, so a category whose key is
+    // missing renders the raw key on the map rather than a name. The row also
+    // has two ends of its own.
+    test('every category has a name in all six languages', () {
+      for (final category in PartnerCategory.values) {
+        final key = 'cat_${category.value}';
+        expect(appStrings[key], isNotNull, reason: '$key is missing');
+        for (final language in ['th', 'en', 'zh', 'ko', 'ru', 'ja']) {
+          expect(
+            appStrings[key]![language]?.trim(),
+            isNotEmpty,
+            reason: '$key has no $language',
+          );
+        }
+      }
+    });
+
+    test('the two ends of the row are translated too', () {
+      for (final key in ['map_category_all', 'map_category_more']) {
+        for (final language in ['th', 'en', 'zh', 'ko', 'ru', 'ja']) {
+          expect(appStrings[key]?[language]?.trim(), isNotEmpty,
+              reason: '$key has no $language');
+        }
       }
     });
   });
