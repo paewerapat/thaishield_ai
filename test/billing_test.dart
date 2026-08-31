@@ -28,16 +28,16 @@ import 'package:thaishield_ai/features/premium/services/entitlement_store.dart';
 /// correctly. That layer is deliberately thin, and it stays on the manual
 /// checklist until a store account can sell something.
 class _FakeBilling implements BillingService {
-  _FakeBilling({
-    this.available = true,
-    this.knownProducts = const {
-      'thaishield_premium_weekly',
-      'thaishield_premium_monthly',
-    },
-  });
+  /// Set these per test rather than through a constructor — every case here
+  /// changes one thing about an otherwise working store, and naming that one
+  /// thing at the point of use reads better than a constructor call whose
+  /// arguments have to be counted.
+  bool available = true;
 
-  bool available;
-  Set<String> knownProducts;
+  Set<String> knownProducts = const {
+    'thaishield_premium_weekly',
+    'thaishield_premium_monthly',
+  };
 
   /// Purchases the store will emit as soon as [buy] is called. Empty means the
   /// store simply never answers, which is what a timeout looks like.

@@ -240,7 +240,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          if (!active) ...[
+          // 🚨 Shown whether or not access is currently active.
+          //
+          // It used to be `if (!active)`, which sounds right and was not: a
+          // fresh install is granted the 3-day trial automatically
+          // (`home_screen.dart`), so `active` is true from the first launch —
+          // and this was the app's *only* way into the plans screen. For three
+          // days a new user could not see the plans, could not subscribe early,
+          // and met no locked feature either, so nothing in the app looked any
+          // different from the free version. That is what the client reported
+          // on 2026-08-31 as "the app still looks the same".
+          //
+          // Someone who is already subscribed still has a reason to open it:
+          // to read what they are paying for, and to find the cancel
+          // instructions.
+          ...[
             const SizedBox(width: 8),
             TextButton(
               onPressed: () => showPaywall(context),

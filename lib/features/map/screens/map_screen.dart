@@ -1035,6 +1035,13 @@ class _MapHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          // The design poster puts a Premium card with a "view plans" button at
+          // the top right of this screen. It was recorded as built because the
+          // *paywall* was built — but the only way in was a card in Profile,
+          // three taps away and hidden while a trial was running. This is that
+          // entry point, on the screen the poster puts it on.
+          const _PremiumEntry(),
+          const SizedBox(width: 4),
           InkWell(
             onTap: onSettingsTap,
             borderRadius: BorderRadius.circular(20),
@@ -1047,6 +1054,61 @@ class _MapHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "View plans", on the map, always.
+///
+/// 🚨 Deliberately not hidden while Premium is active. The trial makes every
+/// new install "active" on first launch, so hiding it there is what left the
+/// plans screen unreachable for three days — see the note in
+/// `profile_screen.dart`.
+///
+/// The label is [Flexible] with an ellipsis because this row already overflowed
+/// once: four chips that fitted in English were 5.7px too wide in Thai, and
+/// `flutter analyze` and 166 tests all stayed green while it happened. Six
+/// languages go through here.
+class _PremiumEntry extends StatelessWidget {
+  const _PremiumEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => showPaywall(context),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFFFE082)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.workspace_premium_rounded,
+              size: 15,
+              color: Color(0xFFB8860B),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                appText(context, 'premium_upgrade_action'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF8D6E00),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
