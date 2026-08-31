@@ -1449,6 +1449,15 @@ const Map<String, Map<String, String>> _appText = {
   // The design poster's row of category shortcuts across the top of the map.
   // The eleven category names it uses are the existing `cat_*` keys, so only
   // the two ends of the row are new.
+  // The design poster's photo cards — "What's around you?"
+  'around_whats_here': {
+    'th': 'มีอะไรอยู่รอบตัวคุณ',
+    'en': 'What is around you',
+    'zh': '您周围有什么',
+    'ko': '주변에 무엇이 있나요',
+    'ru': 'Что рядом с вами',
+    'ja': '周辺には何がありますか',
+  },
   'map_category_all': {
     'th': 'ทั้งหมด',
     'en': 'All',

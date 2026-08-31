@@ -93,6 +93,26 @@ class AroundYouPanel extends StatelessWidget {
     final advisories =
         zones.where((z) => z.zone.riskLevel != 'safe').toList();
 
+    // One card per category that actually has something nearby, nearest first.
+    // 🚨 Not gated: the counts beside them are free for the same reason, and a
+    // strip of five padlocks on the first screen a tourist opens is not an
+    // upsell, it is a wall. What stays paid is the *lists* past the free limit
+    // and the filter panel.
+    final categoryCards = <_CategoryCard>[];
+    for (final category in _cardCategories) {
+      final inCategory =
+          partners.where((p) => p.partner.category == category).toList()
+            ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+      if (inCategory.isEmpty) continue;
+      categoryCards.add(
+        _CategoryCard(
+          category: category,
+          count: inCategory.length,
+          nearest: inCategory.first,
+        ),
+      );
+    }
+
     final limit = isPremium ? null : PremiumProvider.freeRadarResultLimit;
     final shownAdvisories = _take(advisories, limit);
     final shownPartners = _take(partners, limit);
@@ -171,6 +191,26 @@ class AroundYouPanel extends StatelessWidget {
                     onTap: () => onShowEntry(entry),
                   ),
               ],
+              // The poster's "What's around you?" strip.
+              //
+              // Built from the partners already in [current], so it costs no
+              // extra Firestore read and can never disagree with the pins
+              // behind it. Categories with nothing nearby are left out — an
+              // empty card is noise, and five empty cards read as a broken
+              // screen.
+              if (categoryCards.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                _SectionTitle(
+                  text: appText(context, 'around_whats_here'),
+                  onViewAll: onViewAll,
+                ),
+                const SizedBox(height: 10),
+                _CategoryCards(
+                  cards: categoryCards,
+                  isTh: isTh,
+                  onTap: onShowEntry,
+                ),
+              ],
               if (advisories.isEmpty && partners.isEmpty) ...[
                 const SizedBox(height: 18),
                 Text(
@@ -198,6 +238,210 @@ class AroundYouPanel extends StatelessWidget {
 
   static List<T> _take<T>(List<T> items, int? limit) =>
       limit == null || items.length <= limit ? items : items.take(limit).toList();
+}
+
+/// The categories the design poster draws cards for, in its order.
+const _cardCategories = <PartnerCategory>[
+  PartnerCategory.restaurant,
+  PartnerCategory.hotel,
+  PartnerCategory.transport,
+  PartnerCategory.attraction,
+  PartnerCategory.shopping,
+];
+
+/// One card: a category, how many of it are within the radius, and the closest.
+class _CategoryCard {
+  const _CategoryCard({
+    required this.category,
+    required this.count,
+    required this.nearest,
+  });
+
+  final PartnerCategory category;
+  final int count;
+  final RadarPartnerEntry nearest;
+}
+
+/// The poster's "What's around you?" strip.
+///
+/// The photo is the nearest partner's own `image_url`, which
+/// `partner_locations` has already carried since Phase 1 — so this needed no
+/// new CMS field and no new data entry to be worth shipping. When a partner has
+/// no photo (the schema allows `""`) the card falls back to its category icon
+/// on a tinted panel rather than a grey box.
+class _CategoryCards extends StatelessWidget {
+  const _CategoryCards({
+    required this.cards,
+    required this.isTh,
+    required this.onTap,
+  });
+
+  final List<_CategoryCard> cards;
+  final bool isTh;
+  final ValueChanged<RadarEntry> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 186,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: cards.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) => _CategoryCardTile(
+          card: cards[index],
+          isTh: isTh,
+          onTap: () => onTap(cards[index].nearest),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryCardTile extends StatelessWidget {
+  const _CategoryCardTile({
+    required this.card,
+    required this.isTh,
+    required this.onTap,
+  });
+
+  final _CategoryCard card;
+  final bool isTh;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final partner = card.nearest.partner;
+    final icon = partnerCategoryIcon[card.category] ?? Icons.place_rounded;
+    final name = partner.localizedName(
+      Localizations.localeOf(context).languageCode,
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 158,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE0E6EA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 9, 10, 7),
+              child: Row(
+                children: [
+                  Icon(icon, size: 15, color: _blue),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      appText(context, 'cat_${card.category.value}'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _navy,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F0FE),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${card.count}',
+                      style: const TextStyle(
+                        color: _blue,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _CardPhoto(imageUrl: partner.imageUrl, icon: icon),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 7, 10, 9),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _navy,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Text(
+                        formatDistance(card.nearest.distanceKm, isTh: isTh),
+                        style: const TextStyle(color: _muted, fontSize: 10.5),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.star_rounded,
+                          size: 12, color: Color(0xFFFFB300)),
+                      const SizedBox(width: 2),
+                      Text(
+                        partner.rating.toStringAsFixed(1),
+                        style: const TextStyle(color: _muted, fontSize: 10.5),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardPhoto extends StatelessWidget {
+  const _CardPhoto({required this.imageUrl, required this.icon});
+
+  final String imageUrl;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    const height = 84.0;
+
+    Widget fallback() => Container(
+          height: height,
+          color: const Color(0xFFEFF3F6),
+          child: Icon(icon, size: 26, color: const Color(0xFFB0BEC5)),
+        );
+
+    if (imageUrl.isEmpty) return fallback();
+
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        // A dead Storage URL must not leave a broken-image glyph on a card
+        // that names a real business.
+        errorBuilder: (_, _, _) => fallback(),
+        loadingBuilder: (context, child, progress) =>
+            progress == null ? child : fallback(),
+      ),
+    );
+  }
 }
 
 class _DragHandle extends StatelessWidget {

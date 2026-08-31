@@ -115,16 +115,22 @@ Widget _host(Widget child, {String language = 'th', PremiumProvider? premium}) {
   );
 }
 
-PartnerLocation _partner(String id, {double rating = 4.5}) => PartnerLocation(
+PartnerLocation _partner(
+  String id, {
+  double rating = 4.5,
+  String type = 'restaurant',
+  String imageUrl = '',
+}) =>
+    PartnerLocation(
       id: id,
       name: 'Partner $id',
       lat: 13.72,
       lng: 100.52,
-      type: 'restaurant',
+      type: type,
       rating: rating,
       isVerified: true,
       priceTier: 'fair',
-      imageUrl: '',
+      imageUrl: imageUrl,
     );
 
 AlertZone _zone(String id, String riskLevel) => AlertZone(
@@ -376,7 +382,11 @@ void main() {
       await tester.pumpAndSettle();
       await _openSheet(tester);
 
-      expect(find.text('200 ม.'), findsOneWidget);
+      // Two now, not one: the nearby-partner row and the "what's around you"
+      // card both describe the same nearest place, which is what the design
+      // poster draws. The assertion is that the distance is printed in metres
+      // inside the radius, not how many sections mention it.
+      expect(find.text('200 ม.'), findsWidgets);
     });
 
     testWidgets('a tapped row hands the entry back to the map', (tester) async {
@@ -394,7 +404,10 @@ void main() {
       await tester.pumpAndSettle();
       await _openSheet(tester);
 
-      await tester.tap(find.text('Partner 0'));
+      // 'Partner 0' is now printed twice — the nearby row and the
+      // "what's around you" card for its category. Both hand back the same
+      // entry, so tapping the first is the row and is what this covers.
+      await tester.tap(find.text('Partner 0').first);
       await tester.pumpAndSettle();
 
       expect(tapped, isA<RadarPartnerEntry>());
@@ -460,20 +473,21 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await _openSheet(tester);
+        // 🚨 Deliberately does not open the sheet.
+        //
+        // `_openSheet` drags it up, and a `ListView` disposes children that
+        // leave the viewport rather than merely hiding them — so once the
+        // category cards made the content taller, the same drag destroyed the
+        // header and no finder could see it. This block is at the very top and
+        // is visible in the collapsed sheet, which is exactly where it has to
+        // read correctly in six languages.
         expect(
           tester.takeException(),
           isNull,
           reason: 'you-are-here block threw in $language',
         );
-        // skipOffstage: false — the sheet is a lazy ListView and dragging it
-        // open can carry the header past the viewport. What matters here is
-        // that the block built without throwing, not where it ended up.
         expect(
-          find.text(
-            appStrings['around_you_are_at']![language]!,
-            skipOffstage: false,
-          ),
+          find.text(appStrings['around_you_are_at']![language]!),
           findsOneWidget,
           reason: 'no "you are here" heading in $language',
         );
@@ -535,6 +549,134 @@ void main() {
           reason: 'panel threw in $language',
         );
       }
+    });
+  });
+
+  group('the "what is around you" cards', () {
+    /// The strip sits below the advisory and partner lists, so with more than
+    /// a couple of entries it starts life outside the viewport — and a
+    /// `ListView` does not build children it has not reached. Scroll to it
+    /// rather than asserting it is missing.
+    Future<void> scrollToStrip(WidgetTester tester) async {
+      await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+      await tester.pumpAndSettle();
+    }
+
+    // The design poster's photo strip. Built from the partners already loaded
+    // for the pins, so it costs no extra Firestore read and cannot disagree
+    // with the map behind it.
+
+    RadarResult withTypes(List<String> types) => RadarResult(
+          center: const LatLng(13.72, 100.52),
+          radiusKm: 1,
+          entries: [
+            for (var i = 0; i < types.length; i++)
+              RadarPartnerEntry(
+                partner: _partner('$i', type: types[i]),
+                distanceKm: 0.2 + i * 0.05,
+              ),
+          ],
+        );
+
+    testWidgets('one card per category that has something nearby',
+        (tester) async {
+      await tester.pumpWidget(
+        _host(
+          AroundYouPanel(
+            result: withTypes(['restaurant', 'hotel', 'restaurant']),
+            isPremium: true,
+            onShowEntry: (_) {},
+            onUnlock: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openSheet(tester);
+      await scrollToStrip(tester);
+
+      expect(find.text(appStrings['around_whats_here']!['th']!), findsOneWidget);
+      // Two restaurants and one hotel — two cards, not three.
+      expect(find.text(appStrings['cat_restaurant']!['th']!), findsWidgets);
+      expect(find.text(appStrings['cat_hotel']!['th']!), findsWidgets);
+    });
+
+    testWidgets('a category with nothing nearby gets no card', (tester) async {
+      // Five empty cards read as a broken screen, not as an empty area.
+      await tester.pumpWidget(
+        _host(
+          AroundYouPanel(
+            result: withTypes(['restaurant']),
+            isPremium: true,
+            onShowEntry: (_) {},
+            onUnlock: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openSheet(tester);
+
+      expect(find.text(appStrings['cat_hotel']!['th']!), findsNothing);
+      expect(find.text(appStrings['cat_transport']!['th']!), findsNothing);
+    });
+
+    testWidgets('the strip is absent when nothing is nearby at all',
+        (tester) async {
+      await tester.pumpWidget(
+        _host(
+          AroundYouPanel(
+            result: _around(),
+            isPremium: true,
+            onShowEntry: (_) {},
+            onUnlock: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openSheet(tester);
+
+      expect(find.text(appStrings['around_whats_here']!['th']!), findsNothing);
+    });
+
+    testWidgets('a partner with no photo still gets a card', (tester) async {
+      // `partner_locations.image_url` is allowed to be "" and many rows are.
+      // The card falls back to the category icon rather than a broken image.
+      await tester.pumpWidget(
+        _host(
+          AroundYouPanel(
+            result: withTypes(['restaurant']),
+            isPremium: true,
+            onShowEntry: (_) {},
+            onUnlock: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openSheet(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(appStrings['around_whats_here']!['th']!), findsOneWidget);
+    });
+
+    testWidgets('the cards are free, like the counts beside them',
+        (tester) async {
+      // A strip of five padlocks on the first screen a tourist opens is a wall,
+      // not an upsell. What stays paid is the lists past the free limit and the
+      // filter panel.
+      await tester.pumpWidget(
+        _host(
+          AroundYouPanel(
+            result: withTypes(['restaurant', 'hotel']),
+            isPremium: false,
+            onShowEntry: (_) {},
+            onUnlock: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _openSheet(tester);
+      await scrollToStrip(tester);
+
+      expect(find.text(appStrings['around_whats_here']!['th']!), findsOneWidget);
     });
   });
 
