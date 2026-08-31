@@ -4,6 +4,7 @@
 // network, no plugin and no device, which is why the wire format, the deep
 // link and the duration rounding all live outside the widgets.
 
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thaishield_ai/core/localization/app_text.dart';
@@ -74,6 +75,7 @@ const _routeKeys = [
 ];
 
 void main() {
+  _contractTests();
   group('decodePolyline', () {
     test('decodes the example from Google documentation', () {
       // The sample published with the algorithm: three points across
@@ -391,6 +393,76 @@ void main() {
       final english = appStrings['route_disclaimer']!['en']!.toLowerCase();
       expect(english, contains('estimate'));
       expect(english, contains('informational purposes only'));
+    });
+  });
+}
+
+/// The contract between the app and its own `computeRoute` Cloud Function.
+///
+/// 🚨 This exists because the two disagreed in production for two days and
+/// nothing noticed.
+///
+/// `_waypoint` was written when the app called `routes.googleapis.com`
+/// directly, so it sent Google's nested `{location: {latLng: {...}}}`. When the
+/// key moved behind the Cloud Function the app started talking to *our*
+/// endpoint, which reads `body.origin.latitude` and builds Google's shape
+/// itself. The nested object made the function's `readLatLng` return null, so
+/// every route request would have answered 400 bad_coordinates.
+///
+/// It stayed invisible because the function was answering 403 to everyone: one
+/// blocker hid the next, and the deploy that finally fixed the permission would
+/// have shipped a feature that still did not work. Two ends of one contract,
+/// in two languages, in two repositories' worth of tooling — so the test reads
+/// both sides.
+void _contractTests() {
+  group('the app and computeRoute agree on the request shape', () {
+    test('a waypoint is flat latitude/longitude, as readLatLng requires', () {
+      final waypoint = RouteService.waypointForTest(
+        const LatLng(13.7563, 100.5018),
+      );
+
+      // Mirrors functions/index.js readLatLng exactly.
+      expect(waypoint['latitude'], isA<double>());
+      expect(waypoint['longitude'], isA<double>());
+      expect(waypoint['latitude'], 13.7563);
+      expect(waypoint['longitude'], 100.5018);
+
+      expect(
+        waypoint.containsKey('location'),
+        isFalse,
+        reason: 'the nested Routes API shape is back; the function rejects it',
+      );
+    });
+
+    test('the function still reads the flat shape', () {
+      // If someone changes the function to accept something else, the app has
+      // to change with it — and this fails rather than letting them drift.
+      final source = File('functions/index.js').readAsStringSync();
+
+      expect(
+        source.contains('const {latitude, longitude} = value;'),
+        isTrue,
+        reason: 'readLatLng no longer destructures flat coordinates',
+      );
+      expect(
+        source.contains('readLatLng(body.origin)'),
+        isTrue,
+        reason: 'the function no longer reads body.origin the same way',
+      );
+      // And it must still wrap them into Google's shape on the way out.
+      expect(source.contains('{location: {latLng: origin}}'), isTrue);
+    });
+
+    test('computeRoute is declared public, or the app gets 403', () {
+      // Firebase makes an HTTPS function public only when it creates it, never
+      // on update — so three "Successful update operation" deploys left this
+      // returning 403 to every caller including the app.
+      final source = File('functions/index.js').readAsStringSync();
+      expect(
+        source.contains("invoker: 'public'"),
+        isTrue,
+        reason: 'computeRoute is no longer declared public',
+      );
     });
   });
 }

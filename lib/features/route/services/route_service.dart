@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -145,13 +146,27 @@ class RouteService {
     return RouteOutcome.success(route);
   }
 
+  /// 🚨 Flat `{latitude, longitude}` — **not** the Routes API's nested
+  /// `{location: {latLng: …}}`.
+  ///
+  /// This used to send the nested shape, because the app called
+  /// `routes.googleapis.com` directly. Since the key moved behind the
+  /// `computeRoute` Cloud Function the app talks to *our* endpoint, and that
+  /// function reads `body.origin.latitude` and builds Google's shape itself
+  /// (`functions/index.js`). The nested object made `readLatLng` return null,
+  /// so every route request answered **400 bad_coordinates**.
+  ///
+  /// Nothing caught it for two days because the function was answering 403 to
+  /// everyone — one blocker was hiding the next, and the deploy that fixed the
+  /// permission would have shipped a feature that still did not work.
+  /// `route_test.dart` now pins this shape against what the function accepts.
+  @visibleForTesting
+  static Map<String, dynamic> waypointForTest(LatLng point) =>
+      _waypoint(point);
+
   static Map<String, dynamic> _waypoint(LatLng point) => {
-        'location': {
-          'latLng': {
-            'latitude': point.latitude,
-            'longitude': point.longitude,
-          },
-        },
+        'latitude': point.latitude,
+        'longitude': point.longitude,
       };
 }
 
