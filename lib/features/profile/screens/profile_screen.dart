@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/services/install_identity.dart';
 import '../../onboarding/screens/language_selection_screen.dart';
 import '../../premium/models/premium_plan.dart';
 import '../../premium/providers/premium_provider.dart';
@@ -43,10 +45,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// that states the version now reads it from here.
   String? _version;
 
+  /// This install's reporting id, shown so the user can quote it.
+  ///
+  /// 🚨 **Required by the privacy policy, not a debug aid.** §3 and §7 of the
+  /// published policy tell the user that a random per-install identifier is
+  /// recorded, and §7 tells them to quote "the installation identifier shown
+  /// on the app's Profile screen" when exercising their PDPA right to have
+  /// that record deleted. Without this tile the app has no account screen and
+  /// no other surface that could show it, so the policy would be promising
+  /// something the app does not do — and a right nobody can exercise is a
+  /// worse compliance position than not claiming it.
+  ///
+  /// It is deliberately in the About tile rather than behind a debug flag:
+  /// release builds are the only ones real users have.
+  String? _installId;
+
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _loadInstallId();
+  }
+
+  Future<void> _loadInstallId() async {
+    try {
+      final id = await InstallIdentity.instance.read();
+      if (!mounted) return;
+      setState(() => _installId = id);
+    } catch (_) {
+      // The tile falls back to the version alone. Not worth an error state.
+    }
   }
 
   Future<void> _loadVersion() async {
@@ -167,7 +195,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       Icons.info_outline,
                       appText(context, 'profile_about_title'),
-                      _version == null ? '' : 'Version $_version',
+                      _aboutSubtitle,
+                      // Tapping copies the id rather than the whole line: it
+                      // is 32 characters, and a user asked to quote it in a
+                      // support email will otherwise transcribe it by hand and
+                      // get it wrong.
+                      onTap: _installId == null ? null : _copyInstallId,
                     ),
                     if (kDebugMode) ...[
                       const SizedBox(height: 12),
@@ -568,7 +601,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoTile(BuildContext context, IconData icon, String title, String subtitle) {
+  /// Two lines — the version, then the installation id. Shows the version
+  /// alone until the id has been read, so the tile never renders empty and
+  /// never jumps.
+  String get _aboutSubtitle {
+    final version = _version == null ? null : 'Version $_version';
+    final id = _installId == null ? null : 'ID $_installId';
+    return [version, id].whereType<String>().join('\n');
+  }
+
+  Future<void> _copyInstallId() async {
+    final id = _installId;
+    if (id == null) return;
+    await Clipboard.setData(ClipboardData(text: id));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(appText(context, 'profile_id_copied'))),
+    );
+  }
+
+  Widget _buildInfoTile(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle, {
+    VoidCallback? onTap,
+  }) {
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
@@ -576,6 +634,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         side: const BorderSide(color: Color(0xFFE0E0E0)),
       ),
       child: ListTile(
+        onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         leading: Icon(icon, color: const Color(0xFF4FC3F7)),
         title: Text(

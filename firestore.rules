@@ -64,6 +64,93 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── The CMS's reporting collections ────────────────────────────────────
+    //
+    // Added 2026-09-01 for the client's request: a Transactions log and a list
+    // of app users showing when each started using the app and whether they
+    // are Premium.
+    //
+    // 🚨 **There is no email and no name in either of these, by decision, not
+    // by omission.** The app has no accounts (§7), so it never sees an address;
+    // neither store returns the buyer's either — Play gives back only the
+    // `obfuscatedExternalAccountId` we ourselves sent, and StoreKit gives no
+    // buyer identity at all, so receipt validation would not change this. The
+    // published Privacy Policy states in both languages that the app creates no
+    // account, name, email address, phone number or profile. Adding one is a
+    // rewrite of a live legal page plus both stores' Data Safety forms plus a
+    // PDPA lawful basis — a scope decision, not a code change. Until that
+    // happens the CMS keys on a random per-install id and says so on screen.
+    //
+    // 🚨 Like `entitlements` below, these are **not a security boundary** and
+    // must never be read as financial truth. With no identity to check, rules
+    // can only check shape, so a determined client can file a row saying
+    // whatever it likes. They are an operations log — "is anyone using this,
+    // and did that purchase go through" — and the store console remains the
+    // record of what was actually paid. Receipt validation (task 2.8) is what
+    // makes `purchase_transactions` trustworthy; when it lands, the write moves
+    // into a Cloud Function and `create` here drops to `if false`.
+    //
+    // Reads are refused outright. Nothing in the app reads either collection —
+    // the CMS goes through the Admin SDK, which bypasses these rules — so
+    // there is no reason to let a client enumerate every install id and every
+    // transaction in the project.
+    function isAppUserShape() {
+      return request.resource.data.keys().hasOnly([
+               'first_seen_at', 'last_seen_at', 'platform', 'app_version',
+               'locale', 'status', 'plan_id', 'expires_at'
+             ])
+             && request.resource.data.last_seen_at is timestamp
+             && request.resource.data.status in ['free', 'trial', 'premium'];
+    }
+
+    match /app_users/{installId} {
+      allow read: if false;
+
+      // `create` and `update` are separated for one reason: `first_seen_at` is
+      // the "started using" column the client asked for, and an update that
+      // could rewrite it would turn that column into "last used" the first time
+      // an app restarted. On update the field must arrive unchanged, which a
+      // merge write satisfies by simply not sending it.
+      allow create: if isAppUserShape()
+                    && request.resource.data.first_seen_at is timestamp;
+      allow update: if isAppUserShape()
+                    && request.resource.data.first_seen_at
+                         == resource.data.first_seen_at;
+      allow delete: if false;
+    }
+
+    // Filed under the store's own transaction id, so the same purchase
+    // redelivered — which Play does until it is acknowledged — updates one row
+    // instead of creating a second.
+    match /purchase_transactions/{purchaseId} {
+      allow read: if false;
+
+      // Both a create and an update are allowed because a purchase legitimately
+      // changes state: pending → purchased when a slow card clears. `delete`
+      // stays closed so a log line cannot be removed after the fact.
+      allow create, update: if request.resource.data.keys().hasOnly([
+                                 'install_id', 'product_id', 'status',
+                                 'platform', 'purchased_at', 'expires_at',
+                                 'price_amount', 'price_currency',
+                                 'error_message', 'recorded_at'
+                               ])
+                            // Deliberately NOT an allowlist of product ids,
+                            // unlike `entitlements` below. A document there
+                            // grants access, so an unknown id must be refused;
+                            // a row here grants nothing, and the rows worth
+                            // having in a diagnostic log are exactly the ones
+                            // naming a product this build did not expect — a
+                            // retired plan replayed from an old purchase, or a
+                            // store misconfiguration.
+                            && request.resource.data.product_id is string
+                            && request.resource.data.status in [
+                                 'purchased', 'restored', 'pending',
+                                 'cancelled', 'failed'
+                               ]
+                            && request.resource.data.install_id is string;
+      allow delete: if false;
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

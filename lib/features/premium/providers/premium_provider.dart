@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/services/activity_log.dart';
 import '../models/entitlement.dart';
 import '../services/billing_service.dart';
 import '../models/premium_plan.dart';
@@ -79,15 +80,31 @@ class PremiumProvider extends ChangeNotifier {
     EntitlementStore? store,
     EntitlementRepository? repository,
     BillingService? billing,
+    ActivityLog? activityLog,
   })  : _store = store ?? EntitlementStore.instance,
         _repository = repository ?? EntitlementRepository.instance,
         // The field is private and the named argument is not, so they cannot
         // share one name and an initializing formal is not available.
         // ignore: prefer_initializing_formals
-        _billing = billing;
+        _billing = billing,
+        // ignore: prefer_initializing_formals
+        _activityLog = activityLog;
 
   final EntitlementStore _store;
   final EntitlementRepository _repository;
+
+  /// Feeds the CMS's "App Users" and "Transactions" pages.
+  ///
+  /// 🚨 Null by default and injected in `main.dart`, for the same reason
+  /// [_billing] is: constructing the Firestore-backed one inside a widget test
+  /// would put a network write behind dozens of screen builds. It carries the
+  /// same silent-failure risk too — forget the argument and every screen still
+  /// works while the CMS shows nobody ever opened the app — so
+  /// `main_wiring_test.dart` guards this line as well.
+  ///
+  /// Nothing in this class awaits a result from it or changes behaviour on
+  /// one. Reporting must never be able to fail a purchase.
+  final ActivityLog? _activityLog;
 
   /// 🚨 **Null by default, on purpose.** Constructing [InAppPurchaseBilling]
   /// here would open a platform channel inside every widget test that builds a
@@ -210,6 +227,7 @@ class PremiumProvider extends ChangeNotifier {
         // Deliberately no access and no completion. Telling the store the
         // goods were delivered before it has the money is how a pending
         // purchase turns into a free subscription.
+        _logPurchase(purchase);
         if (purchase.productId == _awaitingProductId) {
           _resolvePurchase(StoreOutcome.pending);
         }
@@ -222,6 +240,12 @@ class PremiumProvider extends ChangeNotifier {
           // A product id this build does not know — a retired plan replayed
           // from an old purchase, or a store misconfiguration. Complete it so
           // the store stops redelivering, but grant nothing.
+          //
+          // Still logged: this is the single most useful row the Transactions
+          // page can carry, because it is somebody's money against a product
+          // the app cannot honour. `firestore.rules` deliberately does not
+          // allowlist product ids on that collection for this reason.
+          _logPurchase(purchase);
           await _completeQuietly(purchase);
           continue;
         }
@@ -232,6 +256,12 @@ class PremiumProvider extends ChangeNotifier {
           expiresAt: _horizonFor(plan),
         );
       }
+
+      // Log before acknowledging, and log every terminal state rather than
+      // only the successful ones: the rows worth having in the CMS when a user
+      // writes in saying they paid and got nothing are the cancellations, the
+      // errors and the pending payments that never cleared.
+      _logPurchase(purchase);
 
       // Acknowledge every terminal state, including errors and cancellations:
       // an unacknowledged purchase is redelivered forever and, on Play, is
@@ -288,6 +318,110 @@ class PremiumProvider extends ChangeNotifier {
     }
   }
 
+  /// The store's own price for each product, remembered from the last
+  /// `queryProducts` answer.
+  ///
+  /// The purchase stream does not carry a price — it reports what was bought,
+  /// not what it cost — so the amount on a transaction row has to come from
+  /// the product lookup that preceded it. Empty on a restore, where there was
+  /// no lookup, which is why both price fields are nullable all the way into
+  /// the CMS. **Never substitute `PremiumPlan.priceUsd` here**: that is the
+  /// compiled list price, and a row claiming 3.50 USD when the user was
+  /// charged in baht at a different tier would be a wrong number in a
+  /// financial log, which is worse than a blank.
+  final Map<String, BillingProduct> _lastKnownPrices = {};
+
+  void _rememberPrices(Iterable<BillingProduct> products) {
+    for (final product in products) {
+      _lastKnownPrices[product.id] = product;
+    }
+  }
+
+  /// Files one store transaction. Fire-and-forget by design — see
+  /// [_activityLog].
+  void _logPurchase(BillingPurchase purchase) {
+    final log = _activityLog;
+    if (log == null) return;
+
+    final price = _lastKnownPrices[purchase.productId];
+    final plan = PremiumPlan.fromProductId(purchase.productId);
+
+    unawaited(log.recordPurchase(
+      purchaseId: purchase.purchaseId,
+      productId: purchase.productId,
+      status: _logStatusFor(purchase.status),
+      purchasedAt: purchase.purchasedAt,
+      // Only for states that actually granted access; a cancelled row with an
+      // expiry reads as a pass somebody still holds.
+      expiresAt:
+          purchase.grantsAccess && plan != null ? _horizonFor(plan) : null,
+      priceAmount: price?.rawPrice,
+      priceCurrency: price?.currencyCode,
+      errorMessage: purchase.errorMessage,
+    ));
+  }
+
+  static PurchaseLogStatus _logStatusFor(BillingPurchaseStatus status) {
+    switch (status) {
+      case BillingPurchaseStatus.purchased:
+        return PurchaseLogStatus.purchased;
+      case BillingPurchaseStatus.restored:
+        return PurchaseLogStatus.restored;
+      case BillingPurchaseStatus.pending:
+        return PurchaseLogStatus.pending;
+      case BillingPurchaseStatus.cancelled:
+        return PurchaseLogStatus.cancelled;
+      case BillingPurchaseStatus.error:
+        return PurchaseLogStatus.failed;
+    }
+  }
+
+  /// What the CMS's status column should say for this install right now.
+  ///
+  /// The QA override is reported as [AccessStatus.free] on purpose. It only
+  /// exists in a build QA was handed, and a tester's unlocked handset showing
+  /// up in the client's list as a paying customer is a number they would act
+  /// on. `isPremium` deliberately does not agree with this getter for that one
+  /// case.
+  AccessStatus get _statusNow {
+    final current = _entitlement;
+    if (current == null) return AccessStatus.free;
+    if (!current.isActiveAt(DateTime.now().toUtc())) return AccessStatus.free;
+    switch (current.source) {
+      case EntitlementSource.store:
+        return AccessStatus.premium;
+      case EntitlementSource.trial:
+        return AccessStatus.trial;
+      case EntitlementSource.qaOverride:
+        return AccessStatus.free;
+    }
+  }
+
+  /// Files or refreshes this install's row in the CMS's App Users list.
+  ///
+  /// Called from `main.dart` on launch with the chosen [locale], and again
+  /// from this class whenever access changes, so the status column is current
+  /// without anything polling. Passing null for [locale] leaves whatever the
+  /// row already has — the write merges.
+  ///
+  /// 🚨 There is no email and no name in what this sends. See
+  /// `InstallIdentity` for why, and do not add one without the privacy policy
+  /// and both Data Safety forms changing in the same breath.
+  void recordUsage({String? locale}) {
+    final log = _activityLog;
+    if (log == null) return;
+
+    final current = _entitlement;
+    unawaited(log.recordActivity(
+      status: _statusNow,
+      planId: current?.plan?.productId,
+      // Only meaningful while something is running. A stale expiry on a row
+      // that has lapsed back to free reads as a pass that is still good.
+      expiresAt: _statusNow == AccessStatus.free ? null : current?.expiresAt,
+      locale: locale,
+    ));
+  }
+
   /// Acknowledging must never be what breaks a purchase the user already made.
   Future<void> _completeQuietly(BillingPurchase purchase) async {
     if (!purchase.pendingCompletePurchase) return;
@@ -322,9 +456,11 @@ class PremiumProvider extends ChangeNotifier {
     if (billing == null) return const [];
     try {
       if (!await billing.isAvailable()) return const [];
-      return await billing.queryProducts(
+      final products = await billing.queryProducts(
         PremiumPlan.values.map((p) => p.productId).toSet(),
       );
+      _rememberPrices(products);
+      return products;
     } catch (_) {
       return const [];
     }
@@ -363,6 +499,7 @@ class PremiumProvider extends ChangeNotifier {
     await _store.write(trial);
     await _store.markTrialUsed();
     notifyListeners();
+    recordUsage();
     return true;
   }
 
@@ -384,6 +521,7 @@ class PremiumProvider extends ChangeNotifier {
       if (!await billing.isAvailable()) return StoreOutcome.storeUnavailable;
 
       final products = await billing.queryProducts({plan.productId});
+      _rememberPrices(products);
       final product = products
           .where((p) => p.id == plan.productId)
           .cast<BillingProduct?>()
@@ -492,6 +630,7 @@ class PremiumProvider extends ChangeNotifier {
     _entitlement = entitlement;
     await _store.write(entitlement);
     notifyListeners();
+    recordUsage();
   }
 
   /// Rebuilds access from purchases the store says this account owns.
@@ -515,6 +654,7 @@ class PremiumProvider extends ChangeNotifier {
     _entitlement = found;
     await _store.write(found);
     notifyListeners();
+    recordUsage();
     return StoreOutcome.success;
   }
 

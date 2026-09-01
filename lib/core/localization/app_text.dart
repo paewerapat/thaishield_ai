@@ -127,6 +127,18 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Какие данные собирает приложение и как они используются',
     'ja': 'このアプリが収集する情報とその利用方法',
   },
+  // 🚨 All six languages, per §10. This one is user-facing on every platform:
+  // the privacy policy tells the user, in Thai and English, to quote the
+  // installation identifier shown here — so a Korean or Russian speaker
+  // reaching for it must get their own language too.
+  'profile_id_copied': {
+    'th': 'คัดลอกรหัสประจำการติดตั้งแล้ว',
+    'en': 'Installation ID copied',
+    'zh': '已复制安装识别码',
+    'ko': '설치 ID가 복사되었습니다',
+    'ru': 'Идентификатор установки скопирован',
+    'ja': 'インストールIDをコピーしました',
+  },
   'profile_about_title': {
     'th': 'เกี่ยวกับ ThaiShield AI',
     'en': 'About ThaiShield AI',

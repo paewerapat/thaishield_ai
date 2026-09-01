@@ -200,7 +200,7 @@ a spec. Where anything else disagrees, **this section is what is really in Fires
 |---|---|
 | Firebase project | `thaishield-ai-790eb` |
 | Region (Firestore, Storage, Functions, CMS backend) | `asia-southeast1` |
-| Firestore rules | public read, **no client writes** (see §9) |
+| Firestore rules | public read; client writes only to the three collections named in §9 |
 | App auth | none — the app reads anonymously |
 
 ### `price_standards`
@@ -352,6 +352,76 @@ document here as proof of payment — it never was one.
 Read `lib/features/premium/services/entitlement_repository.dart` before touching it, and
 §9 for why the rules look the way they do. The CMS neither reads nor writes this
 collection.
+
+### `app_users` and `purchase_transactions` (written by the app — added 2026-09-01)
+
+The two collections behind the CMS's **App Users** and **Transactions** pages, built
+2026-09-01 at the client's request ("Transaction logs … รวมถึง user email ที่เข้าใช้งาน
+ตัวแอป … email นี้เริ่มใช้งานเมื่อไหร่ เป็น Premium หรือไม่").
+
+```
+app_users/<install id>
+  <doc id>      string     // a random 32-hex value the app generates for this
+                           // install and keeps in SharedPreferences. NOT a user,
+                           // NOT a device id — see below.
+  first_seen_at timestamp  // serverTimestamp, written ONLY on create
+  last_seen_at  timestamp  // serverTimestamp, rewritten every launch
+  platform      string     // "android" | "ios" | "other"
+  app_version   string     // "1.1.26 (26)"
+  locale        string     // th | en | zh | ko | ru | ja — absent until chosen
+  status        string     // "free" | "trial" | "premium"
+  plan_id       string?    // product id while status == premium
+  expires_at    timestamp? // end of the trial or the cached subscription horizon
+
+purchase_transactions/<store transaction id>
+  install_id     string
+  product_id     string     // NOT restricted to known ids — see §9
+  status         string     // purchased | restored | pending | cancelled | failed
+  platform       string
+  purchased_at   timestamp? // absent on some platforms and on every restore
+  expires_at     timestamp? // only for states that granted access
+  price_amount   number?    // from ProductDetails.rawPrice — never PremiumPlan.priceUsd
+  price_currency string?
+  error_message  string?    // the store's own words on a failure
+  recorded_at    timestamp  // serverTimestamp; what the CMS orders by
+```
+
+🚨 **There is no email here, and its absence is a decision, not an oversight.** The client
+asked for one. It cannot be had as the product stands:
+
+- the app has no accounts and no Firebase Auth (§7), so it never sees an address;
+- **neither store returns one.** Play's Developer API gives back only the
+  `obfuscatedExternalAccountId` *we* sent it; StoreKit returns no buyer identity at all.
+  Receipt validation (task 2.8) does not change this — do not plan around it doing so;
+- the published Privacy Policy states in Thai and English that the app creates no account,
+  name, email address, phone number or profile.
+
+Adding one means adding sign-in to the app: a new screen, Sign in with Apple alongside
+Google (Apple requires it), a rewritten privacy policy, both stores' Data Safety forms,
+and a PDPA lawful basis. That is a scope decision for the client, and on 2026-09-01 they
+chose the install id instead. **Do not close the gap with a device identifier** — the
+Android ID, the advertising id and the IMEI are exactly what both stores' privacy reviews
+look for, and `test/activity_log_test.dart` fails if one appears in `InstallIdentity`.
+
+🚨 **A row is an install, not a person.** Reinstalling, clearing app data or changing
+handset creates a new row; one shared phone produces a single row for two people. Every
+figure drawn from `app_users` is a count of installs, and the CMS says so on screen in both
+languages. Never let a number from here be described as a user count.
+
+🚨 **`purchase_transactions` is an operations log, not an accounting record.** Rules can
+only check a document's shape (§9), so the store consoles remain the record of what was
+paid. What this collection is genuinely good for, and the consoles are not: answering
+"they say they paid and got nothing" in one place across both stores. That is why the
+failures, cancellations and unresolved pending payments are logged too.
+
+**The privacy policy was amended in the same change** (`app/privacy/page.tsx` §§2–5, 7,
+both languages) and the app's Profile screen now shows the install id so a user can quote
+it to exercise their PDPA deletion right. `test/activity_log_test.dart` pins that link,
+because the policy lives in the other repo and nothing here would otherwise notice the two
+drifting apart. **The client still has to amend both stores' Data Safety declarations.**
+
+Written by `lib/core/services/activity_log.dart`; read only by the CMS through the Admin
+SDK. Every write fails soft — a reporting outage must cost a log line, never a purchase.
 
 ### Partner images — the part most likely to surprise you
 
@@ -1139,6 +1209,23 @@ edited in Firebase Console → Firestore Database → Rules.
   receipt is the source of truth, and task 2.8 moves the write into a Cloud Function that
   validates the receipt, at which point `create` drops to `if false`. Do not build
   anything that treats a document here as proof of payment.
+
+- 🚨 **`app_users` and `purchase_transactions` are the second and third client-writable
+  collections** (added 2026-09-01, §3). Reads are refused outright — nothing in the app
+  reads them, and there is no reason to let a client enumerate every install id in the
+  project. Writes are shape-checked only, for the same reason as `entitlements`: with no
+  identity there is nothing else to check, so **neither is a security boundary and neither
+  is financial truth.** Two details that are deliberate and easy to "tidy" wrongly:
+  - `app_users` splits `create` from `update` so that `first_seen_at` must arrive
+    unchanged on an update. That field is the client's "เริ่มใช้งานเมื่อไหร่" column, and a
+    rule permitting a rewrite would turn it into "last used" the first time an app
+    restarted.
+  - `purchase_transactions` does **not** allowlist product ids, unlike `entitlements`. A
+    document there grants access, so an unknown id must be refused; a row here grants
+    nothing, and the rows most worth having are exactly the ones naming a product this
+    build did not expect — a retired plan replayed from an old purchase, or a store
+    misconfiguration. `delete` is refused on both so a log line cannot be removed after the
+    fact.
 
 ---
 

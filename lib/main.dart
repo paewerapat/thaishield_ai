@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'core/providers/locale_provider.dart';
+import 'core/services/activity_log.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/premium/providers/premium_provider.dart';
 import 'features/onboarding/screens/language_selection_screen.dart';
@@ -32,8 +33,32 @@ void main() async {
   //
   // `test/main_wiring_test.dart` reads this file and fails if the argument
   // disappears. Do not delete that test to make a refactor pass.
-  final premiumProvider = PremiumProvider(billing: InAppPurchaseBilling());
+  //
+  // `activityLog:` is what fills the CMS's App Users and Transactions pages.
+  // It carries the same silent-failure shape as `billing:` — drop the argument
+  // and nothing breaks, no test fails and no user notices; the client's admin
+  // simply reports that nobody has ever opened the app. `main_wiring_test.dart`
+  // guards this line too.
+  final premiumProvider = PremiumProvider(
+    billing: InAppPurchaseBilling(),
+    activityLog: FirestoreActivityLog(),
+  );
   await premiumProvider.load();
+
+  // Not awaited: this is a Firestore write on the launch path, and a slow or
+  // unreachable network must not hold the first frame. It is fire-and-forget
+  // all the way down — see the class comment on ActivityLog.
+  //
+  // The locale is sent only once the user has actually picked one. Before that
+  // `LocaleProvider` holds its `en` default, and reporting that would file
+  // every first launch as an English speaker — including the Thai and Chinese
+  // users the language screen is there to catch. Null leaves the field alone
+  // and the next launch fills it in.
+  premiumProvider.recordUsage(
+    locale: await localeProvider.hasSelectedLocale()
+        ? localeProvider.locale.languageCode
+        : null,
+  );
 
   runApp(
     MultiProvider(
