@@ -149,6 +149,17 @@ class _AppEntryState extends State<_AppEntry> {
     if (_showOnboarding) {
       return LanguageSelectionScreen(
         onLanguageSelected: () {
+          // Report the choice the moment it is made.
+          //
+          // 🚨 Without this the CMS's "Lang" column is blank for every fresh
+          // install until the app is opened a SECOND time — `main()` reports
+          // the locale before this screen has run, so the first launch always
+          // sends null. Anyone who installs, looks once and never returns is
+          // recorded with no language at all, which biases the one column that
+          // answers "which languages do tourists actually pick" toward
+          // returning users. Seen on a real row on 2026-09-02.
+          final locale = context.read<LocaleProvider>().locale.languageCode;
+          context.read<PremiumProvider>().recordUsage(locale: locale);
           setState(() => _showOnboarding = false);
         },
       );

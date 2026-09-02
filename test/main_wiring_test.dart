@@ -80,6 +80,28 @@ void main() {
       );
     });
 
+    test('the language choice is reported when it is made', () {
+      // 🚨 `main()` reports the locale BEFORE the language screen has run, so
+      // the first launch always sends null. Without a second report at the
+      // moment of choosing, the CMS's "Lang" column is blank for every fresh
+      // install until the app is opened again — and anyone who installs, looks
+      // once and never returns is recorded with no language at all. That
+      // biases the one column answering "which languages do tourists pick"
+      // toward returning users, which is a wrong answer rather than a missing
+      // one. Found on a real row on 2026-09-02.
+      expect(
+        source.contains('onLanguageSelected') &&
+            // Whitespace-tolerant: the call in `main()` is wrapped across
+            // lines by dart format, so a literal match finds only one of the
+            // two and the test fails against correct code.
+            RegExp(r'recordUsage\(\s*locale:').allMatches(source).length >= 2,
+        isTrue,
+        reason:
+            'main.dart reports the locale only once, before the language '
+            'screen. Fresh installs will have no language recorded.',
+      );
+    });
+
     test('entitlements are still loaded before the first frame', () {
       // Not billing, but the same class of silent breakage: without this the
       // app renders one frame as a free user for someone who has paid.
