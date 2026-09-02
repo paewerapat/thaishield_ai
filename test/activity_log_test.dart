@@ -371,6 +371,42 @@ void main() {
     });
   });
 
+  group('the reported app version', () {
+    test('is the version name alone, never the build number', () {
+      // 🚨 `--split-per-abi` prefixes the version code by architecture, so
+      // `PackageInfo.buildNumber` returns 1026 on armeabi-v7a, 2026 on
+      // arm64-v8a and 4026 on x86_64 — three numbers for one release. Printing
+      // it turned a single release into three apparent versions in the
+      // client's App Users report; a real row on 2026-09-02 read
+      // "1.1.26 (4026)".
+      //
+      // The name is unambiguous on its own: pubspec keeps the patch number and
+      // the build number identical, and `version_test.dart` fails if they
+      // drift. A source scan because the method is private and crosses a
+      // platform channel — the same reason `main_wiring_test.dart` reads a
+      // file rather than calling anything.
+      // Comments are stripped first. The reason this rule exists has to be
+      // written down next to the code it governs, and that explanation names
+      // `buildNumber` — a naive substring search flags its own documentation
+      // and the only way to pass becomes deleting the warning.
+      final code = File('lib/core/services/activity_log.dart')
+          .readAsLinesSync()
+          .where((line) => !line.trimLeft().startsWith('//'))
+          .join(' ');
+
+      expect(
+        code.contains('buildNumber'),
+        isFalse,
+        reason:
+            'activity_log.dart reports info.buildNumber again. That number '
+            'differs per CPU architecture, so one release will appear as '
+            'three versions in the CMS.',
+      );
+      // And the version is still reported at all.
+      expect(code.contains('info.version'), isTrue);
+    });
+  });
+
   group('what the privacy policy promises', () {
     // 🚨 These pin a claim in a **published legal document** against the code
     // that has to be true for it. The policy lives in the other repo

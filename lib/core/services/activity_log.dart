@@ -199,9 +199,21 @@ class FirestoreActivityLog implements ActivityLog {
     final cached = _appVersion;
     if (cached != null) return cached;
     final info = await PackageInfo.fromPlatform();
-    // "1.1.25 (25)" — the two numbers are kept identical by
-    // test/version_test.dart, so this reads as one build, not two.
-    final version = '${info.version} (${info.buildNumber})';
+
+    // 🚨 **The name alone. Never `info.buildNumber` beside it.**
+    //
+    // `--split-per-abi` prefixes the version code by architecture, so one
+    // release reports three different build numbers: 1026 on armeabi-v7a,
+    // 2026 on arm64-v8a, 4026 on x86_64. Printing it turned a single release
+    // into three apparent versions in the client's App Users report — seen on
+    // a real row on 2026-09-02, which read `1.1.26 (4026)`.
+    //
+    // The name is unambiguous on its own because `pubspec.yaml` keeps the
+    // patch number and the build number identical (1.1.26 IS build 26) and
+    // `test/version_test.dart` fails if they ever drift. Profile and the
+    // feedback email already print the name alone for exactly this reason;
+    // this is the same decision, arrived at the hard way.
+    final version = info.version;
     _appVersion = version;
     return version;
   }
