@@ -284,7 +284,9 @@ name_ko         string
 name_ru         string
 name_ja         string
 risk_level      string           // "safe" | "caution" | "danger"
-description_en  string           // all six are REQUIRED in the CMS
+description_en  string           // en + th REQUIRED in the CMS; the four below
+                                 // are OPTIONAL since 2026-09-02 and the app
+                                 // falls back to English for a blank one
 description_th  string
 description_zh  string
 description_ko  string
@@ -1179,8 +1181,23 @@ at `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
 
 ## 9. Firestore Security Rules
 
-Rules live in `firestore.rules` in this repo as a backup/reference; the live rules are
-edited in Firebase Console → Firestore Database → Rules.
+🚨 **`firestore.rules` in this repo is the source of truth. Publish it; do not hand-edit
+the Console.**
+
+This paragraph used to say the opposite — that the file was "a backup/reference" and the
+live rules were edited in the Console — and that instruction is what allowed the two to
+drift apart silently. On 2026-09-02 the live ruleset turned out to predate 2026-08-22:
+it had no `entitlements` block at all, so every write from `EntitlementRepository.save`
+had been denied for eleven days, and the `app_users` / `purchase_transactions` blocks
+committed on 2026-09-01 were simply not there. The app looked healthy throughout,
+because every one of those writes fails soft.
+
+**A committed rules change does nothing until somebody publishes it.** After publishing,
+verify from outside rather than trusting the Console's own confirmation:
+
+    # 404 = the file is live (read allowed, document absent). 403 = it is not.
+    curl -s -o /dev/null -w '%{http_code}
+'       'https://firestore.googleapis.com/v1/projects/thaishield-ai-790eb/databases/(default)/documents/entitlements/zzz-does-not-exist'
 
 - `price_standards`, `partner_locations`, `alert_zones` are **public read, no write**
   (`allow read: if true; allow write: if false;`). The app has no Firebase Auth, so reads

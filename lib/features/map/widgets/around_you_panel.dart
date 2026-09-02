@@ -849,7 +849,18 @@ class _AdvisoryRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  entry.zone.localizedDescription(isTh ? 'th' : 'en'),
+                  // 🚨 The reader's real language, not `isTh ? 'th' : 'en'`.
+                  //
+                  // That is what this said until 2026-09-02, so a Chinese,
+                  // Korean, Russian or Japanese reader was shown ENGLISH even
+                  // when their translation existed — on the one string that
+                  // describes a real place, and two lines below a name that
+                  // localises correctly. `localizedDescription` already falls
+                  // back to English on its own when a column is blank, which
+                  // is the only fallback that should ever happen here.
+                  entry.zone.localizedDescription(
+                    Localizations.localeOf(context).languageCode,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
