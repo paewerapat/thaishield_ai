@@ -1216,6 +1216,16 @@ edited in Firebase Console → Firestore Database → Rules.
   project. Writes are shape-checked only, for the same reason as `entitlements`: with no
   identity there is nothing else to check, so **neither is a security boundary and neither
   is financial truth.** Two details that are deliberate and easy to "tidy" wrongly:
+  - `app_users` allows **`get` but not `list`**, and that is not a nicety.
+    `FirestoreActivityLog.recordActivity` writes inside a transaction, and a
+    transaction reads before it writes — so `allow read: if false` (which is
+    what shipped on 2026-09-01) fails the transaction and **no row is ever
+    written**, silently, because that path swallows its errors by design. Found
+    on a device on 2026-09-02, not by a test: the fake in
+    `activity_log_test.dart` has no rules, and `FirestoreActivityLog` is the
+    untested layer. A `get` needs the exact 128-bit random document id, so
+    allowing it gives nothing away; `list` stays closed so nobody can enumerate
+    the installs.
   - `app_users` splits `create` from `update` so that `first_seen_at` must arrive
     unchanged on an update. That field is the client's "เริ่มใช้งานเมื่อไหร่" column, and a
     rule permitting a rewrite would turn it into "last used" the first time an app

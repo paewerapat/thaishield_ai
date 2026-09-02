@@ -106,6 +106,15 @@ class FirestoreActivityLog implements ActivityLog {
       // within the same second. Without it the later write would overwrite
       // `first_seen_at` with a fresh server timestamp and the "started using"
       // date would silently become "last used".
+      //
+      // 🚨 **This `tx.get` needs `allow get` on `app_users` in
+      // `firestore.rules`.** A transaction reads before it writes, so a rule
+      // of `allow read: if false` fails the whole transaction and no row is
+      // ever written — and because everything here swallows its errors, the
+      // app looks perfectly healthy while the CMS stays empty forever. That
+      // shipped on 2026-09-01 and was caught on a device the next day. If the
+      // rule is ever tightened back to `read`, this stops working again with
+      // no other symptom.
       await _db.runTransaction((tx) async {
         final snapshot = await tx.get(doc);
 

@@ -104,7 +104,26 @@ service cloud.firestore {
     }
 
     match /app_users/{installId} {
-      allow read: if false;
+      // 🚨 `get`, not `read`, and this distinction is load-bearing.
+      //
+      // `read` covers `get` + `list`. It was `allow read: if false` for one
+      // day (2026-09-01 → 02) and that made the whole feature impossible:
+      // `FirestoreActivityLog.recordActivity` writes inside a transaction, a
+      // transaction must READ the document before it writes it (to decide
+      // whether `first_seen_at` is being created or preserved), and a denied
+      // read fails the transaction. The write then never lands — silently,
+      // because that whole path swallows its errors by design. It was found
+      // by installing 1.1.26 on a device and probing the row it should have
+      // created, not by any test: the fake used in `activity_log_test.dart`
+      // has no rules, and the Firestore-backed class is the untested layer.
+      //
+      // Allowing `get` costs nothing that `list` was protecting. A get needs
+      // the exact document id, which is 128 bits of `Random.secure()` held on
+      // one device — not guessable, and not derivable from anything a
+      // stranger has. `list` stays closed, so nobody can enumerate the
+      // installs, which is the only thing worth protecting here.
+      allow get: if true;
+      allow list: if false;
 
       // `create` and `update` are separated for one reason: `first_seen_at` is
       // the "started using" column the client asked for, and an update that
