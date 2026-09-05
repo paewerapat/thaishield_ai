@@ -224,9 +224,14 @@ args: { change: "อธิบายสั้น ๆ ว่าแก้อะไ�
 
 ## Client document — updated 2026-08-31? **Yes.**
 
-**ฉบับล่าสุดคือ Rev.6 ออกเมื่อ 2026-09-02** แทนที่ Rev.5 ทั้งฉบับ
+**ฉบับล่าสุดคือ Rev.7 ออกเมื่อ 2026-09-05** แทนที่ Rev.6 ทั้งฉบับ (รายงาน
+ความคืบหน้า 2C: ปิด §7.4 #3/#5, upload keystore + AAB ชุดแรก, ตารางงานที่เหลือ
+พร้อมผู้ถือกุญแจแต่ละข้อ) · สร้างเป็น Doc ใหม่ด้วย `create_file` ตามข้อ 1
 
-Doc ID `1dYCP4EFsnnw2A5k6hGuoqdWyxp8bYMZOdOyf1UAqPWU`
+Doc ID `1TcYABfEtOiX_AzcRVQHRJ1LR3EjDW6XymghNLzOYYqA` · ต้นฉบับ markdown อยู่ที่
+`delivery/rev7-2026-09-05.md`
+
+Rev.6 (2026-09-02) — Doc ID `1dYCP4EFsnnw2A5k6hGuoqdWyxp8bYMZOdOyf1UAqPWU`
 
 🚨 **เส้นทางของ Rev.5 พังไปแล้ว และเป็นบทเรียนที่ต้องไม่ทำซ้ำ**
 
