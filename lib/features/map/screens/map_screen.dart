@@ -91,33 +91,25 @@ IconData _typeIcon(String type) =>
 /// Sample community feedback, keyed by the broad kind of place rather than by
 /// each of the 11 categories — the copy only differs in three ways.
 
-String _typeDescription(String type, bool isTh) {
+String _typeDescription(BuildContext context, String type) {
+  // All six languages via appText — §7.4 finding #5. Until 2026-09-05 this took
+  // an `isTh` flag and four languages were shown English.
   final category = PartnerCategory.fromValue(type);
   switch (category) {
     case PartnerCategory.hotel:
-      return isTh
-          ? 'ที่พักที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว'
-          : 'A participating ThaiShield partner offering transparent pricing information for travelers.';
+      return appText(context, 'partner_desc_hotel');
     case PartnerCategory.transport:
-      return isTh
-          ? 'บริการเดินทางที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลค่าโดยสารโดยประมาณสำหรับนักท่องเที่ยว'
-          : 'A participating ThaiShield transport partner offering estimated fare information for travelers.';
+      return appText(context, 'partner_desc_transport');
     case PartnerCategory.restaurant:
-      return isTh
-          ? 'ร้านอาหารที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว'
-          : 'A participating ThaiShield restaurant partner offering transparent pricing information for travelers.';
+      return appText(context, 'partner_desc_restaurant');
     default:
       // The eight categories added in Phase 2A — including the emergency
       // services, which are listed as a public reference point and are not
       // described as partner businesses.
       if (category.radarGroup == RadarGroup.emergencyServices) {
-        return isTh
-            ? 'จุดบริการที่แสดงไว้เพื่อเป็นข้อมูลอ้างอิงสำหรับนักท่องเที่ยว กรุณาตรวจสอบเวลาให้บริการก่อนเดินทาง'
-            : 'A service point listed as a reference for travelers. Please check opening hours before you go.';
+        return appText(context, 'partner_desc_emergency');
       }
-      return isTh
-          ? 'สถานที่ที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลสำหรับนักท่องเที่ยว'
-          : 'A participating ThaiShield partner listed with information for travelers.';
+      return appText(context, 'partner_desc_generic');
   }
 }
 
@@ -1910,7 +1902,6 @@ class _PartnerDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       minChildSize: 0.4,
@@ -2031,7 +2022,7 @@ class _PartnerDetailSheet extends StatelessWidget {
                     Divider(color: Colors.grey[200]),
                     const SizedBox(height: 12),
                     Text(
-                      isTh ? 'เกี่ยวกับ' : 'About',
+                      appText(context, 'partner_about_title'),
                       style: const TextStyle(
                         color: Color(0xFF0D1B2A),
                         fontSize: 14,
@@ -2040,7 +2031,7 @@ class _PartnerDetailSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _typeDescription(partner.type, isTh),
+                      _typeDescription(context, partner.type),
                       style: TextStyle(
                         color: Colors.grey[700],
                         fontSize: 13,
@@ -2142,12 +2133,11 @@ class _MapSettingsSheetState extends State<_MapSettingsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
-    final options = <(MapType, IconData, String, String)>[
-      (MapType.normal, Icons.map_rounded, 'Normal', 'ปกติ'),
-      (MapType.satellite, Icons.satellite_alt_rounded, 'Satellite', 'ดาวเทียม'),
-      (MapType.terrain, Icons.terrain_rounded, 'Terrain', 'ภูมิประเทศ'),
-      (MapType.hybrid, Icons.layers_rounded, 'Hybrid', 'แบบผสม'),
+    final options = <(MapType, IconData, String)>[
+      (MapType.normal, Icons.map_rounded, 'map_type_normal'),
+      (MapType.satellite, Icons.satellite_alt_rounded, 'map_type_satellite'),
+      (MapType.terrain, Icons.terrain_rounded, 'map_type_terrain'),
+      (MapType.hybrid, Icons.layers_rounded, 'map_type_hybrid'),
     ];
 
     return SafeArea(
@@ -2169,7 +2159,7 @@ class _MapSettingsSheetState extends State<_MapSettingsSheet> {
               ),
             ),
             Text(
-              isTh ? 'รูปแบบแผนที่' : 'Map Type',
+              appText(context, 'map_type_title'),
               style: const TextStyle(
                 color: Color(0xFF0D1B2A),
                 fontSize: 17,
@@ -2180,7 +2170,7 @@ class _MapSettingsSheetState extends State<_MapSettingsSheet> {
             for (final option in options)
               _MapTypeOption(
                 icon: option.$2,
-                label: isTh ? option.$4 : option.$3,
+                label: appText(context, option.$3),
                 selected: _mapType == option.$1,
                 onTap: () {
                   setState(() => _mapType = option.$1);

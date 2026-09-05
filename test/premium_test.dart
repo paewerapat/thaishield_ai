@@ -437,6 +437,78 @@ void main() {
       expect(await EntitlementStore.instance.read(), isNull);
     });
 
+    // §7.4 finding #3, fixed 2026-09-05. Until then `qaLock` called
+    // `_store.clear()` and `qaUnlock` wrote the main slot: flipping the switch
+    // destroyed a tester's 3-day trial for good (`trialUsed` refuses a second
+    // one) and would have dropped a paid subscription out of the cache once
+    // billing is live. The switch must hide and overlay, never delete.
+    test('a QA lock hides a live trial without deleting it', () async {
+      final provider = build();
+      await provider.load();
+      expect(await provider.startTrialIfEligible(), isTrue);
+      expect(provider.isOnTrial, isTrue);
+
+      await provider.qaLock();
+      expect(provider.isPremium, isFalse);
+      expect(provider.isOnTrial, isFalse);
+      expect(provider.entitlement, isNull);
+
+      // The real record is intact underneath, and the lock survives a reload
+      // the way the unlock does.
+      final cached = await EntitlementStore.instance.read();
+      expect(cached, isNotNull);
+      expect(cached!.source, EntitlementSource.trial);
+
+      final reloaded = build();
+      await reloaded.load();
+      expect(reloaded.isPremium, isFalse);
+    });
+
+    test('a QA unlock never overwrites a cached purchase', () async {
+      final paid = Entitlement(
+        plan: PremiumPlan.monthly,
+        source: EntitlementSource.store,
+        expiresAt: DateTime.now().toUtc().add(const Duration(days: 20)),
+        purchaseId: 'GPA.1234',
+      );
+      await EntitlementStore.instance.write(paid);
+
+      final provider = build();
+      await provider.load();
+      await provider.qaUnlock(PremiumPlan.weekly);
+      expect(provider.isQaUnlocked, isTrue);
+
+      final cached = await EntitlementStore.instance.read();
+      expect(cached!.source, EntitlementSource.store);
+      expect(cached.purchaseId, 'GPA.1234');
+
+      await provider.qaLock();
+      expect(provider.isPremium, isFalse);
+      expect((await EntitlementStore.instance.read())!.purchaseId, 'GPA.1234');
+    });
+
+    test('a real purchase clears the QA switch so the buyer sees it', () async {
+      final provider = build();
+      await provider.load();
+      await provider.qaLock();
+      expect(provider.isPremium, isFalse);
+
+      await provider.grantPurchase(
+        plan: PremiumPlan.monthly,
+        purchaseId: 'GPA.5678',
+        expiresAt: DateTime.now().toUtc().add(const Duration(days: 30)),
+      );
+
+      expect(provider.isPremium, isTrue);
+      expect(provider.isQaUnlocked, isFalse);
+      expect(provider.entitlement!.source, EntitlementSource.store);
+
+      final reloaded = build();
+      await reloaded.load();
+      expect(reloaded.isPremium, isTrue);
+      expect(reloaded.isQaUnlocked, isFalse);
+    });
+
     test('notifies listeners so gates rebuild', () async {
       final provider = build();
       await provider.load();

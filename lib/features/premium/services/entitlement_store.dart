@@ -55,10 +55,81 @@ class EntitlementStore {
     await prefs.setString(_key, jsonEncode(entitlement.toJson()));
   }
 
-  /// Clears the entitlement but **not** [trialUsed] — a QA lock, or any future
-  /// reset, must not hand out a second trial.
+  /// Clears the entitlement but **not** [trialUsed] — any reset must not hand
+  /// out a second trial.
+  ///
+  /// 🚨 Not called by the QA switch any more (2026-09-05). `qaLock` used to
+  /// come here, which destroyed whatever was cached — a trial, and once billing
+  /// is live a paid subscription. The switch now keeps its own slot below.
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
   }
+
+  // --- The debug QA switch's own slot ------------------------------------
+  //
+  // Kept apart from [_key] on purpose. The switch in Profile must be able to
+  // hide a live trial (so a tester can reach the paywall) and grant a fake pass
+  // (so they can reach the gated screens) without ever touching the record a
+  // real store purchase left behind. Before 2026-09-05 both actions wrote the
+  // main slot, so flipping the switch off wiped a tester's trial for good and
+  // would have wiped a real subscription out of the cache in 2C.
+
+  static const _qaLockedKey = 'premium_qa_locked';
+  static const _qaOverrideKey = 'premium_qa_override';
+
+  Future<QaState> readQaState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_qaLockedKey) ?? false) return const QaState.locked();
+
+    final raw = prefs.getString(_qaOverrideKey);
+    if (raw == null) return const QaState.none();
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return const QaState.none();
+      final override = Entitlement.fromJson(decoded);
+      if (override == null) return const QaState.none();
+      return QaState.unlocked(override);
+    } catch (_) {
+      return const QaState.none();
+    }
+  }
+
+  Future<void> writeQaState(QaState state) async {
+    final prefs = await SharedPreferences.getInstance();
+    final override = state.override;
+    if (state.locked) {
+      await prefs.setBool(_qaLockedKey, true);
+      await prefs.remove(_qaOverrideKey);
+    } else if (override != null) {
+      await prefs.remove(_qaLockedKey);
+      await prefs.setString(_qaOverrideKey, jsonEncode(override.toJson()));
+    } else {
+      await prefs.remove(_qaLockedKey);
+      await prefs.remove(_qaOverrideKey);
+    }
+  }
+}
+
+/// What the debug QA switch has asked for, independent of the real entitlement.
+///
+/// Exactly one of three: nothing (the real record decides), locked (access is
+/// hidden even if the real record grants it), or unlocked (a QA pass is shown
+/// in place of the real record). Never written in a release build — see
+/// `PremiumProvider.qaUnlock` / `qaLock`.
+class QaState {
+  const QaState.none()
+      : locked = false,
+        override = null;
+
+  const QaState.locked()
+      : locked = true,
+        override = null;
+
+  const QaState.unlocked(Entitlement this.override) : locked = false;
+
+  final bool locked;
+  final Entitlement? override;
+
+  bool get isNone => !locked && override == null;
 }

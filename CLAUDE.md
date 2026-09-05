@@ -551,7 +551,7 @@ size of this project.
 - `_centerOnUser` now goes through `LocationService` like everything else; the last raw
   `Geolocator` call in `map_screen.dart` is gone.
 
-### Phase 2A — Safety Radar & Filter (9,000 THB of work) — ✅ code complete 2026-08-11, pending device QA
+### Phase 2A — Safety Radar & Filter (9,000 THB of work) — ✅ delivered 2026-08-28 (device QA in `QA_PHASE_2B.md` §8.1)
 
 | Task | Description | Est. | Status |
 |---|---|---|---|
@@ -928,8 +928,8 @@ TRANSIT 5,917 ม./49 นาที ทุกโหมดคืน polyline ป�
 การที่ `curl` จากเครื่องเดสก์ท็อปยิงผ่าน **พิสูจน์ในตัวว่า Application restriction ตั้งเป็น
 None ถูกต้อง** — ถ้าตั้งเป็น Android apps ตามแบบ key ตัวอื่น คำสั่งนั้นจะได้ 403
 
-**ที่ยังค้าง:** QA บนเครื่องจริง R1–R15 (`QA_PHASE_2B.md` §3) ยังไม่ได้ทำ · key ที่ใช้ได้
-แปลว่าฟีเจอร์ *รันได้* ไม่ได้แปลว่า *ตรวจรับแล้ว*
+✅ **ปิดแล้ว 2026-08-28:** R1–R14 ผ่านบน emulator เมื่อ 2026-08-27 (`QA_PHASE_2B.md` §3)
+และส่งมอบ Phase 2B ครบเมื่อ 2026-08-28 · งวดที่ 3 จึงตรงกับงานที่ส่งแล้ว
 
 - ทุกงวด **ไม่เกิน 10,000.00 บาท** ตามข้อจำกัดของลูกค้า ✔
 - แต่ละงวดเรียกเก็บ **หลังส่งมอบ build ให้ทดสอบ** และลูกค้าตรวจรับตาม *Definition of done*
@@ -969,14 +969,14 @@ Map ถูกตัดออกในการสนทนาเดียวก�
 |---|---|---|---|---|
 | 1 | — | Web Admin Dashboard (Phase 1 เดิม ทั้ง 5 รายการ) | 2026-07-20 → 2026-08-07 | ✅ ส่งมอบแล้ว |
 | 2 | 2A | Safety Radar core + geo-radius logic | สัปดาห์ที่ 1 (2026-08-12 → 2026-08-18) | ✅ โค้ดเสร็จ 2026-08-11 |
-| 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | ✅ โค้ดเสร็จ 2026-08-11 — รอทดสอบบนเครื่องจริง |
-| 4 | 2B | Route Suggestion (Routes API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | โค้ดเสร็จ 2026-08-19 · รอ QA บนเครื่องจริง |
-| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | โค้ดเสร็จ 2026-08-19 · **แพ็กเกจใหม่ 2026-08-22** · รอ QA บนเครื่องจริง |
+| 3 | 2A | Alert Zone proximity card + Filter panel + schema 3→11 | สัปดาห์ที่ 2 (2026-08-19 → 2026-08-25) | ✅ ส่งมอบ 2026-08-28 |
+| 4 | 2B | Route Suggestion (Routes API) | สัปดาห์ที่ 3 (2026-08-26 → 2026-09-01) | ✅ ส่งมอบ 2026-08-28 (ผ่าน QA เครื่องจริง 27/08 · ย้าย key เข้า Cloud Function 29/08) |
+| 5 | 2B | Paywall UI + feature gating *(+ เปิดบัญชี/สร้าง product ใน Play & App Store คู่ขนาน)* | สัปดาห์ที่ 4 (2026-09-02 → 2026-09-08) | ✅ ส่งมอบ 2026-08-28 · แพ็กเกจเปลี่ยนเป็น subscription 2026-08-30 · สร้าง product ยังรอ Payments Profile |
 | 5.1 | — | แพ็กเกจใหม่ 2 แบบ + ทดลองฟรี 3 วัน + entitlement บน Firestore | — | ✅ 2026-08-22 (ไม่คิดค่าใช้จ่าย) |
 | 5.2 | — | ย้าย Radar เข้าหน้าแผนที่ (ข้อ ข) | — | ✅ 2026-08-23 (ไม่คิดค่าใช้จ่าย) |
 | 5.3 | — | ชุดทดสอบ widget + on-device + QA gate (§7.5) | — | ✅ 2026-08-23 |
-| 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | รอดำเนินการ |
-| 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | รอดำเนินการ |
+| 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | ฝั่งแอปเสร็จ 2026-08-31 · receipt validation + ทดสอบซื้อจริง **ติด Payments Profile (~พ.ย.)** |
+| 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | 2.6 เสร็จ 2026-08-24 · upload keystore + AAB 2026-09-05 · regression บนเครื่องจริงรอ build สุดท้าย |
 
 *ความเสี่ยงหลักด้านเวลา: การอนุมัติบัญชี/สินค้าใน Play Console และ App Store Connect ซึ่ง
 ไม่ได้อยู่ในการควบคุมของผู้พัฒนา — จึงเริ่มดำเนินการตั้งแต่สัปดาห์ที่ 4*
@@ -1007,19 +1007,23 @@ deferral is never mistaken for an approval:
 |---|---|---|
 | 1 | Gemini key exposed in a chat transcript | Client holds the real key; rotation is theirs to do |
 | 2 | newsdata query set 2 produced 7 junk articles out of 9 | **Dropped** — see `functions/index.js` |
-| 3 | The QA switch wipes a trial, and will wipe a real purchase in 2.8 | **Deferred to 2C** |
+| 3 | The QA switch wipes a trial, and will wipe a real purchase in 2.8 | ✅ **Fixed 2026-09-05** — the switch has its own slot in `EntitlementStore` and never touches the real record; 3 tests in `premium_test.dart` |
 | 4 | Routes key readable in the APK | **Moved behind a Cloud Function** — see below |
-| 5 | "About" heading and body prose are English-only | **Deferred to 2C**, task 2.6 |
+| 5 | "About" heading and body prose are English-only | ✅ **Fixed 2026-09-05** — `partner_about_title`, `partner_desc_*` and the map-type picker are `appText` keys in all six languages |
 | 6 | "Partner Business" printed twice in one card | **Fixed** — the badge went, the header stayed |
 
-🚨 **3 and 5 are deferred, not resolved.** Do not close them, and do not let a
-later pass rediscover them as new.
+All six are now closed (#3 and #5 on 2026-09-05, as part of 2C).
 
-**Task 2.8 must fix #3 before wiring billing.** `PremiumProvider.qaLock()`
-calls `_store.clear()`, which destroys whatever entitlement is present rather
-than only the one the switch granted. Today that costs a 3-day trial that
-`trialUsed` then refuses to re-grant; once purchases are real it will silently
-drop a paid pass out of the local cache.
+**How #3 was fixed, because the shape matters for 2.8.** `qaLock()` used to
+call `_store.clear()`, destroying whatever entitlement was present — a 3-day
+trial that `trialUsed` then refused to re-grant, and in 2C a paid subscription.
+The switch now writes a separate `QaState` (locked / unlocked-with-QA-pass /
+none) that `PremiumProvider.entitlement` layers *over* the real record:
+locked hides it, unlocked shows the QA pass in front of it, and a real
+`grantPurchase` or restore resets the switch so a sandbox buyer sees what they
+paid for. Reporting (`_statusNow`) reads the real record only, so a tester's
+switch never shows up in the CMS. **Do not route the switch back through the
+main cache slot.**
 
 ### Route Suggestion now goes through a Cloud Function
 
@@ -1169,13 +1173,37 @@ at `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
 
 | | |
 |---|---|
-| Run app | `flutter run --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=… --dart-define=ROUTES_API_KEY=…` |
+| Run app | `flutter run --dart-define=GEMINI_API_KEY=… --dart-define=GCS_STT_KEY=…` (no Routes key — it is a Functions secret, §7.4) |
 | Fetch plugins | `flutter pub get` |
 | Clean caches | `flutter clean` |
 | Analyze | `flutter analyze lib/` |
 | Android APK | `flutter build apk --split-per-abi --release` |
-| Android Bundle | `flutter build appbundle --release` |
+| Android Bundle | `flutter build appbundle --release` (needs `android/key.properties` — below) |
 | iOS | CI only (Codemagic pipeline) |
+
+**Android release signing (added 2026-09-05)**
+
+`android/app/build.gradle.kts` signs a release build with `android/key.properties` when
+that file exists and **falls back to the debug key when it does not** — silently. A
+debug-signed AAB is refused by Play Console, and until 2026-09-05 no keystore existed at
+all, so every "release" APK in `delivery/` so far was debug-signed. The upload keystore now
+lives at the workspace root, outside both repos:
+
+```
+C:\Fastwork\thaishield-ai\thaishield-upload.jks        alias: upload, RSA 2048, valid to 2053
+thaishield_ai/android/key.properties                   git-ignored; storeFile=../../../thaishield-upload.jks
+```
+
+The password is in `thaishield_ai-secret.txt` under `## Android Upload Keystore`. 🚨 **Back
+up the `.jks` and that password somewhere that is not this PC.** With Play App Signing this
+is only the *upload* key, so a lost one can be reset through Play support, but that takes
+days and blocks every release in between. Codemagic builds iOS only; if it ever builds
+Android, the keystore goes in as a base64 secure variable, never into the repo.
+
+⚠️ The Android `applicationId` is `com.thaishield.thaishield_ai` and the iOS bundle id is
+`com.thaishieldai.app`. Play fixes the package name on the **first** AAB upload — check the
+app the client already created in Play Console accepts this one before uploading, because
+it cannot be changed afterwards.
 
 ---
 

@@ -148,7 +148,15 @@ class PremiumProvider extends ChangeNotifier {
   static const bool qaOverrideFlag =
       bool.fromEnvironment('PREMIUM_OVERRIDE');
 
+  /// The real record: what the store or the trial granted. The QA switch never
+  /// writes this — see [_qa].
   Entitlement? _entitlement;
+
+  /// What the debug QA switch has asked for. Layered over [_entitlement] by
+  /// [entitlement] rather than replacing it, so flipping the switch can never
+  /// destroy a trial or a paid subscription (§7.4 finding #3, fixed
+  /// 2026-09-05). Reporting ([_statusNow]) deliberately ignores it.
+  QaState _qa = const QaState.none();
   bool _loaded = false;
 
   /// False until [load] has read the cache. `main()` awaits [load] before
@@ -156,24 +164,30 @@ class PremiumProvider extends ChangeNotifier {
   /// true from the first frame and no screen has to handle an "unknown" state.
   bool get isLoaded => _loaded;
 
-  Entitlement? get entitlement => _entitlement;
+  /// What the UI should act on: the QA switch's answer when it has one, the
+  /// real record otherwise. A locked switch hides a live trial or purchase
+  /// without touching it; an unlocked one shows its own pass in front of it.
+  Entitlement? get entitlement {
+    if (_qa.locked) return null;
+    return _qa.override ?? _entitlement;
+  }
 
   bool get isPremium {
     if (qaOverrideFlag) return true;
-    final current = _entitlement;
+    final current = entitlement;
     return current != null && current.isActiveAt(DateTime.now().toUtc());
   }
 
   /// True when access came from the QA override rather than a purchase, so the
   /// Profile card can label it honestly instead of showing a fake plan.
   bool get isQaUnlocked =>
-      qaOverrideFlag || _entitlement?.source == EntitlementSource.qaOverride;
+      qaOverrideFlag || entitlement?.source == EntitlementSource.qaOverride;
 
   /// True while the free trial is what is granting access — the Profile card
   /// and the paywall both say something different in that case, because a user
   /// on day 2 of a trial has not paid and should be told the clock is running.
   bool get isOnTrial {
-    final current = _entitlement;
+    final current = entitlement;
     return current != null &&
         current.isTrial &&
         current.isActiveAt(DateTime.now().toUtc());
@@ -182,7 +196,7 @@ class PremiumProvider extends ChangeNotifier {
   /// Whole days left on the current pass or trial, rounded up so the last
   /// partial day still reads as "1 day" rather than "0".
   int? get daysRemaining {
-    final current = _entitlement;
+    final current = entitlement;
     if (current == null) return null;
     final left = current.remainingAt(DateTime.now().toUtc());
     if (left == Duration.zero) return 0;
@@ -191,6 +205,9 @@ class PremiumProvider extends ChangeNotifier {
 
   Future<void> load() async {
     _entitlement = await _store.read();
+    // Debug-only state, but read unconditionally: the store never holds one in
+    // a release build because nothing there can write it.
+    _qa = await _store.readQaState();
     _loaded = true;
     notifyListeners();
 
@@ -629,6 +646,9 @@ class PremiumProvider extends ChangeNotifier {
 
     _entitlement = entitlement;
     await _store.write(entitlement);
+    // A real purchase always wins over the QA switch: a tester who bought in the
+    // sandbox with the switch off must see what they paid for, not a lock.
+    await _resetQa();
     notifyListeners();
     recordUsage();
   }
@@ -653,6 +673,7 @@ class PremiumProvider extends ChangeNotifier {
 
     _entitlement = found;
     await _store.write(found);
+    await _resetQa();
     notifyListeners();
     recordUsage();
     return StoreOutcome.success;
@@ -661,28 +682,46 @@ class PremiumProvider extends ChangeNotifier {
   /// QA unlock from the debug switch in Profile.
   ///
   /// Refuses outside debug builds even if something calls it, so the switch can
-  /// never become a way to unlock a shipped app. Written through the cache so
-  /// it survives a restart the way a real pass would, tagged
+  /// never become a way to unlock a shipped app. Persisted in the store's own
+  /// QA slot so it survives a restart the way a real pass would, tagged
   /// [EntitlementSource.qaOverride] so it is always distinguishable from one,
   /// and never filed in Firestore.
+  ///
+  /// 🚨 Does not touch the real record. Until 2026-09-05 this overwrote the
+  /// main cache slot, so a tester with a sandbox subscription who flipped the
+  /// switch lost the cached proof of it.
   Future<void> qaUnlock(PremiumPlan plan) async {
     if (!kDebugMode) return;
 
-    final entitlement = Entitlement(
+    final override = Entitlement(
       plan: plan,
       source: EntitlementSource.qaOverride,
       expiresAt: DateTime.now().toUtc().add(plan.duration),
     );
 
-    _entitlement = entitlement;
-    await _store.write(entitlement);
+    _qa = QaState.unlocked(override);
+    await _store.writeQaState(_qa);
     notifyListeners();
   }
 
+  /// Hides access so a tester can reach the paywall and the locked states.
+  ///
+  /// 🚨 Hides, does not delete. Until 2026-09-05 this called `_store.clear()`,
+  /// which destroyed the 3-day trial (and `trialUsed` then refused to grant
+  /// another) and would have dropped a paid subscription out of the cache once
+  /// billing is live — §7.4 finding #3. The real record stays where it is;
+  /// flipping the switch back on shows the QA pass, and a real purchase or
+  /// restore clears the switch entirely ([_resetQa]).
   Future<void> qaLock() async {
     if (!kDebugMode) return;
-    _entitlement = null;
-    await _store.clear();
+    _qa = const QaState.locked();
+    await _store.writeQaState(_qa);
     notifyListeners();
+  }
+
+  Future<void> _resetQa() async {
+    if (_qa.isNone) return;
+    _qa = const QaState.none();
+    await _store.writeQaState(_qa);
   }
 }

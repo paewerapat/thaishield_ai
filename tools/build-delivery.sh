@@ -46,13 +46,14 @@ ROUTES=$(awk '/^## Routes API KEY/{found=1; next} found && NF {print; exit}' "$S
 [ -n "$STT" ]    || { echo "หา GCS_STT_KEY ในไฟล์ secret ไม่เจอ"; exit 1; }
 
 if [ -z "$ROUTES" ]; then
-  # Not fatal — everything except Route Suggestion still builds and is worth
-  # shipping. But it must be said loudly, because a build without this key looks
-  # complete and silently drops half of task 2.4.
+  # Not fatal, and since 2026-08-29 not even a build input: the APK carries no
+  # Routes key. It is read only so a missing one is noticed before the next
+  # `firebase functions:secrets:set`. The check that matters — is computeRoute
+  # actually deployed — comes right after this block.
   echo
-  echo "  ⚠️  ไม่พบ ROUTES_API_KEY — จะ build ต่อ แต่ฟีเจอร์แนะนำเส้นทาง (งาน 2.4) จะใช้ไม่ได้"
-  echo "      แอปจะขึ้นว่า 'ฟีเจอร์เส้นทางยังไม่พร้อมใช้งานในแอปเวอร์ชันนี้'"
-  echo "      เพิ่มลงไฟล์ secret แบบนี้แล้วรันใหม่:"
+  echo "  ⚠️  ไม่พบ Routes API KEY ในไฟล์ secret — APK ไม่ต้องใช้ แต่ Cloud Function computeRoute ต้องใช้"
+  echo "      ถ้า function ยัง deploy อยู่ build นี้ก็ยังใช้เส้นทางได้ตามปกติ (ตรวจในขั้นถัดไป)"
+  echo "      เก็บคีย์ไว้ในไฟล์ secret แบบนี้ เพื่อใช้ตอน deploy function ครั้งหน้า:"
   echo
   echo "          ## Routes API KEY"
   echo "          <คีย์ที่ได้จาก Cloud Console>"

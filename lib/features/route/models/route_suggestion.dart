@@ -25,8 +25,10 @@ class RouteSuggestion {
 /// Why a route could not be produced. Each maps to one `route_error_*` string
 /// so the screen never shows a raw status code.
 enum RouteFailure {
-  /// `ROUTES_API_KEY` was not passed at build time — a build/config mistake,
-  /// never something the user can fix by retrying.
+  /// The service reports itself unconfigured — a build/config mistake, never
+  /// something the user can fix by retrying. No longer produced since the key
+  /// moved into the `computeRoute` Cloud Function (2026-08-29); kept so the
+  /// `route_error_*` copy stays complete and an old build still has a string.
   notConfigured,
 
   /// The API answered, but with no route: no transit service between the two

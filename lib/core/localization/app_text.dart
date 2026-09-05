@@ -1545,6 +1545,84 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Открыть с Premium',
     'ja': 'Premium で解除',
   },
+
+  // --- Partner sheet "About" block and the map-type picker (2026-09-05) ------
+  //
+  // §7.4 finding #5: these were `isTh ? 'เกี่ยวกับ' : 'About'` and a Thai/English
+  // switch on the body prose, so four of the six languages read English on the
+  // one card that describes a real business. Deferred to 2C on 2026-08-29, done
+  // here. The body copy describes a *category*, never the individual shop, and
+  // says "information", not a judgement — §10.
+  'partner_about_title': {
+    'th': 'เกี่ยวกับ',
+    'en': 'About',
+    'zh': '关于',
+    'ko': '소개',
+    'ru': 'О месте',
+    'ja': '概要',
+  },
+  'partner_desc_hotel': {
+    'th': 'ที่พักที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว',
+    'en': 'A participating ThaiShield partner offering transparent pricing information for travelers.',
+    'zh': '参与 ThaiShield 合作计划的住宿，为旅客提供透明的价格信息。',
+    'ko': 'ThaiShield 파트너 프로그램에 참여하는 숙소로, 여행자에게 투명한 가격 정보를 제공합니다.',
+    'ru': 'Партнёр программы ThaiShield — средство размещения с прозрачной информацией о ценах для путешественников.',
+    'ja': 'ThaiShield パートナープログラムに参加する宿泊施設で、旅行者に透明な料金情報を提供しています。',
+  },
+  'partner_desc_transport': {
+    'th': 'บริการเดินทางที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลค่าโดยสารโดยประมาณสำหรับนักท่องเที่ยว',
+    'en': 'A participating ThaiShield transport partner offering estimated fare information for travelers.',
+    'zh': '参与 ThaiShield 合作计划的交通服务，为旅客提供预估车费信息。',
+    'ko': 'ThaiShield 파트너 프로그램에 참여하는 교통 서비스로, 여행자에게 예상 요금 정보를 제공합니다.',
+    'ru': 'Транспортный партнёр программы ThaiShield с ориентировочной информацией о стоимости проезда для путешественников.',
+    'ja': 'ThaiShield パートナープログラムに参加する交通サービスで、旅行者に目安となる運賃情報を提供しています。',
+  },
+  'partner_desc_restaurant': {
+    'th': 'ร้านอาหารที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลราคาที่โปร่งใสสำหรับนักท่องเที่ยว',
+    'en': 'A participating ThaiShield restaurant partner offering transparent pricing information for travelers.',
+    'zh': '参与 ThaiShield 合作计划的餐厅，为旅客提供透明的价格信息。',
+    'ko': 'ThaiShield 파트너 프로그램에 참여하는 식당으로, 여행자에게 투명한 가격 정보를 제공합니다.',
+    'ru': 'Ресторан — партнёр программы ThaiShield с прозрачной информацией о ценах для путешественников.',
+    'ja': 'ThaiShield パートナープログラムに参加するレストランで、旅行者に透明な料金情報を提供しています。',
+  },
+  // Emergency services are a public reference point, not partner businesses —
+  // the copy must not call them one.
+  'partner_desc_emergency': {
+    'th': 'จุดบริการที่แสดงไว้เพื่อเป็นข้อมูลอ้างอิงสำหรับนักท่องเที่ยว กรุณาตรวจสอบเวลาให้บริการก่อนเดินทาง',
+    'en': 'A service point listed as a reference for travelers. Please check opening hours before you go.',
+    'zh': '为旅客提供参考的服务点。出发前请确认服务时间。',
+    'ko': '여행자를 위한 참고용 서비스 지점입니다. 방문 전에 운영 시간을 확인해 주세요.',
+    'ru': 'Пункт обслуживания, указанный для справки путешественникам. Перед визитом уточните часы работы.',
+    'ja': '旅行者の参考として掲載されているサービス拠点です。訪問前に営業時間をご確認ください。',
+  },
+  'partner_desc_generic': {
+    'th': 'สถานที่ที่เข้าร่วมโครงการพาร์ทเนอร์ ThaiShield พร้อมข้อมูลสำหรับนักท่องเที่ยว',
+    'en': 'A participating ThaiShield partner listed with information for travelers.',
+    'zh': '参与 ThaiShield 合作计划的地点，附有面向旅客的信息。',
+    'ko': 'ThaiShield 파트너 프로그램에 참여하는 장소로, 여행자를 위한 정보를 제공합니다.',
+    'ru': 'Партнёр программы ThaiShield с информацией для путешественников.',
+    'ja': 'ThaiShield パートナープログラムに参加する場所で、旅行者向けの情報を掲載しています。',
+  },
+  'map_type_title': {
+    'th': 'รูปแบบแผนที่',
+    'en': 'Map Type',
+    'zh': '地图类型',
+    'ko': '지도 유형',
+    'ru': 'Тип карты',
+    'ja': '地図の種類',
+  },
+  'map_type_normal': {
+    'th': 'ปกติ', 'en': 'Normal', 'zh': '标准', 'ko': '기본', 'ru': 'Обычная', 'ja': '標準',
+  },
+  'map_type_satellite': {
+    'th': 'ดาวเทียม', 'en': 'Satellite', 'zh': '卫星', 'ko': '위성', 'ru': 'Спутник', 'ja': '衛星',
+  },
+  'map_type_terrain': {
+    'th': 'ภูมิประเทศ', 'en': 'Terrain', 'zh': '地形', 'ko': '지형', 'ru': 'Рельеф', 'ja': '地形',
+  },
+  'map_type_hybrid': {
+    'th': 'แบบผสม', 'en': 'Hybrid', 'zh': '混合', 'ko': '하이브리드', 'ru': 'Гибрид', 'ja': 'ハイブリッド',
+  },
 };
 
 /// Every string in every language, keyed the same way [appText] reads them.
