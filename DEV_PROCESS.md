@@ -222,14 +222,18 @@ args: { change: "อธิบายสั้น ๆ ว่าแก้อะไ�
 > ข้อความที่มีผลผูกพัน (ราคา · การเรียกเก็บเงิน · การยกเลิก) ต้องให้ผู้ว่าจ้าง
 > อ่านก่อน ไม่ใช่หลัง
 
-## Client document — updated 2026-08-31? **Yes.**
+## Client document — updated 2026-09-06? **Yes.**
 
-**ฉบับล่าสุดคือ Rev.7 ออกเมื่อ 2026-09-05** แทนที่ Rev.6 ทั้งฉบับ (รายงาน
-ความคืบหน้า 2C: ปิด §7.4 #3/#5, upload keystore + AAB ชุดแรก, ตารางงานที่เหลือ
-พร้อมผู้ถือกุญแจแต่ละข้อ) · สร้างเป็น Doc ใหม่ด้วย `create_file` ตามข้อ 1
+**ฉบับล่าสุดคือ Rev.8 ออกเมื่อ 2026-09-06** แทนที่ Rev.7 ทั้งฉบับ (store assets +
+คำอธิบายแอป 6 ภาษา + รายการ Data Safety เสร็จ · ผู้ทดสอบลงทะเบียนได้ 9/12 ·
+ปิดประเด็นกุญแจ/ชื่อแพ็กเกจ เพราะ 1.1.25 อัปโหลดจากเครื่อง build หลักไปแล้ว 31/08) ·
+สร้างเป็น Doc ใหม่ด้วย `create_file` ตามข้อ 1
 
-Doc ID `1TcYABfEtOiX_AzcRVQHRJ1LR3EjDW6XymghNLzOYYqA` · ต้นฉบับ markdown อยู่ที่
-`delivery/rev7-2026-09-05.md`
+Doc ID `16Ec5Lni_qvbtZgiLCQ5G1jjZmQZQMWmwJ-tqUUxunD8` · ต้นฉบับ markdown อยู่ที่
+`delivery/rev8-2026-09-06.md` · ร่างข้อความถึงลูกค้าอยู่ที่ `delivery/message-to-client-2026-09-06.md`
+
+Rev.7 (2026-09-05) — Doc ID `1TcYABfEtOiX_AzcRVQHRJ1LR3EjDW6XymghNLzOYYqA` ·
+markdown `delivery/rev7-2026-09-05.md`
 
 Rev.6 (2026-09-02) — Doc ID `1dYCP4EFsnnw2A5k6hGuoqdWyxp8bYMZOdOyf1UAqPWU`
 

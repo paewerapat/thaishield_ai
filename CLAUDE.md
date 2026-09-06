@@ -880,6 +880,20 @@ commit, and so must §4 of the web admin's `/terms` page — an in-app trial lap
 a store offer converts into a paid subscription. `wording_test.dart` fails the
 moment the mechanism goes while the copy stays.
 
+**Store listing assets — drafted 2026-09-05/06, outside both repos.** Everything the
+Play listing needs sits in `C:\Fastwork\thaishield-ai\store-assets\`: `icon-512.png`,
+`feature-1024x500.png`, seven screenshots each in `phone/` (1080×1920), `tablet7/`
+(1080×1920) and `tablet10/` (1440×2560), `listing-text.md` with name / short / full
+description in **all six app languages** (th, en-US, zh-CN, ko-KR, ru-RU, ja-JP — lengths
+checked against the 30/80/4000 limits), and `data-safety-checklist.md`, the tick-by-tick
+answer sheet for Play's Data Safety form, Apple's App Privacy and the IARC content rating.
+The listing copy follows §10 like the ARB files do but `wording_test.dart` cannot see it —
+re-read it by hand if it changes. The client has not approved the copy yet (Rev.8 §6.4 and
+§10); nothing has been pasted into Play Console. The Data Safety sheet must stay in step
+with `app/privacy/page.tsx` in the web repo and with the "Good to know" paragraph of the
+listing — §3 already says the client must amend the store declarations whenever the
+collected data set changes.
+
 **Definition of done (2C):**
 - Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on
   iOS via cloud CI.
@@ -976,7 +990,7 @@ Map ถูกตัดออกในการสนทนาเดียวก�
 | 5.2 | — | ย้าย Radar เข้าหน้าแผนที่ (ข้อ ข) | — | ✅ 2026-08-23 (ไม่คิดค่าใช้จ่าย) |
 | 5.3 | — | ชุดทดสอบ widget + on-device + QA gate (§7.5) | — | ✅ 2026-08-23 |
 | 6 | 2C | IAP integration (Play Billing / StoreKit) + receipt validation | สัปดาห์ที่ 5–6 (2026-09-09 → 2026-09-22) | ฝั่งแอปเสร็จ 2026-08-31 · receipt validation + ทดสอบซื้อจริง **ติด Payments Profile (~พ.ย.)** |
-| 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | 2.6 เสร็จ 2026-08-24 · upload keystore + AAB 2026-09-05 · regression บนเครื่องจริงรอ build สุดท้าย |
+| 7 | 2C | Legal-wording revision + QA regression + release build | สัปดาห์ที่ 6–7 (2026-09-23 → 2026-09-29) | 2.6 เสร็จ 2026-08-24 · AAB อัปโหลด Play แล้ว 31/08 จากเครื่อง build หลัก · store assets + listing 6 ภาษา + Data Safety list 2026-09-06 · regression บนเครื่องจริงรอ build สุดท้าย |
 
 *ความเสี่ยงหลักด้านเวลา: การอนุมัติบัญชี/สินค้าใน Play Console และ App Store Connect ซึ่ง
 ไม่ได้อยู่ในการควบคุมของผู้พัฒนา — จึงเริ่มดำเนินการตั้งแต่สัปดาห์ที่ 4*
@@ -1181,12 +1195,21 @@ at `https://console.firebase.google.com/project/thaishield-ai-790eb/usage`.
 | Android Bundle | `flutter build appbundle --release` (needs `android/key.properties` — below) |
 | iOS | CI only (Codemagic pipeline) |
 
-**Android release signing (added 2026-09-05)**
+**Android release signing (added 2026-09-05, corrected 2026-09-06)**
+
+🚨 **Play uploads are made from the developer's main build PC, not from this one.** Play
+Console registered its upload key from the 1.1.25 upload on 2026-08-31 (SHA-1 starts
+`C0:7E:0E:AC`). The keystore described below was created on this PC on 2026-09-05 without
+knowing that, has SHA-1 `62:E4:A3:38…`, and **is not the registered key** — an AAB signed
+with it is refused. Do not request an upload-key reset and do not try to upload from here;
+build Android release artifacts on the main PC. The 31/08 upload also settled the package
+name (`com.thaishield.thaishield_ai`), so the package-name warning further down is closed.
+The `.jks` here stays only as documentation of the mistake; `delivery/thaishield-1.1.28-play-upload.aab`
+is signed with it and must not be uploaded.
 
 `android/app/build.gradle.kts` signs a release build with `android/key.properties` when
 that file exists and **falls back to the debug key when it does not** — silently. A
-debug-signed AAB is refused by Play Console, and until 2026-09-05 no keystore existed at
-all, so every "release" APK in `delivery/` so far was debug-signed. The upload keystore now
+debug-signed AAB is refused by Play Console. The local (non-registered) keystore
 lives at the workspace root, outside both repos:
 
 ```
