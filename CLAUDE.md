@@ -635,8 +635,38 @@ filed it critical, because following the stale half burns an id permanently.
 and should be deleted, not obeyed.**
 
 `thaishield_premium_2weeks` is retired and must never be created. Nothing was
-created in either console before this change (product creation is gated on the
-banking profile, which is still outstanding), so no id was burned.
+created in either console before this change, so no id was burned.
+
+**What now exists in Play Console (created 2026-09-07).** Product creation
+turned out **not** to be gated on the banking profile after all — the console
+let the product, its base plan and its prices be saved and activated with the
+payments profile still outstanding. What is live there:
+
+```
+subscription  thaishield_premium_monthly   "ThaiShield พรีเมียม รายเดือน"
+  base plan   monthly · auto-renewing · billing period รายเดือน (P1M)
+              grace period 7 days, account hold 53 days (console defaults)
+              status ใช้งานอยู่ (active)
+  prices      set from USD 10.00 across all 177 countries; Play applied its own
+              charm rounding, so the US price reads **USD 9.99**, EUR 10.99, and
+              so on. The paywall shows `ProductDetails.price` — the store's own
+              string — so 9.99 is what a user will actually see, not the $10 in
+              the client document.
+  benefits    the three `premium_feature_*` lines, in all six languages
+              (th default + en-US, zh-CN, ko-KR, ru-RU, ja-JP). Two were
+              shortened to fit Play's 40-character limit: the English and
+              Russian "filter" lines drop the word "information".
+```
+
+🚨 **`thaishield_premium_weekly` was deliberately NOT created.** On 2026-09-07
+the client asked for the $3.50 plan to be **14 days, not 7**. Creating the
+weekly id before that is settled would burn it — the id cannot be re-typed or
+re-priced into a different period. Play's own billing-period list, read off the
+base-plan form that same day, is: รายสัปดาห์, ทุก 4 สัปดาห์, รายเดือน, ทุก 2 / 3 /
+4 / 6 / 8 เดือน, รายปี. **There is no 14-day option**, which is the same wall
+the 2026-08-30 decision hit. A 14-day plan can only be a one-time product
+(ผลิตภัณฑ์แบบเรียกเก็บเงินครั้งเดียว), which does not auto-renew and is the
+design the client cancelled. Awaiting their choice.
 
 **Why the 14-day pass became weekly.** Neither store sells a 14-day billing
 period — the choices are 1 week, 1 month, 2, 3, 6 months and a year — and that
