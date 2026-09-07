@@ -14,6 +14,7 @@ class PriceStandard {
     required this.category,
     required this.updatedAt,
     this.imageUrl = '',
+    this.mtPending = const [],
   });
 
   final String id;
@@ -29,17 +30,35 @@ class PriceStandard {
   final DateTime updatedAt;
   final String imageUrl;
 
+  /// Name fields (`name_ko`, …) the CMS filled by machine translation that no
+  /// person has reviewed yet (added 2026-09-06, CMS `mt_pending`). Treated as
+  /// absent by [localizedName], which then shows the English name — the same
+  /// rule `AlertZone` applies to advisories.
+  final List<String> mtPending;
+
+  /// Parses the Firestore `mt_pending` value; see [AlertZone.mtPendingFrom].
+  static List<String> mtPendingFrom(dynamic raw) =>
+      raw is List ? raw.whereType<String>().toList() : const [];
+
   double get avgPrice => (minPrice + maxPrice) / 2;
 
+  /// The name in the reader's language, falling back to English when that
+  /// language is blank or is a machine translation still pending review.
   String localizedName(String langCode) {
-    switch (langCode) {
-      case 'th': return nameTh;
-      case 'zh': return nameZh;
-      case 'ko': return nameKo;
-      case 'ru': return nameRu;
-      case 'ja': return nameJa;
-      default:   return nameEn;
+    final byLang = {
+      'th': nameTh,
+      'zh': nameZh,
+      'ko': nameKo,
+      'ru': nameRu,
+      'ja': nameJa,
+    };
+    final own = byLang[langCode];
+    if (own != null &&
+        own.trim().isNotEmpty &&
+        !mtPending.contains('name_$langCode')) {
+      return own;
     }
+    return nameEn;
   }
 
   factory PriceStandard.fromFirestore(DocumentSnapshot doc) {
@@ -57,6 +76,7 @@ class PriceStandard {
       category:   d['category'] ?? 'food',
       updatedAt:  (d['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       imageUrl:   d['image_url'] ?? '',
+      mtPending:  mtPendingFrom(d['mt_pending']),
     );
   }
 }

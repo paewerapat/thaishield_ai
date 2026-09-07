@@ -216,6 +216,11 @@ name_ja     string
 min_price   number     // THB
 max_price   number     // THB
 category    string     // "food" | "transport" | "attraction"
+mt_pending  array<string>  // OPTIONAL, added 2026-09-06 by the CMS's auto-translate
+                       // button: `name_*` fields that are machine translated and
+                       // NOT yet reviewed by a person. `PriceStandard.localizedName`
+                       // treats a listed language as blank and shows `name_en`.
+                       // Absent on every document written before that date.
 updated_at  timestamp  // server timestamp, rewritten on every save
 ```
 
@@ -283,6 +288,11 @@ name_zh         string
 name_ko         string
 name_ru         string
 name_ja         string
+mt_pending      array<string>    // OPTIONAL, added 2026-09-06: `description_*`
+                                 // fields the CMS filled by machine translation
+                                 // that no person has reviewed. localizedDescription
+                                 // treats a listed language as BLANK → English.
+                                 // Never show a pending field to a tourist.
 risk_level      string           // "safe" | "caution" | "danger"
 description_en  string           // en + th REQUIRED in the CMS; the four below
                                  // are OPTIONAL since 2026-09-02 and the app

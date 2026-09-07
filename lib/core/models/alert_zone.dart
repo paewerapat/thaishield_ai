@@ -20,6 +20,7 @@ class AlertZone {
     this.descriptionKo = '',
     this.descriptionRu = '',
     this.descriptionJa = '',
+    this.mtPending = const [],
     this.polygon = const [],
   });
 
@@ -50,6 +51,22 @@ class AlertZone {
 
   final List<LatLng> polygon;
 
+  /// Field names (`description_ko`, …) whose text the CMS filled by machine
+  /// translation and **no person has reviewed yet** (added 2026-09-06, CMS
+  /// `mt_pending`). A pending translation is treated exactly like a blank one:
+  /// the reader gets English. This is the whole safety argument for letting
+  /// staff press "auto-translate" at all — the machine types, a human reads,
+  /// and nothing reaches a tourist in between. Never show a pending field.
+  final List<String> mtPending;
+
+  bool _isPending(String field) => mtPending.contains(field);
+
+  /// Parses the Firestore `mt_pending` value. Absent, null, or not a list all
+  /// mean "nothing pending" — the state of every zone written before the field
+  /// existed — and non-string entries are dropped rather than crashing a read.
+  static List<String> mtPendingFrom(dynamic raw) =>
+      raw is List ? raw.whereType<String>().toList() : const [];
+
 
   /// The place's name in the reader's language, falling back to [name].
   ///
@@ -77,6 +94,11 @@ class AlertZone {
   /// real place, so an untranslated zone shows the English a staff member
   /// actually wrote rather than an empty card — English they may not read is
   /// still better than nothing where an advisory should be.
+  ///
+  /// A machine translation still waiting for review ([mtPending]) is treated
+  /// as blank, so it also falls back to English. English itself is never
+  /// pending in practice — staff type it — but if it ever were, it is still the
+  /// only fallback there is, so it is returned regardless.
   String localizedDescription(String langCode) {
     final byLang = {
       'th': descriptionTh,
@@ -86,7 +108,11 @@ class AlertZone {
       'ja': descriptionJa,
     };
     final own = byLang[langCode];
-    if (own != null && own.trim().isNotEmpty) return own;
+    if (own != null &&
+        own.trim().isNotEmpty &&
+        !_isPending('description_$langCode')) {
+      return own;
+    }
     return descriptionEn;
   }
 
@@ -111,6 +137,7 @@ class AlertZone {
       descriptionKo:    d['description_ko'] ?? '',
       descriptionRu:    d['description_ru'] ?? '',
       descriptionJa:    d['description_ja'] ?? '',
+      mtPending:        mtPendingFrom(d['mt_pending']),
       polygon: polygonRaw
               ?.whereType<GeoPoint>()
               .map((p) => LatLng(p.latitude, p.longitude))

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:thaishield_ai/core/models/alert_zone.dart';
+import 'package:thaishield_ai/core/models/price_standard.dart';
 
 /// The English fallback that the whole four-languages-optional decision rests
 /// on.
@@ -16,6 +17,7 @@ import 'package:thaishield_ai/core/models/alert_zone.dart';
 /// at all. `localized_text_call_sites_test.dart` guards the callers; this
 /// guards what they call.
 void main() {
+  mtPendingTests();
   AlertZone zone({
     String zh = '',
     String ko = '',
@@ -94,6 +96,72 @@ void main() {
       final z = zone();
       expect(z.localizedName('ko'), 'Test Area');
       expect(z.localizedName('th'), 'Test Area');
+    });
+  });
+}
+
+/// Machine translations waiting for review (CMS `mt_pending`, added
+/// 2026-09-06) must behave exactly like blanks: the reader gets English.
+///
+/// This is the contract the CMS's auto-translate button rests on. Staff may
+/// press it freely *because* nothing it produces reaches a tourist until a
+/// person has read it — and the only thing enforcing that is this method.
+void mtPendingTests() {
+  AlertZone zone(List<String> pending) => AlertZone(
+        id: 'z',
+        name: 'Test Area',
+        centerLat: 13.75,
+        centerLng: 100.5,
+        radiusKm: 1,
+        riskLevel: 'caution',
+        descriptionEn: 'Prices here vary more than the city average.',
+        descriptionTh: 'ราคาบริเวณนี้แตกต่างจากค่าเฉลี่ย',
+        descriptionZh: '机器翻译',
+        descriptionKo: '기계 번역',
+        descriptionRu: 'Машинный перевод',
+        descriptionJa: '機械翻訳',
+        mtPending: pending,
+      );
+
+  group('machine translations pending review are not shown', () {
+    test('a pending language falls back to English even though text exists', () {
+      final z = zone(const ['description_ko', 'description_ja']);
+      expect(z.localizedDescription('ko'), startsWith('Prices here'));
+      expect(z.localizedDescription('ja'), startsWith('Prices here'));
+    });
+
+    test('a reviewed language is shown, pending ones beside it are not', () {
+      final z = zone(const ['description_ru']);
+      expect(z.localizedDescription('zh'), '机器翻译');
+      expect(z.localizedDescription('ko'), '기계 번역');
+      expect(z.localizedDescription('ru'), startsWith('Prices here'));
+    });
+
+    test('a zone with no mt_pending shows every filled translation', () {
+      // The state of every zone written before the field existed.
+      final z = zone(const []);
+      expect(z.localizedDescription('ja'), '機械翻訳');
+    });
+
+    test('the Firestore parser: absent → none, junk entries dropped', () {
+      // `fromFirestore` hands `d['mt_pending']` to this; a DocumentSnapshot is
+      // awkward to fake, so the parser is a static and tested directly.
+      expect(AlertZone.mtPendingFrom(null), isEmpty);
+      expect(AlertZone.mtPendingFrom('description_ko'), isEmpty);
+      expect(AlertZone.mtPendingFrom(<dynamic>['description_ko', 3, null]),
+          ['description_ko']);
+      expect(PriceStandard.mtPendingFrom(null), isEmpty);
+      expect(PriceStandard.mtPendingFrom(<dynamic>['name_ja']), ['name_ja']);
+    });
+
+    test('English is never hidden, even if a stray flag names it', () {
+      // The CMS schema refuses `description_en` in mt_pending, precisely
+      // because English is the fallback. If a flag ever reached the app
+      // anyway, hiding English would leave nothing to show — so the English
+      // reader gets English regardless.
+      final z = zone(const ['description_en']);
+      expect(z.localizedDescription('en'), startsWith('Prices here'));
+      expect(z.localizedDescription('ko'), '기계 번역');
     });
   });
 }
