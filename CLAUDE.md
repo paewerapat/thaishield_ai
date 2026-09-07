@@ -658,15 +658,35 @@ subscription  thaishield_premium_monthly   "ThaiShield พรีเมียม 
               Russian "filter" lines drop the word "information".
 ```
 
-🚨 **`thaishield_premium_weekly` was deliberately NOT created.** On 2026-09-07
-the client asked for the $3.50 plan to be **14 days, not 7**. Creating the
+🚨 **The short plan is now a 14-day one-time pass (client decision 2026-09-07),
+and `thaishield_premium_weekly` was never created.** On 2026-09-07 the client
+asked for the $3.50 plan to be **14 days, not 7**. Creating the
 weekly id before that is settled would burn it — the id cannot be re-typed or
 re-priced into a different period. Play's own billing-period list, read off the
 base-plan form that same day, is: รายสัปดาห์, ทุก 4 สัปดาห์, รายเดือน, ทุก 2 / 3 /
 4 / 6 / 8 เดือน, รายปี. **There is no 14-day option**, which is the same wall
-the 2026-08-30 decision hit. A 14-day plan can only be a one-time product
-(ผลิตภัณฑ์แบบเรียกเก็บเงินครั้งเดียว), which does not auto-renew and is the
-design the client cancelled. Awaiting their choice.
+the 2026-08-30 decision hit. **Play's rental option is not a way out either** — a
+one-time product's เช่า purchase option offers 24h, 48h, 72h, 1 week, 30 days
+and 60 days, and no 14 either. So 14 days can only be a plain ซื้อ one-time
+product whose clock **the app keeps itself**, from the store's `purchaseTime`.
+
+Told that, the client chose the 14-day pass on 2026-09-07 and accepted losing
+auto-renewal. Two consequences that task 2.8 has to design around, and that the
+paywall copy has to state:
+
+- **The pass must be consumed to be re-buyable.** A Play "buy" product is a
+  permanent entitlement until the app consumes it; an unconsumed one can never
+  be bought a second time. Consuming it is what makes a second fortnight
+  possible — and it is also what takes iOS restore away again, the limitation
+  that disappeared on 2026-08-30 and that the client has now re-accepted.
+- **Expiry is the app's arithmetic, not the store's.** `grantPurchase` computing
+  `expiresAt = purchasedAt + duration` is correct again for this product type,
+  which is the reverse of the note under `PremiumPlan`. Use the store's
+  `purchaseTime`, never the device clock at grant time, or a reinstall re-starts
+  the fortnight.
+
+Nothing has been created in Play for this yet: the console refused the draft on
+2026-09-07 (see below), so **the id `thaishield_premium_14days` is still free**.
 
 **Why the 14-day pass became weekly.** Neither store sells a 14-day billing
 period — the choices are 1 week, 1 month, 2, 3, 6 months and a year — and that
