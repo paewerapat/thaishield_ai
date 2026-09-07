@@ -5,30 +5,40 @@ import '../models/premium_plan.dart';
 
 /// The durable, cross-device copy of a purchase.
 ///
-/// 🚨 **Obsolete since 2026-08-30 — task 2.8 should retire this, not build on
-/// it.**
+/// 🚨 **Needed again since 2026-09-07 — an earlier version of this comment told
+/// task 2.8 to retire it. Do not.**
 ///
 /// ## Why it existed
 ///
-/// The products were **one-time consumables**, which are not restorable the way
-/// a subscription is: Play stops returning a purchase once it is consumed, and
-/// StoreKit does not replay consumables at all. Without a record of our own, a
-/// user who changed phone on day 3 of a 14-day pass lost the other 11 days and
-/// looked identical to someone who never paid. "Restore Purchases" is in the
-/// agreed scope of task 2.8, so it had to restore something.
+/// The short plan was a **one-time consumable**, which is not restorable the
+/// way a subscription is: Play stops returning a purchase once it is consumed,
+/// and StoreKit does not replay consumables at all. Without a record of our
+/// own, a user who changed phone on day 3 of a 14-day pass lost the other 11
+/// days and looked identical to someone who never paid. "Restore Purchases" is
+/// in the agreed scope of task 2.8, so it had to restore something.
 ///
-/// ## Why it is no longer needed
+/// ## Why it went away, and came back
 ///
-/// Both products are **auto-renewing subscriptions** again ([PremiumPlan]), and
-/// both stores replay those to the same account on a new device. The store now
-/// answers the question this collection was built to answer, and answers it
-/// better — it knows about cancellation, refund, pause and failed payment,
-/// none of which a stored expiry date can see.
+/// Between 2026-08-30 and 2026-09-07 both products were auto-renewing
+/// subscriptions, which both stores replay to the same account on a new device,
+/// and this collection had nothing left to answer. [PremiumPlan.pass14Days] put
+/// the original problem back: it is a one-time purchase again, so its 14 days
+/// are only recoverable from a record somebody keeps.
 ///
-/// Nothing reads it at runtime, so it is left in place rather than deleted in
-/// the same change that flipped the billing model. 2.8 should stop writing to
-/// it and drop `create` to `if false` in `firestore.rules`. **Do not treat a
-/// document here as proof of payment** — it never was one.
+/// [PremiumPlan.monthly] does **not** need it. The store answers for a
+/// subscription, and answers better — it knows about cancellation, refund,
+/// pause and failed payment, none of which a stored expiry date can see. So 2.8
+/// should write here for the pass and read the store for the subscription,
+/// rather than treating the two plans alike.
+///
+/// 🚨 **And 2.8 must not consume the pass on the day it is bought.** Consuming
+/// is what lets the user buy a second fortnight, but the moment it happens Play
+/// stops replaying the purchase too — so consume when the 14 days are up, not
+/// when they start. Consume it early and "Restore Purchases" fails on Android
+/// as well as on iOS, and `premium_platform_note`, which promises the pass
+/// restores on Android, becomes false.
+///
+/// **Do not treat a document here as proof of payment** — it never was one.
 ///
 /// ## What it is keyed by, and why not by user
 ///

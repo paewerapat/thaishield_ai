@@ -688,6 +688,18 @@ paywall copy has to state:
 Nothing has been created in Play for this yet: the console refused the draft on
 2026-09-07 (see below), so **the id `thaishield_premium_14days` is still free**.
 
+**The app and the web already carry the change** (2026-09-07): `PremiumPlan`
+has `pass14Days` in place of `weekly`, `isSubscription` is a per-plan field
+rather than a getter that returned a constant, the paywall picks its button
+label from it (`premium_cta` / `premium_cta_pass`), and the copy that used to
+speak for "both plans" — `premium_cancel_anytime`, `premium_legal_note`,
+`premium_platform_note` — now names each plan, in all six languages. `/terms`
+and `/privacy` do the same. What is *not* done is task 2.8's billing work: the
+consume timing, the `purchaseTime`-based expiry, and the split between reading
+the store for the subscription and `EntitlementRepository` for the pass. Those
+are written up where they have to be read, in `premium_plan.dart`,
+`premium_provider.dart` and `entitlement_repository.dart`.
+
 **Why the 14-day pass became weekly.** Neither store sells a 14-day billing
 period — the choices are 1 week, 1 month, 2, 3, 6 months and a year — and that
 gap is the whole reason the original design used one-time passes. Asked on

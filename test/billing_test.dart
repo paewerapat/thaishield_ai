@@ -35,7 +35,7 @@ class _FakeBilling implements BillingService {
   bool available = true;
 
   Set<String> knownProducts = const {
-    'thaishield_premium_weekly',
+    'thaishield_premium_14days',
     'thaishield_premium_monthly',
   };
 
@@ -129,7 +129,7 @@ class _NullRepository implements EntitlementRepository {
 }
 
 void main() {
-  const weekly = 'thaishield_premium_weekly';
+  const pass14Days = 'thaishield_premium_14days';
   const monthly = 'thaishield_premium_monthly';
 
   late _FakeBilling billing;
@@ -167,10 +167,10 @@ void main() {
       // 🚨 Play refunds any purchase that is not acknowledged within three
       // days. The user pays, keeps access for three days, then silently loses
       // both the money and the subscription while the app looks fine.
-      billing.replyToBuy = [_purchase(weekly)];
+      billing.replyToBuy = [_purchase(pass14Days)];
       final provider = await build();
 
-      await provider.purchase(PremiumPlan.weekly);
+      await provider.purchase(PremiumPlan.pass14Days);
 
       expect(billing.completed, ['GPA.1234']);
     });
@@ -230,7 +230,7 @@ void main() {
       final provider = await build();
 
       expect(
-        await provider.purchase(PremiumPlan.weekly),
+        await provider.purchase(PremiumPlan.pass14Days),
         StoreOutcome.productUnavailable,
       );
       expect(billing.buyCalled, isFalse);
@@ -238,15 +238,18 @@ void main() {
 
     test('the expiry comes from the plan period, not from the store date',
         () async {
-      billing.replyToBuy = [_purchase(weekly)];
+      billing.replyToBuy = [_purchase(pass14Days)];
       final provider = await build();
       final before = DateTime.now().toUtc();
 
-      await provider.purchase(PremiumPlan.weekly);
+      await provider.purchase(PremiumPlan.pass14Days);
 
+      // 14 days since 2026-09-07, and for this plan the arithmetic is the only
+      // answer there is: a one-time purchase carries no end date for the store
+      // to report.
       final expiry = provider.entitlement!.expiresAt;
-      expect(expiry.isAfter(before.add(const Duration(days: 6))), isTrue);
-      expect(expiry.isBefore(before.add(const Duration(days: 8))), isTrue);
+      expect(expiry.isAfter(before.add(const Duration(days: 13))), isTrue);
+      expect(expiry.isBefore(before.add(const Duration(days: 15))), isTrue);
     });
   });
 
@@ -311,7 +314,7 @@ void main() {
       );
 
       billing.replyToRestore = [
-        _purchase(weekly, status: BillingPurchaseStatus.restored),
+        _purchase(pass14Days, status: BillingPurchaseStatus.restored),
       ];
       await provider.restore();
 
@@ -341,7 +344,7 @@ void main() {
       final provider = await build();
       final products = await provider.storeProducts();
 
-      expect(products.map((p) => p.id), containsAll([weekly, monthly]));
+      expect(products.map((p) => p.id), containsAll([pass14Days, monthly]));
       expect(products.first.localizedPrice, '฿129.00');
     });
 

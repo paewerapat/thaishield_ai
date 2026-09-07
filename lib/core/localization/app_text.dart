@@ -1214,21 +1214,25 @@ const Map<String, Map<String, String>> _appText = {
   // the opposite, for the opposite reason: while these were one-time passes,
   // "Monthly" would have read as a subscription to most people, which is
   // exactly what they were not. Now it is exactly what they are.
-  'premium_plan_weekly': {
-    'th': 'รายสัปดาห์',
-    'en': 'Weekly',
-    'zh': '按周订阅',
-    'ko': '주간 구독',
-    'ru': 'Еженедельно',
-    'ja': '週額プラン',
+  // 🚨 The short plan is a **one-time pass**, not a subscription (client
+  // decision 2026-09-07). The title says "pass" and the period line says the
+  // purchase does not renew, in every language, because this card sits beside a
+  // subscription card and the two must not read alike. See `PremiumPlan`.
+  'premium_plan_14days': {
+    'th': 'บัตรผ่าน 14 วัน',
+    'en': '14-day pass',
+    'zh': '14 天通行证',
+    'ko': '14일 이용권',
+    'ru': 'Пропуск на 14 дней',
+    'ja': '14日間パス',
   },
-  'premium_period_weekly': {
-    'th': 'ต่ออายุอัตโนมัติทุก 7 วัน',
-    'en': 'renews every 7 days',
-    'zh': '每 7 天自动续订',
-    'ko': '7일마다 자동 갱신',
-    'ru': 'продление каждые 7 дней',
-    'ja': '7日ごとに自動更新',
+  'premium_period_14days': {
+    'th': 'จ่ายครั้งเดียว ไม่ต่ออายุ',
+    'en': 'one-time, does not renew',
+    'zh': '一次性购买，不会续订',
+    'ko': '1회 결제, 자동 갱신 없음',
+    'ru': 'разовая покупка, без продления',
+    'ja': '買い切り・自動更新なし',
   },
   'premium_plan_monthly': {
     'th': 'รายเดือน',
@@ -1264,12 +1268,12 @@ const Map<String, Map<String, String>> _appText = {
   // `startTrialIfEligible` disappears while this copy still says the trial
   // lapses on its own. Do not silence it; rewrite the strings.
   'premium_trial_note': {
-    'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน โดยยังไม่มีการเรียกเก็บเงิน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง การสมัครสมาชิกจะเริ่มเก็บเงินก็ต่อเมื่อคุณเลือกแพ็กเกจและยืนยันการชำระเงินเท่านั้น',
-    'en': 'New users get 3 days free and nothing is charged for them. When the trial ends the app returns to the free version on its own — a subscription only starts billing if you choose a plan and confirm the payment yourself.',
-    'zh': '新用户可免费使用 3 天，期间不收取任何费用。试用结束后应用会自动回到免费版本；只有在您选择方案并确认付款后，订阅才会开始计费。',
-    'ko': '신규 사용자는 3일간 무료로 이용할 수 있으며 이 기간에는 요금이 청구되지 않습니다. 체험이 끝나면 앱은 자동으로 무료 버전으로 돌아가며, 구독은 직접 요금제를 선택하고 결제를 확인한 경우에만 청구가 시작됩니다.',
-    'ru': 'Новым пользователям доступны 3 дня бесплатно, оплата за них не взимается. По окончании пробного периода приложение само вернётся к бесплатной версии — списания начнутся, только если вы выберете тариф и подтвердите оплату.',
-    'ja': '新規ユーザーは3日間無料でご利用いただけ、その間の料金はかかりません。無料期間が終わるとアプリは自動的に無料版に戻ります。サブスクリプションはご自身でプランを選び支払いを確認した場合にのみ課金が始まります。',
+    'th': 'ผู้ใช้ใหม่ได้ทดลองใช้ฟรี 3 วัน โดยยังไม่มีการเรียกเก็บเงิน เมื่อครบกำหนดแอปจะกลับไปใช้เวอร์ชันฟรีเอง จะมีการเรียกเก็บเงินก็ต่อเมื่อคุณเลือกแพ็กเกจและยืนยันการชำระเงินด้วยตัวเองเท่านั้น',
+    'en': 'New users get 3 days free and nothing is charged for them. When the trial ends the app returns to the free version on its own — you are only charged if you choose a plan and confirm the payment yourself.',
+    'zh': '新用户可免费使用 3 天，期间不收取任何费用。试用结束后应用会自动回到免费版本；只有在您自己选择方案并确认付款后，才会产生费用。',
+    'ko': '신규 사용자는 3일간 무료로 이용할 수 있으며 이 기간에는 요금이 청구되지 않습니다. 체험이 끝나면 앱은 자동으로 무료 버전으로 돌아가며, 직접 요금제를 선택하고 결제를 확인한 경우에만 요금이 청구됩니다.',
+    'ru': 'Новым пользователям доступны 3 дня бесплатно, оплата за них не взимается. По окончании пробного периода приложение само вернётся к бесплатной версии — оплата списывается, только если вы сами выберете тариф и подтвердите её.',
+    'ja': '新規ユーザーは3日間無料でご利用いただけ、その間の料金はかかりません。無料期間が終わるとアプリは自動的に無料版に戻ります。ご自身でプランを選び支払いを確認した場合にのみ課金されます。',
   },
   // The plan block's heading, from the design poster's pricing section.
   'premium_choose_plan': {
@@ -1280,17 +1284,20 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Выберите подходящий тариф',
     'ja': 'ご自分に合うプランをお選びください',
   },
-  // True since 2026-08-30: both plans are auto-renewing subscriptions, so
-  // there is a renewal to stop. It was not true between 22 and 30 August, when
-  // they were one-time passes with nothing to cancel — do not restore this
-  // line if the products ever change type again.
+  // 🚨 This line sits above **both** plan cards, so it cannot describe one
+  // billing model. Between 2026-08-30 and 2026-09-07 it read simply "cancel any
+  // time", which was true while both plans renewed; since the short plan became
+  // a one-time pass that sentence would promise a cancellation the pass buyer
+  // cannot perform and does not need. It now names each plan. If the products
+  // ever agree on a model again, shorten it — do not leave it describing a plan
+  // that is no longer on the screen.
   'premium_cancel_anytime': {
-    'th': 'ยกเลิกได้ตลอดเวลาที่หน้าตั้งค่าของร้านค้า',
-    'en': 'Cancel any time in your store settings',
-    'zh': '可随时在商店设置中取消',
-    'ko': '스토어 설정에서 언제든지 해지할 수 있습니다',
-    'ru': 'Отменить можно в любой момент в настройках магазина',
-    'ja': 'ストアの設定からいつでも解約できます',
+    'th': 'แผนรายเดือนต่ออายุอัตโนมัติ และยกเลิกได้ตลอดเวลาที่หน้าตั้งค่าของร้านค้า ส่วนบัตรผ่าน 14 วันจ่ายครั้งเดียว จึงไม่มีอะไรให้ยกเลิก',
+    'en': 'The monthly plan renews and can be cancelled any time in your store settings. The 14-day pass is bought once, so there is nothing to cancel.',
+    'zh': '月度方案会自动续订，可随时在商店设置中取消；14 天通行证为一次性购买，没有需要取消的内容。',
+    'ko': '월간 요금제는 자동 갱신되며 스토어 설정에서 언제든지 해지할 수 있습니다. 14일 이용권은 1회 결제이므로 해지할 것이 없습니다.',
+    'ru': 'Месячный тариф продлевается автоматически, отменить его можно в любой момент в настройках магазина. Пропуск на 14 дней покупается один раз — отменять нечего.',
+    'ja': '月額プランは自動更新され、ストアの設定からいつでも解約できます。14日間パスは買い切りのため、解約するものはありません。',
   },
   'premium_badge_recommended': {
     'th': 'คุ้มที่สุด', 'en': 'Best value', 'zh': '最超值', 'ko': '최고 가성비', 'ru': 'Выгоднее всего', 'ja': 'いちばんお得',
@@ -1303,6 +1310,9 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Вы платите ту цену, которая указана в Google Play или App Store вашей страны; она может отличаться от приведённой здесь из-за валюты и налогов.',
     'ja': '実際にお支払いいただく金額は、お住まいの国の Google Play または App Store に表示される価格です。通貨や税により、ここに表示された金額と異なる場合があります。',
   },
+  // The buy button, chosen by `PremiumPlan.isSubscription`. "Subscribe" on a
+  // one-time pass would misdescribe the purchase at the exact moment the user
+  // commits to it, which is the one place a store reviewer looks.
   'premium_cta': {
     'th': 'สมัครสมาชิก',
     'en': 'Subscribe',
@@ -1310,6 +1320,14 @@ const Map<String, Map<String, String>> _appText = {
     'ko': '구독하기',
     'ru': 'Оформить подписку',
     'ja': '登録する',
+  },
+  'premium_cta_pass': {
+    'th': 'ซื้อบัตรผ่าน',
+    'en': 'Buy pass',
+    'zh': '购买通行证',
+    'ko': '이용권 구매',
+    'ru': 'Купить пропуск',
+    'ja': 'パスを購入',
   },
   // Rewritten 2026-08-31 when billing was actually wired. It used to read
   // "purchases open in a later version", which was true while `purchase()` was
@@ -1362,28 +1380,36 @@ const Map<String, Map<String, String>> _appText = {
   'premium_restore': {
     'th': 'กู้คืนการซื้อ', 'en': 'Restore Purchases', 'zh': '恢复购买', 'ko': '구매 복원', 'ru': 'Восстановить покупки', 'ja': '購入を復元',
   },
-  // ⚠️ Says the same thing for both platforms again, which it did not between
-  // 2026-08-22 and 2026-08-30. While the products were one-time passes,
-  // restore worked on Android and could not work on iOS — StoreKit never
-  // replays a consumable — and the string had to disclose that split or make a
-  // billing claim it could not honour on half its installs. Subscriptions are
-  // replayed on both, so the split is gone. What is still true, and still
-  // stated, is that a purchase does not cross between Android and iOS: that is
-  // a property of the store account, not of the product type.
+  // 🚨 The platform split is back, for the third time, and this string is the
+  // only place the user is told. Restore replays a subscription on both stores,
+  // so [monthly] is safe everywhere. The 14-day pass has to be consumed to be
+  // buyable a second time, and StoreKit never replays a consumed purchase, so
+  // on iOS a reinstall inside the 14 days loses the remaining days. Android
+  // does replay it. Saying "restore works" flatly, as this did between
+  // 2026-08-30 and 2026-09-07, would be a billing claim the app cannot honour
+  // on half its installs. What has been true throughout, and is still stated,
+  // is that a purchase never crosses between Android and iOS: that is a
+  // property of the store account, not of the product type.
   'premium_platform_note': {
-    'th': 'การสมัครสมาชิกผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้สมัคร และไม่สามารถโอนข้ามระหว่าง Android และ iOS · หากติดตั้งใหม่หรือเปลี่ยนเครื่องภายในระบบเดิม กดกู้คืนการซื้อเพื่อใช้ต่อได้ทั้งสองระบบ',
-    'en': 'Your subscription is tied to the Google Play or Apple ID account you subscribe with, and does not transfer between Android and iOS. Within the same platform you can restore it after reinstalling or moving to a new phone — this works on both.',
-    'zh': '订阅与您订阅时使用的 Google Play 或 Apple ID 账户绑定，无法在 Android 与 iOS 之间转移。在同一平台内重新安装或更换手机后，可通过“恢复购买”继续使用，两个平台均支持。',
-    'ko': '구독은 가입에 사용한 Google Play 또는 Apple ID 계정에 연결되며 Android와 iOS 간에는 이전되지 않습니다. 같은 플랫폼 안에서는 재설치하거나 기기를 바꾼 뒤 구매 복원으로 계속 이용할 수 있으며, 양쪽 모두에서 작동합니다.',
-    'ru': 'Подписка привязана к аккаунту Google Play или Apple ID, через который она оформлена, и не переносится между Android и iOS. В пределах одной платформы её можно восстановить после переустановки или смены телефона — это работает на обеих.',
-    'ja': 'サブスクリプションは登録に使用した Google Play または Apple ID のアカウントに紐づき、Android と iOS の間では引き継げません。同じプラットフォーム内であれば、再インストールや機種変更のあとに「購入を復元」で継続できます。これは両方で利用できます。',
+    'th': 'การซื้อผูกกับบัญชี Google Play หรือ Apple ID ที่ใช้ซื้อ และไม่สามารถโอนข้ามระหว่าง Android และ iOS · แผนรายเดือนกู้คืนได้ทั้งสองระบบเมื่อติดตั้งใหม่หรือเปลี่ยนเครื่อง · บัตรผ่าน 14 วันกู้คืนได้บน Android เท่านั้น บน iOS หากลบแอปก่อนครบ 14 วัน วันที่เหลือจะหายไป',
+    'en': 'A purchase is tied to the Google Play or Apple ID account you buy with, and does not transfer between Android and iOS. The monthly plan can be restored on both after reinstalling or moving to a new phone. The 14-day pass can be restored on Android only — on iOS, deleting the app before the 14 days are up loses the remaining days.',
+    'zh': '购买与您付款时使用的 Google Play 或 Apple ID 账户绑定，无法在 Android 与 iOS 之间转移。月度方案在两个平台重新安装或更换手机后均可恢复；14 天通行证仅能在 Android 上恢复，在 iOS 上若在 14 天结束前删除应用，剩余天数将会失去。',
+    'ko': '구매는 결제에 사용한 Google Play 또는 Apple ID 계정에 연결되며 Android와 iOS 간에는 이전되지 않습니다. 월간 요금제는 재설치하거나 기기를 바꾼 뒤 양쪽 모두에서 복원할 수 있습니다. 14일 이용권은 Android에서만 복원할 수 있으며, iOS에서 14일이 끝나기 전에 앱을 삭제하면 남은 기간은 사라집니다.',
+    'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена, и не переносится между Android и iOS. Месячный тариф восстанавливается на обеих платформах после переустановки или смены телефона. Пропуск на 14 дней восстанавливается только на Android: на iOS удаление приложения до конца 14 дней приводит к потере оставшихся дней.',
+    'ja': '購入は支払いに使用した Google Play または Apple ID のアカウントに紐づき、Android と iOS の間では引き継げません。月額プランは再インストールや機種変更のあと、どちらのストアでも復元できます。14日間パスを復元できるのは Android のみで、iOS では14日が終わる前にアプリを削除すると残りの日数は失われます。',
   },
   // Both stores require the billing model to be stated next to the price, and
-  // review a subscription screen for it. Four things have to appear: that it
-  // renews, what account is charged, where to cancel — the store, not this app
-  // — and that access runs to the end of the period already paid for. The last
-  // is the one users are most often surprised by and the one that turns into
-  // refund requests when it is left out.
+  // review the purchase screen for it. For the subscription four things have to
+  // appear: that it renews, what account is charged, where to cancel — the
+  // store, not this app — and that access runs to the end of the period already
+  // paid for. The last is the one users are most often surprised by and the one
+  // that turns into refund requests when it is left out.
+  //
+  // 🚨 Since 2026-09-07 this screen sells two billing models, so the note has to
+  // describe both and say which sentence belongs to which plan. The pass needs
+  // its own three facts: charged once, never renewed, and counted in days from
+  // the purchase — that last one is what stops a buyer expecting the fortnight
+  // to pause while they are not using the app.
   // 🚨 Both stores require a subscription purchase screen to link its terms and
   // its privacy policy, and Apple rejects builds that do not. Added 2026-08-30
   // with the switch to subscriptions — a one-time purchase screen did not need
@@ -1405,12 +1431,12 @@ const Map<String, Map<String, String>> _appText = {
     'ja': 'プライバシーポリシー',
   },
   'premium_legal_note': {
-    'th': 'ทั้งสองแพ็กเกจเป็นการสมัครสมาชิกแบบต่ออายุอัตโนมัติ ระบบจะเรียกเก็บเงินผ่านบัญชี Google Play หรือ Apple ID ที่ใช้สมัคร และจะเก็บเงินรอบถัดไปโดยอัตโนมัติเมื่อครบกำหนด จนกว่าคุณจะยกเลิก · ยกเลิกได้ตลอดเวลาจากหน้าตั้งค่าการสมัครสมาชิกของสโตร์ ไม่ได้ยกเลิกในแอปนี้ · เมื่อยกเลิกแล้วยังใช้ต่อได้จนครบรอบที่จ่ายเงินไปแล้ว หลังจากนั้นแอปจะกลับไปใช้เวอร์ชันฟรี',
-    'en': 'Both plans are auto-renewing subscriptions. Payment is charged to the Google Play or Apple ID account you subscribe with, and the next period is charged automatically when the current one ends, until you cancel. You can cancel at any time from the subscription settings in the store — not in this app — and you keep access until the end of the period you have already paid for, after which the app returns to the free version.',
-    'zh': '两种方案均为自动续订订阅。费用将从您订阅时使用的 Google Play 或 Apple ID 账户扣除，当前周期结束时会自动扣取下一期费用，直到您取消为止。您可以随时在商店的订阅设置中取消（不在本应用内取消），取消后仍可使用至已付费周期结束，之后应用将回到免费版本。',
-    'ko': '두 요금제 모두 자동 갱신 구독입니다. 결제는 구독에 사용한 Google Play 또는 Apple ID 계정으로 청구되며, 현재 기간이 끝나면 다음 기간 요금이 자동으로 청구됩니다. 언제든지 스토어의 구독 설정에서 해지할 수 있으며(이 앱에서는 해지할 수 없습니다), 해지 후에도 이미 결제한 기간이 끝날 때까지 이용할 수 있고 이후에는 무료 버전으로 돌아갑니다.',
-    'ru': 'Оба тарифа — подписки с автоматическим продлением. Оплата списывается с аккаунта Google Play или Apple ID, через который оформлена подписка, и следующий период оплачивается автоматически по окончании текущего, пока вы не отмените подписку. Отменить можно в любой момент в настройках подписок магазина — не в этом приложении — доступ сохраняется до конца оплаченного периода, после чего приложение вернётся к бесплатной версии.',
-    'ja': 'どちらのプランも自動更新のサブスクリプションです。料金は登録に使用した Google Play または Apple ID のアカウントに請求され、現在の期間が終了すると 解約するまで次の期間の料金が自動的に請求されます。解約はストアのサブスクリプション設定からいつでも可能です（本アプリ内では解約できません）。解約後も支払い済みの期間の終了までご利用いただけ、その後は無料版に戻ります。',
+    'th': 'แผนรายเดือนเป็นการสมัครสมาชิกแบบต่ออายุอัตโนมัติ ระบบจะเรียกเก็บเงินผ่านบัญชี Google Play หรือ Apple ID ที่ใช้สมัคร และเก็บเงินรอบถัดไปโดยอัตโนมัติเมื่อครบกำหนด จนกว่าคุณจะยกเลิก · ยกเลิกได้ตลอดเวลาจากหน้าตั้งค่าการสมัครสมาชิกของสโตร์ ไม่ได้ยกเลิกในแอปนี้ · เมื่อยกเลิกแล้วยังใช้ต่อได้จนครบรอบที่จ่ายเงินไปแล้ว · บัตรผ่าน 14 วันเรียกเก็บเงินครั้งเดียว ไม่มีการต่ออายุและไม่มีอะไรให้ยกเลิก โดยนับ 14 วันต่อเนื่องจากเวลาที่ซื้อ ไม่หยุดนับระหว่างที่คุณไม่ได้ใช้แอป · เมื่อสิทธิ์หมดอายุ แอปจะกลับไปใช้เวอร์ชันฟรี',
+    'en': 'The monthly plan is an auto-renewing subscription. Payment is charged to the Google Play or Apple ID account you subscribe with, and the next period is charged automatically when the current one ends, until you cancel. You can cancel at any time from the subscription settings in the store — not in this app — and you keep access until the end of the period you have already paid for. The 14-day pass is charged once: it never renews, there is nothing to cancel, and its 14 days run continuously from the time of purchase — they do not pause while you are not using the app. When access ends, the app returns to the free version.',
+    'zh': '月度方案为自动续订订阅。费用将从您订阅时使用的 Google Play 或 Apple ID 账户扣除，当前周期结束时会自动扣取下一期费用，直到您取消为止。您可以随时在商店的订阅设置中取消（不在本应用内取消），取消后仍可使用至已付费周期结束。14 天通行证只收费一次，不会续订，也没有需要取消的内容；14 天自购买时刻起连续计算，不会因为您未使用应用而暂停。权限到期后，应用将回到免费版本。',
+    'ko': '월간 요금제는 자동 갱신 구독입니다. 결제는 구독에 사용한 Google Play 또는 Apple ID 계정으로 청구되며, 현재 기간이 끝나면 다음 기간 요금이 자동으로 청구됩니다. 언제든지 스토어의 구독 설정에서 해지할 수 있으며(이 앱에서는 해지할 수 없습니다), 해지 후에도 이미 결제한 기간이 끝날 때까지 이용할 수 있습니다. 14일 이용권은 한 번만 청구되며 갱신되지 않고 해지할 것도 없습니다. 14일은 구매 시점부터 연속으로 계산되며 앱을 사용하지 않는 동안에도 멈추지 않습니다. 이용 기간이 끝나면 앱은 무료 버전으로 돌아갑니다.',
+    'ru': 'Месячный тариф — подписка с автоматическим продлением. Оплата списывается с аккаунта Google Play или Apple ID, через который оформлена подписка, и следующий период оплачивается автоматически по окончании текущего, пока вы не отмените подписку. Отменить можно в любой момент в настройках подписок магазина — не в этом приложении — доступ сохраняется до конца оплаченного периода. Пропуск на 14 дней оплачивается один раз: он не продлевается, отменять нечего, а его 14 дней идут подряд с момента покупки и не приостанавливаются, пока вы не пользуетесь приложением. Когда доступ заканчивается, приложение возвращается к бесплатной версии.',
+    'ja': '月額プランは自動更新のサブスクリプションです。料金は登録に使用した Google Play または Apple ID のアカウントに請求され、現在の期間が終了すると、解約するまで次の期間の料金が自動的に請求されます。解約はストアのサブスクリプション設定からいつでも可能です（本アプリ内では解約できません）。解約後も支払い済みの期間の終了までご利用いただけます。14日間パスの料金は一度だけ請求され、更新はなく、解約するものもありません。14日間は購入時から連続して進み、アプリを使っていない間も止まりません。期間が終わるとアプリは無料版に戻ります。',
   },
   'premium_status_free_title': {
     'th': 'อัปเกรดเป็น Premium',

@@ -73,8 +73,9 @@ enum StoreOutcome {
 /// 2. **[EntitlementStore]** — a local cache so the app opens correctly
 ///    offline and does not flash the paywall at someone who has paid.
 ///
-/// Entitlements still do not cross between Android and iOS, which the paywall
-/// says out loud (`premium_platform_note`).
+/// Entitlements still do not cross between Android and iOS, and since
+/// 2026-09-07 the 14-day pass does not survive an iOS reinstall either. The
+/// paywall says both out loud (`premium_platform_note`).
 class PremiumProvider extends ChangeNotifier {
   PremiumProvider({
     EntitlementStore? store,
@@ -318,6 +319,12 @@ class PremiumProvider extends ChangeNotifier {
   /// the *original* subscription date, so a user six months into a monthly plan
   /// would be handed an expiry five months in the past and locked out of
   /// something they are paying for.
+  ///
+  /// ⚠️ [PremiumPlan.pass14Days] is the opposite case and task 2.8 has to split
+  /// them. A one-time purchase never renews, so its 14 days really do run from
+  /// the purchase — and taking "now" instead means a reinstall on day 13 hands
+  /// out a second fortnight for free. Use the store's `purchaseTime` there, and
+  /// this rolling horizon only for a plan the store keeps renewing.
   DateTime _horizonFor(PremiumPlan plan) =>
       DateTime.now().toUtc().add(plan.duration);
 
@@ -572,14 +579,18 @@ class PremiumProvider extends ChangeNotifier {
 
   /// "Restore Purchases". Required by both stores.
   ///
-  /// ✅ **Works on iOS and Android alike since 2026-08-30.** It did not while
-  /// the products were one-time consumables: StoreKit never replays a
-  /// consumable, so an iPhone had nothing to restore, and the client accepted
-  /// that on 2026-08-23. Subscriptions are replayed on both platforms, so the
-  /// limitation is gone — `premium_platform_note` no longer discloses it, and
-  /// the test that used to pin the disclosure now pins its absence. **Do not
-  /// reintroduce the per-platform warning:** it would scare users away from
-  /// something that works.
+  /// 🚨 **What it can restore depends on the plan, and has changed three
+  /// times.** A subscription is replayed by both stores, so [PremiumPlan.monthly]
+  /// restores on iOS and Android alike. [PremiumPlan.pass14Days] has to be
+  /// consumed to be buyable a second time and StoreKit never replays a consumed
+  /// purchase, so on iOS a reinstall inside the fortnight loses the rest of it;
+  /// Android does replay it. The client accepted that limitation on 2026-08-23,
+  /// it disappeared on 2026-08-30 when both plans became subscriptions, and it
+  /// came back on 2026-09-07 with the 14-day pass.
+  ///
+  /// `premium_platform_note` discloses it per plan, and the test in
+  /// `premium_test.dart` pins that disclosure. **Do not flatten the copy back
+  /// to "restore works":** on an iPhone, for the pass, it does not.
   ///
   /// The store sends restored purchases as ordinary stream events with no
   /// "that is all" marker, so this waits a bounded window and reports

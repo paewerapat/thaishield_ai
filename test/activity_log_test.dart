@@ -86,7 +86,7 @@ class _RecordingLog implements ActivityLog {
 
 class _FakeBilling implements BillingService {
   Set<String> knownProducts = const {
-    'thaishield_premium_weekly',
+    'thaishield_premium_14days',
     'thaishield_premium_monthly',
   };
   List<BillingPurchase> replyToBuy = const [];

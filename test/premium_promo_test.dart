@@ -55,7 +55,14 @@ void main() {
         find.text(appStrings['premium_strip_title']!['th']!),
         findsOneWidget,
       );
-      expect(find.text(appStrings['premium_cta']!['th']!), findsOneWidget);
+      // "View plans", not "Subscribe": since 2026-09-07 the button opens a
+      // screen selling a subscription and a one-time pass, and naming only one
+      // of them on the way in is how the pass buyer arrives expecting a
+      // subscription.
+      expect(
+        find.text(appStrings['premium_upgrade_action']!['th']!),
+        findsOneWidget,
+      );
     });
 
     testWidgets('still appears while the trial is running', (tester) async {

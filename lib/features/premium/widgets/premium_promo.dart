@@ -132,7 +132,11 @@ class PremiumHomeCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                appText(context, active ? 'premium_upgrade_action' : 'premium_cta'),
+                // Always "view plans" since 2026-09-07: the button opens a
+                // screen selling a subscription *and* a one-time pass, so
+                // labelling it "Subscribe" would name only half of what is
+                // behind it.
+                appText(context, 'premium_upgrade_action'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(

@@ -278,21 +278,21 @@ void main() {
       );
       expect(
         find.descendant(
-          of: cardFor(PremiumPlan.weekly),
+          of: cardFor(PremiumPlan.pass14Days),
           matching: find.byIcon(Icons.radio_button_unchecked_rounded),
         ),
         findsOneWidget,
       );
 
       await tester.tap(
-        find.text(appStrings[PremiumPlan.weekly.titleKey]!['th']!),
+        find.text(appStrings[PremiumPlan.pass14Days.titleKey]!['th']!),
       );
       await tester.pumpAndSettle();
 
       // …and the selection actually moved.
       expect(
         find.descendant(
-          of: cardFor(PremiumPlan.weekly),
+          of: cardFor(PremiumPlan.pass14Days),
           matching: find.byIcon(Icons.radio_button_checked_rounded),
         ),
         findsOneWidget,
@@ -304,6 +304,46 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('the buy button names the model of the selected plan',
+        (tester) async {
+      // 🚨 The screen sells two billing models since 2026-09-07. "Subscribe" on
+      // a one-time pass misdescribes the purchase at the exact moment the user
+      // commits to it — the one place a store reviewer looks, and the sentence
+      // a refund request quotes back.
+      await tester.pumpWidget(_host(const PaywallScreen()));
+      await tester.pumpAndSettle();
+
+      // The button sits below the fold on a test-sized screen, and the sliver
+      // does not build what it cannot show — so scroll to it rather than
+      // asserting on a widget that was never created.
+      Future<void> revealButton() async {
+        await tester.scrollUntilVisible(
+          find.byType(ElevatedButton),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+      }
+
+      // Opens on the recommended plan, which is the subscription.
+      await revealButton();
+      expect(find.text(appStrings['premium_cta']!['th']!), findsOneWidget);
+      expect(find.text(appStrings['premium_cta_pass']!['th']!), findsNothing);
+
+      await tester.ensureVisible(
+        find.text(appStrings[PremiumPlan.pass14Days.titleKey]!['th']!),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.text(appStrings[PremiumPlan.pass14Days.titleKey]!['th']!),
+      );
+      await tester.pumpAndSettle();
+
+      await revealButton();
+      expect(find.text(appStrings['premium_cta_pass']!['th']!), findsOneWidget);
+      expect(find.text(appStrings['premium_cta']!['th']!), findsNothing);
     });
 
     testWidgets('renders in all six languages without overflowing',

@@ -195,7 +195,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             ),
                           )
                         : Text(
-                            appText(context, 'premium_cta'),
+                            // The label follows the selected plan: "Subscribe"
+                            // on a one-time pass would misdescribe the purchase
+                            // at the moment the user commits to it.
+                            appText(
+                              context,
+                              _selected.isSubscription
+                                  ? 'premium_cta'
+                                  : 'premium_cta_pass',
+                            ),
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
@@ -206,9 +214,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 const SizedBox(height: 6),
                 Center(
                   child: TextButton(
-                    // Apple rejects an app that sells a non-consumable without
-                    // a restore path, so this ships from 2B even though it
-                    // cannot do anything until 2C.
+                    // Apple rejects an app that sells a subscription or a
+                    // non-consumable without a restore path, so this ships
+                    // from 2B even though it cannot do anything until 2C. It
+                    // restores the monthly subscription on both stores; the
+                    // 14-day pass is consumed, so iOS has nothing to replay —
+                    // `premium_platform_note` says so rather than letting the
+                    // button imply otherwise.
                     onPressed: _busy ? null : () => _run(provider.restore),
                     child: Text(
                       appText(context, 'premium_restore'),
