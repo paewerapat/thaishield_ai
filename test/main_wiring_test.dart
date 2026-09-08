@@ -67,6 +67,26 @@ void main() {
       expect(source.contains('FirestoreActivityLog()'), isTrue);
     });
 
+    test('the premium provider is given a receipt verifier', () {
+      // The third argument with the same silent-failure shape, and the worst
+      // of the three to lose: with no verifier the app is back to trusting
+      // whatever the device says about a purchase, which `EntitlementRepository`
+      // is explicit is not a security boundary — and the subscription goes back
+      // to a rolling one-period guess instead of the store's real renewal date.
+      // Nothing on screen changes, so only a test can notice.
+      expect(
+        source.contains('verifier:'),
+        isTrue,
+        reason: 'lib/main.dart builds PremiumProvider without `verifier:`, so '
+            'no purchase is ever checked with Play or Apple.',
+      );
+      expect(
+        source.contains('CloudFunctionVerifier.instance'),
+        isTrue,
+        reason: 'main.dart no longer wires the real verifier',
+      );
+    });
+
     test('the launch itself is recorded', () {
       // Without this call the only rows ever written are for people who reach
       // the paywall. "เริ่มใช้งานเมื่อไหร่" would then mean "first bought",

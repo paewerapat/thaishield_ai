@@ -4,6 +4,7 @@ const {defineSecret} = require('firebase-functions/params');
 const {setGlobalOptions} = require('firebase-functions/v2');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
+const {GoogleAuth} = require('google-auth-library');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -12,6 +13,17 @@ setGlobalOptions({region: 'asia-southeast1'});
 
 const NEWSDATA_API_KEY = defineSecret('NEWSDATA_API_KEY');
 const ROUTES_API_KEY = defineSecret('ROUTES_API_KEY');
+
+/**
+ * App Store shared secret, for `verifyReceipt`.
+ *
+ * Set it with `firebase functions:secrets:set APPLE_SHARED_SECRET`, from
+ * App Store Connect > ThaiShield AI > App Information > App-Specific Shared
+ * Secret. While it is unset, validatePurchase answers `unavailable` for iOS and
+ * the app falls back to trusting the store SDK — the posture it had before this
+ * function existed.
+ */
+const APPLE_SHARED_SECRET = defineSecret('APPLE_SHARED_SECRET');
 
 /**
  * Ways an actual fire gets described. Used instead of the bare word, which
@@ -437,6 +449,280 @@ exports.computeRoute = onRequest(
   },
 );
 
+/** The package name Play knows this app by. A typo here reads as "purchase not
+ * found" rather than as a configuration error, which is why it is a named
+ * constant a test can assert on. */
+const ANDROID_PACKAGE = 'com.thaishield.thaishield_ai';
+
+/**
+ * The only products this function will vouch for.
+ *
+ * An allowlist, not a passthrough: the token decides *whose* purchase is
+ * checked, but the product id decides what the app is about to unlock, and an
+ * open validator would confirm a token for a product this app does not sell.
+ * Keep in sync with `PremiumPlan` in the app.
+ */
+const PRODUCTS = {
+  thaishield_premium_monthly: {subscription: true, durationDays: 30},
+  thaishield_premium_14days: {subscription: false, durationDays: 14},
+};
+
+/** Play's `purchaseState` for a one-time product: 0 = purchased. */
+const ANDROID_PURCHASED = 0;
+
+const DAY_MILLIS = 24 * 60 * 60 * 1000;
+
+/**
+ * Reads Play's `subscriptionsv2` answer.
+ *
+ * v2 keeps the expiry on the line item rather than on the subscription, because
+ * one purchase can carry several. This app sells one base plan, so the furthest
+ * expiry is both the right answer and the safe one — a shorter sibling must
+ * never cut short what the user paid for.
+ *
+ * `subscriptionState` says whether it is still worth anything. ACTIVE and
+ * IN_GRACE_PERIOD are access. CANCELED is **also** access: on Play it means
+ * "will not renew", and the period already paid for runs to its expiry, which
+ * is exactly what the store itself honours. ON_HOLD, PAUSED, EXPIRED and
+ * PENDING are not.
+ */
+function readAndroidSubscription(body) {
+  const state = body?.subscriptionState;
+  const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
+  const expiries = lineItems
+    .map((item) => Date.parse(item?.expiryTime ?? ''))
+    .filter((millis) => Number.isFinite(millis));
+  if (expiries.length === 0) return {valid: false, reason: 'no_expiry'};
+
+  const expiresAtMillis = Math.max(...expiries);
+  const live =
+    state === 'SUBSCRIPTION_STATE_ACTIVE' ||
+    state === 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD' ||
+    state === 'SUBSCRIPTION_STATE_CANCELED';
+  if (!live) return {valid: false, reason: 'not_active', expiresAtMillis};
+  if (expiresAtMillis <= Date.now()) {
+    return {valid: false, reason: 'expired', expiresAtMillis};
+  }
+  return {
+    valid: true,
+    expiresAtMillis,
+    autoRenewing: state !== 'SUBSCRIPTION_STATE_CANCELED',
+  };
+}
+
+/**
+ * Reads Play's `purchases.products` answer for the 14-day pass.
+ *
+ * 🚨 The fortnight is arithmetic, and doing it **here** is the point:
+ * `purchaseTimeMillis` is Play's own clock, so a handset with its date pushed
+ * forward cannot lengthen a pass and one pushed back cannot revive an expired
+ * one. The device-side calculation in `PremiumProvider` is the fallback for
+ * when this function has no opinion, not the authority.
+ *
+ * A consumed purchase (`consumptionState === 1`) is still read rather than
+ * rejected: the app consumes the pass when the fortnight ends, so "consumed"
+ * means the time is up, and returning the real expiry is what tells the app it
+ * has nothing left to grant.
+ */
+function readAndroidProduct(body, durationMillis) {
+  if (body?.purchaseState !== ANDROID_PURCHASED) {
+    return {valid: false, reason: 'not_purchased'};
+  }
+  const purchasedAtMillis = Number(body?.purchaseTimeMillis);
+  if (!Number.isFinite(purchasedAtMillis) || purchasedAtMillis <= 0) {
+    return {valid: false, reason: 'no_purchase_time'};
+  }
+  const expiresAtMillis = purchasedAtMillis + durationMillis;
+  const live = expiresAtMillis > Date.now();
+  return {
+    valid: live,
+    reason: live ? undefined : 'expired',
+    purchasedAtMillis,
+    expiresAtMillis,
+  };
+}
+
+/**
+ * Picks this app's transaction out of an Apple `verifyReceipt` answer.
+ *
+ * `latest_receipt_info` carries every transaction the receipt knows about, for
+ * every product, oldest first — so the last matching entry is the current one.
+ * A subscription has `expires_date_ms`; the 14-day pass does not, and its
+ * fortnight is measured from `purchase_date_ms`, the same way Android measures
+ * it from `purchaseTimeMillis`.
+ *
+ * A `cancellation_date_ms` is a refund or a family-sharing revocation. Apple
+ * keeps the transaction in the receipt either way, so ignoring that field
+ * would keep access alive for someone whose money was given back.
+ */
+function readAppleReceipt(body, productId, durationMillis) {
+  if (body?.status !== 0) {
+    return {valid: false, reason: `apple_status_${body?.status ?? 'unknown'}`};
+  }
+  const all = [
+    ...(Array.isArray(body?.latest_receipt_info) ? body.latest_receipt_info : []),
+    ...(Array.isArray(body?.receipt?.in_app) ? body.receipt.in_app : []),
+  ].filter((item) => item?.product_id === productId);
+  if (all.length === 0) return {valid: false, reason: 'product_not_in_receipt'};
+
+  const latest = all[all.length - 1];
+  if (latest?.cancellation_date_ms) return {valid: false, reason: 'refunded'};
+
+  const expiryRaw = Number(latest?.expires_date_ms);
+  const purchasedAtMillis = Number(latest?.purchase_date_ms);
+  const expiresAtMillis =
+    Number.isFinite(expiryRaw) && expiryRaw > 0
+      ? expiryRaw
+      : Number.isFinite(purchasedAtMillis)
+        ? purchasedAtMillis + durationMillis
+        : NaN;
+  if (!Number.isFinite(expiresAtMillis)) return {valid: false, reason: 'no_expiry'};
+
+  const live = expiresAtMillis > Date.now();
+  return {
+    valid: live,
+    reason: live ? undefined : 'expired',
+    purchasedAtMillis: Number.isFinite(purchasedAtMillis) ? purchasedAtMillis : undefined,
+    expiresAtMillis,
+  };
+}
+
+/**
+ * Checks a purchase with the store that sold it.
+ *
+ * ## Why this exists
+ *
+ * Everything the app knew about a purchase came from the store SDK on the
+ * user's own device, and `EntitlementRepository` says out loud that it is not a
+ * security boundary: the rules have to let an unauthenticated client write
+ * there, so a determined user could file themselves a pass. This is the check
+ * that cannot be forged, and the dates it returns replace the app's estimates —
+ * including the rolling "cache horizon" the subscription had to use because a
+ * client cannot see a real renewal date.
+ *
+ * ## What it needs before it can answer
+ *
+ * - **Android** — Play Console > Users & permissions must grant this project's
+ *   service account (`<project>@appspot.gserviceaccount.com`) "View financial
+ *   data" and "Manage orders and subscriptions", and the Google Play Android
+ *   Developer API must be enabled in the GCP project. Both are console steps.
+ * - **iOS** — `APPLE_SHARED_SECRET` set as a Functions secret.
+ *
+ * 🚨 **Missing either one answers `unavailable`, never `invalid`.** The app
+ * treats "no opinion" as permission to fall back to the store SDK. Answering
+ * invalid would lock paying users out the moment a console permission lapsed,
+ * which is the failure mode worth being paranoid about here — a receipt check
+ * that is down must not become a refund queue.
+ */
+exports.validatePurchase = onRequest(
+  {
+    secrets: [APPLE_SHARED_SECRET],
+    timeoutSeconds: 30,
+    cors: true,
+    // Same reasoning as computeRoute: no accounts, so no caller identity to
+    // check, and the invoker policy has to be in code to survive a redeploy.
+    // A token is only useful to whoever already owns the purchase, and this
+    // endpoint says nothing about a token it was not given.
+    invoker: 'public',
+    maxInstances: 10,
+  },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({error: 'method_not_allowed'});
+      return;
+    }
+
+    const body = req.body ?? {};
+    const {platform, productId, token} = body;
+
+    const product = PRODUCTS[productId];
+    if (!product) {
+      res.status(400).json({error: 'unknown_product'});
+      return;
+    }
+    if (typeof token !== 'string' || token.length < 8 || token.length > 20000) {
+      res.status(400).json({error: 'bad_token'});
+      return;
+    }
+    const durationMillis = product.durationDays * DAY_MILLIS;
+
+    try {
+      if (platform === 'android') {
+        const auth = new GoogleAuth({
+          scopes: ['https://www.googleapis.com/auth/androidpublisher'],
+        });
+        const client = await auth.getClient();
+        const base =
+          'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' +
+          ANDROID_PACKAGE;
+        const url = product.subscription
+          ? `${base}/purchases/subscriptionsv2/tokens/${encodeURIComponent(token)}`
+          : `${base}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(token)}`;
+
+        const upstream = await client.request({url, retry: false});
+        res.status(200).json(
+          product.subscription
+            ? readAndroidSubscription(upstream.data)
+            : readAndroidProduct(upstream.data, durationMillis),
+        );
+        return;
+      }
+
+      if (platform === 'ios') {
+        const secret = APPLE_SHARED_SECRET.value();
+        if (!secret) {
+          res.status(200).json({valid: false, reason: 'unavailable'});
+          return;
+        }
+        res.status(200).json(
+          await verifyWithApple(token, secret, productId, durationMillis),
+        );
+        return;
+      }
+
+      res.status(400).json({error: 'bad_platform'});
+    } catch (error) {
+      // A 401/403 is the console permission nobody has granted yet; a 404 is a
+      // token for another package. Neither is evidence that the user did not
+      // pay, so neither is answered as invalid.
+      logger.error(
+        `validatePurchase: ${platform} check failed`,
+        error?.message ?? error,
+      );
+      res.status(200).json({valid: false, reason: 'unavailable'});
+    }
+  },
+);
+
+/**
+ * Apple's production endpoint first, sandbox second.
+ *
+ * 🚨 Status 21007 means "sandbox receipt sent to production", and retrying
+ * against sandbox is Apple's documented answer, not a workaround: their own
+ * reviewers test the production URL with sandbox receipts, so an app that skips
+ * the retry fails review. Never the other way round — a production receipt must
+ * not be sent to the sandbox endpoint.
+ */
+async function verifyWithApple(receipt, secret, productId, durationMillis) {
+  const payload = {
+    'receipt-data': receipt,
+    password: secret,
+    'exclude-old-transactions': false,
+  };
+  const call = (url) =>
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then((r) => r.json());
+
+  let answer = await call('https://buy.itunes.apple.com/verifyReceipt');
+  if (answer?.status === 21007) {
+    answer = await call('https://sandbox.itunes.apple.com/verifyReceipt');
+  }
+  return readAppleReceipt(answer, productId, durationMillis);
+}
+
 // Exported for the unit tests in functions/index.test.js — none of these touch
 // Firestore or the network.
 exports._internals = {
@@ -450,4 +736,9 @@ exports._internals = {
   RUN_INTERVAL_MINUTES,
   readLatLng,
   ALLOWED_TRAVEL_MODES,
+  readAndroidSubscription,
+  readAndroidProduct,
+  readAppleReceipt,
+  PRODUCTS,
+  ANDROID_PACKAGE,
 };

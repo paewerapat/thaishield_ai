@@ -1,19 +1,22 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
 /// The store, behind an interface the rest of the app can be tested against.
 ///
 /// ## Why this exists rather than calling `InAppPurchase.instance` directly
 ///
-/// Nothing in this project can exercise a real purchase yet. The products do
-/// not exist in either store — creating them needs the Payments Profile, which
-/// needs Thai bank details the client expects to have around November 2026
-/// (CLAUDE.md §5). Wiring the plugin straight into [PremiumProvider] would have
-/// meant shipping the one part of the app that takes people's money with no
-/// test coverage at all, and finding out whether it worked on the day money
-/// started moving.
+/// A real purchase still cannot be exercised from a test. Wiring the plugin
+/// straight into [PremiumProvider] would have meant shipping the one part of
+/// the app that takes people's money with no coverage at all, and finding out
+/// whether it worked on the day money started moving.
+///
+/// *(Both Play products exist and are active since 2026-09-08, and the client
+/// linked the payments profile the same day. What that unblocks is a sandbox
+/// purchase on a real handset — not a unit test, which still needs the fake.)*
 ///
 /// So the provider talks to this interface, the tests supply a fake that can
 /// act out cancellation, failure, a pending purchase and a restore, and
@@ -24,12 +27,10 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 ///
 /// **It does not validate receipts.** A client cannot: the check has to happen
 /// somewhere the user does not control, against Play's Developer API or
-/// Apple's verifyReceipt. That belongs in a Cloud Function, which cannot be
-/// deployed until the developer account is given a Firebase role (CLAUDE.md
-/// §2.4 — the same block that holds `computeRoute`). Until then the app trusts
-/// what the store SDK hands it, which is the normal client-only posture and is
-/// **not** a security boundary — see [EntitlementRepository] for the same
-/// caveat stated about the local cache.
+/// Apple's App Store Server API. That is `validatePurchase` in
+/// `functions/index.js`, and [PremiumProvider] calls it through
+/// [PurchaseVerifier] — this layer stays a pure mapping onto the plugin and
+/// makes no trust decision of its own.
 abstract class BillingService {
   /// False when the device has no store, the user is signed out of it, or
   /// billing is unavailable for the region. The paywall says so rather than
@@ -62,12 +63,36 @@ abstract class BillingService {
 
   /// Tells the store the app has delivered what was bought.
   ///
-  /// 🚨 **Acknowledge, never consume.** Play cancels and refunds any purchase
-  /// that is not acknowledged within three days. Consuming is for one-time
-  /// products; doing it to a subscription is not a recoverable mistake. The
-  /// plugin's `completePurchase` acknowledges — the consume path is a separate
-  /// call this project must never make.
+  /// 🚨 **This acknowledges. It does not consume.** Play cancels and refunds any
+  /// purchase that is not acknowledged within three days, so every terminal
+  /// state goes through here. Consuming is a different call with a different
+  /// meaning and its own timing — see [consume] — and it must never touch a
+  /// subscription.
   Future<void> complete(BillingPurchase purchase);
+
+  /// Consumes a one-time purchase so the store will sell it again.
+  ///
+  /// 🚨 **Only [PremiumPlan.pass14Days], and only once its 14 days are over.**
+  /// Play keeps replaying a "buy" product to every device on the account until
+  /// it is consumed, and refuses to sell it a second time while it is
+  /// unconsumed. Those two facts pull in opposite directions and fix the
+  /// timing between them:
+  ///
+  /// - consume it **on purchase day** and the user cannot restore their own
+  ///   pass on a second device — `premium_platform_note` promises they can on
+  ///   Android — and this app loses the replay it uses to re-grant access;
+  /// - **never** consume it and the same user can never buy a second fortnight.
+  ///
+  /// So it happens when the pass expires, which is what
+  /// `PremiumProvider._onPurchaseUpdates` does with an expired replay.
+  ///
+  /// 🚨 **Never call this for [PremiumPlan.monthly].** Consuming a subscription
+  /// is not a recoverable mistake.
+  ///
+  /// A no-op on iOS: StoreKit has no consume step — `completePurchase`
+  /// finishes a consumable — which is exactly why the pass cannot be restored
+  /// there.
+  Future<void> consume(BillingPurchase purchase);
 
   void dispose();
 }
@@ -112,6 +137,7 @@ class BillingPurchase {
     required this.purchaseId,
     required this.status,
     this.purchasedAt,
+    this.verificationToken = '',
     this.pendingCompletePurchase = false,
     this.errorMessage,
   });
@@ -129,6 +155,15 @@ class BillingPurchase {
   /// on restores, which is why the caller must have a fallback rather than
   /// assuming it is there.
   final DateTime? purchasedAt;
+
+  /// What a server needs to ask the store about this purchase: Play's purchase
+  /// token, or the base64 App Store receipt. Empty when the platform did not
+  /// supply one, which is the signal to skip verification rather than to fail
+  /// it — see [PurchaseVerifier].
+  ///
+  /// 🚨 Not a secret to guard, but not a thing to log either: it is the handle
+  /// that identifies one person's transaction.
+  final String verificationToken;
 
   /// The store is still waiting to be told the app delivered the goods.
   final bool pendingCompletePurchase;
@@ -199,6 +234,23 @@ class InAppPurchaseBilling implements BillingService {
   Future<void> restore() => _plugin.restorePurchases();
 
   @override
+  Future<void> consume(BillingPurchase purchase) async {
+    if (!Platform.isAndroid) return;
+
+    final details = _live[purchase.purchaseId];
+    if (details == null) return;
+
+    // The federated `InAppPurchase` API has no consume: it is Play-only, so it
+    // lives on the Android addition. `consumePurchase` also acknowledges, so a
+    // consumed purchase must not be completed again afterwards — the caller
+    // treats consume and complete as alternatives, not a sequence.
+    final android =
+        _plugin.getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+    await android.consumePurchase(details);
+    _live.remove(purchase.purchaseId);
+  }
+
+  @override
   Future<void> complete(BillingPurchase purchase) async {
     // Nothing to do: the plugin's own PurchaseDetails is what completePurchase
     // needs, and it is held by [PremiumProvider] only as a [BillingPurchase].
@@ -221,6 +273,11 @@ class InAppPurchaseBilling implements BillingService {
       purchaseId: details.purchaseID ?? '',
       status: _toStatus(details.status),
       purchasedAt: _parseTransactionDate(details.transactionDate),
+      // `serverVerificationData` is Play's purchase token on Android and the
+      // base64 receipt on iOS — the two things `validatePurchase` knows how to
+      // ask about. `localVerificationData` is deliberately not used: it is the
+      // device's own copy, which is the thing being checked.
+      verificationToken: details.verificationData.serverVerificationData,
       pendingCompletePurchase: details.pendingCompletePurchase,
       errorMessage: details.error?.message,
     );

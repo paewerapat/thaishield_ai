@@ -10,6 +10,7 @@ import 'features/premium/providers/premium_provider.dart';
 import 'features/onboarding/screens/language_selection_screen.dart';
 import 'firebase_options.dart';
 import 'features/premium/services/billing_service.dart';
+import 'features/premium/services/purchase_verifier.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,12 @@ void main() async {
   // guards this line too.
   final premiumProvider = PremiumProvider(
     billing: InAppPurchaseBilling(),
+    // Receipts are checked by `validatePurchase` before access is granted, so
+    // a purchase this app honours is one Play or Apple confirmed. It fails
+    // silent by design: if the function is unreachable, or its Play permission
+    // has not been granted yet, the app falls back to trusting the store SDK
+    // rather than locking a paying user out.
+    verifier: CloudFunctionVerifier.instance,
     activityLog: FirestoreActivityLog(),
   );
   await premiumProvider.load();

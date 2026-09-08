@@ -373,7 +373,12 @@ platform      string     // label only, for support; entitlements never cross pl
 recorded_at   timestamp  // serverTimestamp, so a wrong device clock cannot backdate it
 ```
 
-🚨 **This collection is now obsolete and 2.8 should retire it.** It was built because the
+🚨 **Live again since 2026-09-08, for the 14-day pass only** — `grantPurchase`
+writes here when `plan.isSubscription` is false, and `_expiryFor` reads it when a
+replayed pass arrives with no date. The paragraph below is the history of why it
+was nearly deleted; it applies to the subscription, which the store answers for.
+
+🚨 **This collection was obsolete while both plans were subscriptions.** It was built because the
 products were one-time consumables, which neither store replays with their remaining days
 on a new device — so "Restore Purchases" had nothing to restore. Since 2026-08-30 both
 products are auto-renewing subscriptions, and both stores answer that question themselves.
@@ -943,21 +948,58 @@ picks up automatically.
 which is the build-commands section — a reviewer following that reference would have
 checked the wrong thing and concluded the copy was fine.
 
-#### Task 2.8 — where it actually stands (2026-08-31)
+#### Task 2.8 — where it actually stands (2026-09-08)
 
-**The client side is built and tested. Two things are left, and neither is code
-this project can finish alone.**
+**The client side and the server side are both built and tested. What is left needs
+a console login or a real handset, not code.**
 
 | Piece | State |
 |---|---|
 | `BillingService` + `InAppPurchaseBilling` | ✅ built — `lib/features/premium/services/billing_service.dart` |
-| `purchase()` / `restore()` on the store | ✅ built, 17 tests in `test/billing_test.dart` |
-| Acknowledge (never consume) | ✅ built and pinned by test |
+| `purchase()` / `restore()` on the store | ✅ built, 28 tests in `test/billing_test.dart` |
+| Acknowledge on every terminal state | ✅ built and pinned by test |
+| **Consume the pass — at the END of its fortnight** | ✅ `BillingService.consume`, Android-only, three tests |
+| **Per-plan expiry** (pass from the store's purchase time, subscription rolling) | ✅ `PremiumProvider._expiryFor` |
+| **Receipt validation** | ✅ `validatePurchase` in `functions/index.js` + `PurchaseVerifier`, 18 tests in `functions/validate_purchase.test.js` |
 | Pending purchases, cancellations, errors, retired product ids | ✅ each has its own outcome and its own copy in six languages |
 | Store-localised prices on the paywall | ✅ `PremiumProvider.storeProducts()` |
-| Firestore restore copy | ✅ retired — nothing writes it |
-| **Receipt validation** | ❌ needs a Cloud Function; see below |
-| **A real purchase, end to end** | ❌ needs products in the stores, which needs the Payments Profile (§5) |
+| Firestore copy of a purchase | ✅ written **for the pass only** — the store answers better for a subscription |
+| Play products | ✅ both active since 2026-09-08 |
+| **Apple products** | ❌ needs an Apple ID login — everything to paste is in `store-assets/product-appstore.md` |
+| **Deploying `validatePurchase`** | ❌ needs `APPLE_SHARED_SECRET` to exist, and the Play permission below |
+| **A real purchase, end to end** | ❌ needs a sandbox tester and a handset |
+
+**The three rules the purchase path now turns on, and what breaks if any is
+softened:**
+
+1. **The pass is dated by the store, never by the device.** `_expiryFor` takes the
+   server's date first, the store SDK's `purchaseTime` second, and the Firestore
+   record third — and grants **nothing** when all three are missing. The old
+   `now + duration` looked harmless and meant a reinstall on day 13 handed out a
+   second fortnight.
+2. **The pass is consumed when it ends, not when it is bought.** Play refuses to
+   sell an unconsumed "buy" product a second time, and stops replaying it once it
+   is consumed. Consume early and Android restore breaks — which
+   `premium_platform_note` promises works. Consume never and nobody can buy a
+   second pass. `_onPurchaseUpdates` consumes exactly the replays whose fortnight
+   has passed.
+3. **A verifier with no opinion means "fall back", never "deny".** Every failure
+   in `CloudFunctionVerifier` — offline, timeout, 4xx, missing Play permission —
+   returns `noOpinion`, and the app then trusts the store SDK as it did before.
+   The only thing that denies access is Play or Apple saying the purchase is not
+   real. A receipt check that is down must not become a refund queue.
+
+**Two console steps before `validatePurchase` can answer:**
+
+- **Android** — Play Console → Users & permissions → invite
+  `thaishield-ai-790eb@appspot.gserviceaccount.com` with *View financial data* and
+  *Manage orders and subscriptions*, and enable the Google Play Android Developer
+  API in the GCP project. Until then every Android check answers `unavailable`,
+  which is the fall-back path, not an outage.
+- **iOS** — `firebase functions:secrets:set APPLE_SHARED_SECRET` with the value from
+  App Store Connect → App Information. 🚨 The function *declares* this secret, so
+  **it will not deploy until the secret exists** — set a placeholder now if the real
+  one is not to hand.
 
 🚨 **`PremiumProvider` takes its `BillingService` as an optional argument that
 defaults to null.** That is what lets every widget test build a screen without
@@ -975,14 +1017,19 @@ into a monthly plan an expiry five months in the past and lock them out of what
 they are paying for. `PremiumProvider._horizonFor` documents what is passed
 instead and exactly what it over-grants.
 
-**What receipt validation would buy, and what its absence costs.** A client
-cannot learn the real renewal date; that needs Play's Developer API or Apple's
-verifyReceipt, called from somewhere the user does not control. Without it the
-app grants access for one plan period from each confirmation and re-confirms on
-every launch. The gap: someone who cancels and never opens the app online again
-keeps access until the horizon — at most one billing period. That is the
-specific, bounded cost of not having the function, and the reason to build it
-rather than a detail to leave unsaid.
+**What receipt validation buys, now that it exists.** A client cannot learn the
+real renewal date; that needs Play's Developer API or Apple's receipt endpoint,
+called from somewhere the user does not control. `validatePurchase` is that
+place, and its answer replaces two guesses: the rolling one-period horizon for
+the subscription, and the device-clock arithmetic for the pass. It also reads
+what a client cannot see at all — a refund (`cancellation_date_ms`), a Play
+subscription on hold or paused, and the difference between "cancelled" (still
+paid until the expiry, still access) and "expired".
+
+⚠️ **While the console steps above are outstanding the old cost is still the
+live one**: the function answers `unavailable`, the app falls back, and someone
+who cancels and never opens the app online again keeps access until the horizon —
+at most one billing period.
 
 **The 3-day trial is still granted in-app** (`startTrialIfEligible`). Moving it
 to a store introductory offer is still the plan and is still not done. When it

@@ -125,6 +125,11 @@ class _FakeBilling implements BillingService {
   @override
   Future<void> complete(BillingPurchase purchase) async {}
 
+  @override
+  Future<void> consume(BillingPurchase purchase) async => consumed.add(purchase.purchaseId);
+
+  final List<String> consumed = [];
+
   /// Pushes an event the way the store does — unprompted. Play redelivers
   /// purchases nobody asked for, which is exactly the case below.
   void emit(List<BillingPurchase> purchases) => _controller.add(purchases);

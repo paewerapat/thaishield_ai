@@ -7,6 +7,7 @@ import '../models/entitlement.dart';
 import '../services/billing_service.dart';
 import '../models/premium_plan.dart';
 import '../services/entitlement_repository.dart';
+import '../services/purchase_verifier.dart';
 import '../services/entitlement_store.dart';
 
 /// What a purchase or restore attempt did.
@@ -80,10 +81,13 @@ class PremiumProvider extends ChangeNotifier {
   PremiumProvider({
     EntitlementStore? store,
     EntitlementRepository? repository,
+    PurchaseVerifier? verifier,
     BillingService? billing,
     ActivityLog? activityLog,
   })  : _store = store ?? EntitlementStore.instance,
         _repository = repository ?? EntitlementRepository.instance,
+        // ignore: prefer_initializing_formals
+        _verifier = verifier,
         // The field is private and the named argument is not, so they cannot
         // share one name and an initializing formal is not available.
         // ignore: prefer_initializing_formals
@@ -93,6 +97,13 @@ class PremiumProvider extends ChangeNotifier {
 
   final EntitlementStore _store;
   final EntitlementRepository _repository;
+
+  /// Server-side receipt check, when one is wired.
+  ///
+  /// Null in tests that are not about verification, and null in a build that
+  /// predates the Cloud Function — in both cases the app keeps the client-only
+  /// posture it had before, which is what [_verify] falls back to.
+  final PurchaseVerifier? _verifier;
 
   /// Feeds the CMS's "App Users" and "Transactions" pages.
   ///
@@ -265,13 +276,39 @@ class PremiumProvider extends ChangeNotifier {
           // allowlist product ids on that collection for this reason.
           _logPurchase(purchase);
           await _completeQuietly(purchase);
+          _resolveIfAwaited(purchase, StoreOutcome.failed);
+          continue;
+        }
+
+        final expiry = await _expiryFor(plan, purchase);
+        if (expiry == null) {
+          // Either the store said this purchase is not valid, or the pass
+          // arrived with no purchase date and nothing on record to date it
+          // from. Dating it from "now" instead is the reinstall exploit:
+          // delete the app on day 13 of a fortnight and get a fresh one.
+          _logPurchase(purchase);
+          await _completeQuietly(purchase);
+          _resolveIfAwaited(purchase, StoreOutcome.failed);
+          continue;
+        }
+
+        if (!plan.isSubscription &&
+            !expiry.isAfter(DateTime.now().toUtc())) {
+          // The fortnight is over. This is the moment to consume: Play will
+          // not sell the pass again while an unconsumed one exists, and
+          // consuming any earlier would have broken the Android restore the
+          // paywall promises. Consuming acknowledges too, so it replaces the
+          // complete call rather than preceding it.
+          _logPurchase(purchase);
+          await _consumeQuietly(purchase);
+          _resolveIfAwaited(purchase, StoreOutcome.failed);
           continue;
         }
 
         await grantPurchase(
           plan: plan,
           purchaseId: purchase.purchaseId,
-          expiresAt: _horizonFor(plan),
+          expiresAt: expiry,
         );
       }
 
@@ -327,6 +364,80 @@ class PremiumProvider extends ChangeNotifier {
   /// this rolling horizon only for a plan the store keeps renewing.
   DateTime _horizonFor(PremiumPlan plan) =>
       DateTime.now().toUtc().add(plan.duration);
+
+  /// When access should end for a purchase the store just reported, or null
+  /// when nothing here can honestly say.
+  ///
+  /// Three sources, in falling order of trust:
+  ///
+  /// 1. **The server.** `validatePurchase` asks Play or Apple directly, so its
+  ///    answer is the only one that survives a moved device clock or a
+  ///    hand-written Firestore document. When it has an opinion, it wins —
+  ///    including a `valid: false`, which returns null and grants nothing.
+  /// 2. **The store SDK's purchase time**, for [PremiumPlan.pass14Days]. The
+  ///    fortnight runs from when it was bought, not from when this device
+  ///    heard about it.
+  /// 3. **[_horizonFor]**, for [PremiumPlan.monthly] only. A client cannot see
+  ///    a renewal date; what it can see is that the store is reporting the
+  ///    subscription at all, which both stores only do while it is live.
+  ///
+  /// 🚨 The pass never falls through to [_horizonFor]. `now + 14 days` for a
+  /// one-time purchase means a reinstall on day 13 hands out a second
+  /// fortnight, which is the whole reason this method exists rather than a
+  /// single expression.
+  Future<DateTime?> _expiryFor(PremiumPlan plan, BillingPurchase purchase) async {
+    final verified = await _verify(plan, purchase);
+    if (verified != null && verified.hasOpinion) {
+      if (!verified.valid) return null;
+      final stated = verified.expiresAt;
+      if (stated != null) return stated.toUtc();
+      final boughtAt = verified.purchasedAt;
+      if (boughtAt != null && !plan.isSubscription) {
+        return boughtAt.toUtc().add(plan.duration);
+      }
+    }
+
+    if (plan.isSubscription) return _horizonFor(plan);
+
+    final boughtAt = purchase.purchasedAt;
+    if (boughtAt != null) return boughtAt.toUtc().add(plan.duration);
+
+    // A pass with no date from the store: the durable record is the only other
+    // place its fortnight is written down, and it was written by the device
+    // that made the purchase, when it had the date.
+    final filed = await _repository.fetch(purchase.purchaseId);
+    return filed?.expiresAt;
+  }
+
+  /// Asks the server, and treats every problem as silence.
+  Future<PurchaseVerification?> _verify(
+    PremiumPlan plan,
+    BillingPurchase purchase,
+  ) async {
+    final verifier = _verifier;
+    if (verifier == null) return null;
+    try {
+      return await verifier.verify(
+        productId: plan.productId,
+        token: purchase.verificationToken,
+      );
+    } catch (_) {
+      // A verifier that throws must not be able to stop a purchase the user
+      // already paid for.
+      return null;
+    }
+  }
+
+  /// Consuming must never be what breaks a pass the user already had.
+  Future<void> _consumeQuietly(BillingPurchase purchase) async {
+    try {
+      await _billing?.consume(purchase);
+    } catch (_) {
+      // Play will replay the purchase again next launch and this runs again.
+      // The cost of failing here is that the user cannot buy a second pass
+      // yet, not that they lose the one they had.
+    }
+  }
 
   StoreOutcome _outcomeFor(BillingPurchase purchase) {
     switch (purchase.status) {
@@ -454,6 +565,17 @@ class PremiumProvider extends ChangeNotifier {
     } catch (_) {
       // The store will redeliver; nothing here is worth losing access over.
     }
+  }
+
+  /// Ends the wait started by [purchase] when this event is the answer to it.
+  ///
+  /// 🚨 Every path out of [_onPurchaseUpdates] has to go through here or the
+  /// tail below. A branch that returns early without resolving leaves the
+  /// paywall spinning until [purchaseTimeout] — five minutes — and then reports
+  /// a pending payment that never existed.
+  void _resolveIfAwaited(BillingPurchase purchase, StoreOutcome outcome) {
+    if (purchase.productId != _awaitingProductId) return;
+    _resolvePurchase(outcome);
   }
 
   void _resolvePurchase(StoreOutcome outcome) {
@@ -657,6 +779,14 @@ class PremiumProvider extends ChangeNotifier {
 
     _entitlement = entitlement;
     await _store.write(entitlement);
+
+    // 🚨 Only the pass is filed, and only because nothing else can answer for
+    // it. A subscription is replayed by both stores, which know about
+    // cancellation, refund, pause and failed payment — none of which a stored
+    // expiry can see — so writing one here would create a second, staler
+    // source of truth for something the store already answers better.
+    if (!plan.isSubscription) await _repository.save(entitlement);
+
     // A real purchase always wins over the QA switch: a tester who bought in the
     // sandbox with the switch off must see what they paid for, not a lock.
     await _resetQa();
