@@ -685,8 +685,25 @@ paywall copy has to state:
   `purchaseTime`, never the device clock at grant time, or a reinstall re-starts
   the fortnight.
 
-Nothing has been created in Play for this yet: the console refused the draft on
-2026-09-07 (see below), so **the id `thaishield_premium_14days` is still free**.
+**Created and active in Play Console on 2026-09-08.** The 2026-09-07 refusal was the
+console, not the data: the same form saved on the first try a day later.
+
+```
+one-time product  thaishield_premium_14days   "ThaiShield พรีเมียม 14 วัน"
+  purchase option pass-14days · type ซื้อ (buy, NOT เช่า) · เข้ากันได้แบบย้อนหลัง
+                  status ใช้งานอยู่ (active) · 173 ประเทศ/ภูมิภาค
+  prices          set from USD 3.50 for every country; Play charm-rounds, so the
+                  US price reads **USD 3.49**, THB 110, JPY 600, KRW 5,000,
+                  RUB 299 — the paywall shows `ProductDetails.price`, so those
+                  are the numbers a user sees, not the 3.50 in the code.
+  name/desc       all six languages (th default + en-US, zh-CN, ko-KR, ru-RU,
+                  ja-JP), from `store-assets/product-14day-pass.md`.
+```
+
+⚠️ Two "save failed" errors were hit that day trying to add the purchase option a
+second time. Both were `400 · duplicate purchase option id` — the first
+เปิดใช้งาน had already created it and the product page had simply not
+refreshed. Re-read the product page before re-entering anything here.
 
 **The app and the web already carry the change** (2026-09-07): `PremiumPlan`
 has `pass14Days` in place of `weekly`, `isSubscription` is a per-plan field
@@ -960,8 +977,28 @@ description in **all six app languages** (th, en-US, zh-CN, ko-KR, ru-RU, ja-JP 
 checked against the 30/80/4000 limits), and `data-safety-checklist.md`, the tick-by-tick
 answer sheet for Play's Data Safety form, Apple's App Privacy and the IARC content rating.
 The listing copy follows §10 like the ARB files do but `wording_test.dart` cannot see it —
-re-read it by hand if it changes. The client has not approved the copy yet (Rev.8 §6.4 and
-§10); nothing has been pasted into Play Console. The Data Safety sheet must stay in step
+re-read it by hand if it changes. The client has **still** not approved the copy (Rev.8 §6.4
+and §10), but it is now **in Play Console** (2026-09-08) as a saved draft — a draft app
+publishes nothing until a release is submitted, and the copy can still be edited in place.
+
+🚨 **The premium paragraph in `listing-text.md` was wrong until 2026-09-08.** All six
+languages still sold "weekly and monthly, auto-renewing" — the plan that was cancelled on
+2026-09-07. It now sells the one-time 14-day pass beside the monthly subscription, matching
+`PremiumPlan` and `premium_legal_note`. A listing that misstates the billing model is a
+policy problem, not a wording preference: whenever a plan changes, this file changes in the
+same round as the ARB copy.
+
+**What is in Play Console after 2026-09-08:** ข้อมูลสินค้าใน Store for all six languages
+(name / short / full), the icon, the feature graphic and 7 screenshots each for phone,
+7-inch and 10-inch tablet, in the 01…07 order the files are numbered — the console adds
+them in upload-completion order, so they had to be dragged back into order afterwards.
+Also completed that day: the **Data Safety** questionnaire (from
+`data-safety-checklist.md`: collected = approximate + precise location, photos, voice
+recordings, purchase history, app interactions, device IDs; shared = nothing; the first
+three ephemeral and optional, the last three stored and required; deletion URL = the
+`/privacy` page) and the **รหัสโฆษณา / advertising-ID declaration** (No — the app has no
+ads SDK, no Firebase Analytics and no Crashlytics; see `pubspec.yaml`). เนื้อหาแอป now
+reports no outstanding declarations. The Data Safety sheet must stay in step
 with `app/privacy/page.tsx` in the web repo and with the "Good to know" paragraph of the
 listing — §3 already says the client must amend the store declarations whenever the
 collected data set changes.
