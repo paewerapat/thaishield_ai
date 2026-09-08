@@ -13,6 +13,31 @@ import '../screens/travel_alerts_list_screen.dart';
 import '../services/travel_alert_service.dart';
 import '../../premium/widgets/premium_promo.dart';
 
+/// Whether Home shows the travel-news block — the red "N reports" banner and
+/// the Top News card under it.
+///
+/// 🚨 **Turned off on 2026-09-08 at the client's instruction, and the cache is
+/// why.** Read `travel_alerts_cache` that morning: of 32 articles, **18 were
+/// nothing to do with travel safety in Thailand** — a Democracy Now headline
+/// roundup, "China Masters Badminton | Satwik-Chirag enter final", "Suites
+/// Across Asia Fit for a President", a Russian general shot in Ukraine,
+/// Thailand's aid *to Nepal's* flood victims, and "Thai SMEs face debt
+/// tsunami", which is a metaphor. The Home card shows the newest article, so
+/// that is what a first-time user could open the app to.
+///
+/// **Why the filter lets them in.** `looksTravelRelevant` in functions/index.js
+/// asks two questions separately: does the text contain a disaster word, and
+/// does it contain a Thai place name. It never asks whether the two are about
+/// each other. A world-news roundup mentions Thailand in one paragraph and
+/// floods in another and passes; the category badge then comes from the same
+/// loose keyword match, which is how a Nepal story wears a ไฟไหม้/น้ำท่วม tag.
+///
+/// **Restoring is this one const**, plus the block below, which is left intact
+/// on purpose. Do not flip it until the relevance gate judges the article as a
+/// whole — and measure the cache again the way it was measured here before
+/// trusting the result.
+const bool showTravelNewsOnHome = false;
+
 class HomeTab extends StatelessWidget {
   const HomeTab({
     super.key,
@@ -64,7 +89,7 @@ class HomeTab extends StatelessWidget {
                         onShowOnMap: _focusOnMap,
                         isActive: isActive,
                       ),
-                      const _ActiveAlertsAndNews(),
+                      if (showTravelNewsOnHome) const _ActiveAlertsAndNews(),
                     ],
                   ),
                 ),

@@ -61,6 +61,28 @@ check (§4, Phase 2C) if you do.
 *(Moved off GNews on 2026-08-17. Nothing about the Firestore contract or the client
 changed — only the function's source, query shape and field mapping.)*
 
+🚨 **Hidden on Home since 2026-09-08 — `showTravelNewsOnHome = false` in
+`home_tab.dart`.** The client reported off-topic stories and wrong category badges,
+and the cache backed them up. Of the 32 articles live that morning, **18 had nothing
+to do with travel safety in Thailand**: a Democracy Now headline roundup, "China
+Masters Badminton | Satwik-Chirag enter final", "Suites Across Asia Fit for a
+President", a Russian general shot in Ukraine, two stories about Thailand's aid *to
+Nepal's* flood victims, "Thai SMEs face debt tsunami" (a metaphor, badged สึนามิ),
+and a Skeptical Science research digest.
+
+**The gate's flaw is structural, not a missing blacklist term.** `looksTravelRelevant`
+asks two questions independently — is there a disaster word anywhere in title +
+description, and is there a Thai place name anywhere — and never asks whether the two
+are about the same event. A world roundup naming Thailand in one sentence and floods
+in another passes; so does anything using "storm", "flood" or "tsunami" figuratively.
+The category badge is the same loose keyword match, which is why a Nepal story wears a
+น้ำท่วม tag. Adding phrases to `NON_EVENT_PHRASES` cannot fix that shape — the next
+fix has to score the article as a whole (title-anchored place *and* event, or an LLM
+pass like the CMS auto-translate one) and be **measured against a live cache the way
+this was** before Home shows it again. Everything is intact behind the flag; the block,
+the list screen and their strings were not deleted. `test/home_travel_news_test.dart`
+holds the line.
+
 - Shows Thailand travel-disruption news (floods, storms, fires, road closures, major
   accidents) on the Home tab and a full list screen, sourced from
   [newsdata.io](https://newsdata.io/documentation) (`/api/1/latest`).
