@@ -588,6 +588,17 @@ size of this project.
 - `_centerOnUser` now goes through `LocationService` like everything else; the last raw
   `Geolocator` call in `map_screen.dart` is gone.
 
+**The place-shortcut chips under the search field are gone (2026-09-09, client request).**
+The row held five names written into the source — Bangkok, Sukhumvit, Phuket Airport,
+Chiang Mai, Pattaya — with a coordinate and a zoom each. They were never data, and they
+fought the point above: the Map opens on the user, and tapping a chip threw the camera to
+a city the user was not in. A tourist in Krabi or Hua Hin saw five places that were not
+theirs. `_Suggestion`, `_mapSearchSuggestions`, `_SuggestionChip` and `_onSuggestionTap`
+are deleted; `_MapSearchBar` is now the field alone. Free-text search
+(`_searchLocation` → `geocoding`) is untouched and is how a place is reached now.
+`const _bangkok` stays — it is the fallback camera centre when the device gives up no
+location, not a shortcut. `test/map_search_chips_test.dart` holds the row out.
+
 ### Phase 2A — Safety Radar & Filter (9,000 THB of work) — ✅ delivered 2026-08-28 (device QA in `QA_PHASE_2B.md` §8.1)
 
 | Task | Description | Est. | Status |
@@ -1071,6 +1082,49 @@ reports no outstanding declarations. The Data Safety sheet must stay in step
 with `app/privacy/page.tsx` in the web repo and with the "Good to know" paragraph of the
 listing — §3 already says the client must amend the store declarations whenever the
 collected data set changes.
+
+🚨 **Rejected by Play on 2026-09-08 — "Violation of Play Console Requirements" — and
+what actually caused it (fixed 2026-09-09).** The email named none of our code. It said
+*"Some types of apps can only be distributed by organizations. You have selected an app
+category or declared your app offers certain features that require you to submit your app
+using an organization account."* Since 2024-08-31 that rule covers four things and only
+four: **financial** products and services, **health** apps, apps approved to use
+**`VpnService`**, and **government** apps.
+
+The cause was a declaration, not a permission. In เนื้อหาแอป → **ฟีเจอร์ทางการเงิน /
+Financial features**, edited 2026-09-01, two boxes were ticked that are not true of this
+app:
+
+- **การชำระเงินผ่านมือถือและกระเป๋าเงินดิจิทัล** (mobile payments and digital wallets)
+- **ซื้อก่อน จ่ายทีหลัง** (buy now, pay later)
+
+⚠️ **Selling through Play Billing is not a financial feature.** That box means the app
+*is* a wallet or a payment service. An in-app purchase, a subscription and a one-time pass
+are Play's own billing and are declared nowhere on this form — leave every box unticked.
+The same mistake is easy to repeat on the Apple side with App Store Connect's finance
+questions.
+
+Everything the email *might* have meant was checked and was already correct, so none of it
+needed changing: the manifest asks for `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`,
+`CAMERA`, `RECORD_AUDIO` and `INTERNET` and nothing else — **no `VpnService`, no
+`BIND_VPN_SERVICE`, no VPN dependency in `pubspec.yaml`**; หมวดหมู่แอป is
+การเดินทางและท้องถิ่น (Travel & Local), not Finance; แอปสุขภาพ = none; แอปของรัฐบาล = ไม่.
+
+**The fix, 2026-09-09:** both boxes cleared, the declaration saved with no financial
+feature at all (step 2 then says no supporting documents are needed), and the 18 pending
+changes re-submitted for review from ภาพรวมการเผยแพร่. **No appeal was filed, and none
+should be** — an appeal argues Google got it wrong, and here the declaration really was
+wrong; appeals also take up to 7 days, where a corrected re-submission goes into the normal
+review queue. The submitted artefact is still **1.1.25 (25)**, so the testers' build is
+unchanged by this.
+
+⚠️ **`listing-text.md` still sells "ข่าวและประกาศสำหรับนักท่องเที่ยว / Travel news and notices"
+as a free feature, in all six languages, and so does the copy now in the console.** That is
+correct *for 1.1.25*, which still carries Top News. The moment a build without the news
+block is uploaded, the bullet has to come out of all six locales in the same round — a
+listing that advertises a feature the binary does not have is the same class of policy
+problem as the billing paragraph above. Do not edit the listing before then: the copy is
+under review right now, and editing it pulls it back into pending changes.
 
 **Definition of done (2C):**
 - Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on

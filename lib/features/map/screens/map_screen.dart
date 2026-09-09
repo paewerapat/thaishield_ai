@@ -23,21 +23,6 @@ import '../../route/screens/route_preview_screen.dart';
 import '../widgets/around_you_panel.dart';
 import '../services/marker_icons.dart';
 
-class _Suggestion {
-  const _Suggestion(this.label, this.coords, [this.zoom = 13.0]);
-  final String label;
-  final LatLng coords;
-  final double zoom;
-}
-
-const _mapSearchSuggestions = <_Suggestion>[
-  _Suggestion('Bangkok', LatLng(13.7563, 100.5018), 12),
-  _Suggestion('Sukhumvit', LatLng(13.7400, 100.5639), 14),
-  _Suggestion('Phuket Airport', LatLng(8.1132, 98.3019), 13),
-  _Suggestion('Chiang Mai', LatLng(18.7883, 98.9853), 13),
-  _Suggestion('Pattaya', LatLng(12.9236, 100.8824), 13),
-];
-
 const _bangkok = LatLng(13.7563, 100.5018);
 
 Color _riskColor(String riskLevel) {
@@ -252,16 +237,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     if (nearest != null && nearest != _selectedPartner) {
       setState(() => _selectedPartner = nearest);
     }
-  }
-
-  void _onSuggestionTap(_Suggestion suggestion) {
-    _searchController.text = suggestion.label;
-    FocusScope.of(context).unfocus();
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(suggestion.coords, suggestion.zoom),
-    );
-    setState(() => _mapCenter = suggestion.coords);
-    _updateNearestPartner();
   }
 
   @override
@@ -836,7 +811,6 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                 onSubmitted: _searchLocation,
                                 onClear: () => setState(() => _searchController.clear()),
                                 onChanged: (_) => setState(() {}),
-                                onSuggestionTap: _onSuggestionTap,
                               ),
                             ),
                             if (_selectedZone != null)
@@ -943,7 +917,6 @@ class _MapSearchBar extends StatelessWidget {
     required this.onSubmitted,
     required this.onClear,
     required this.onChanged,
-    required this.onSuggestionTap,
   });
 
   final TextEditingController controller;
@@ -951,100 +924,53 @@ class _MapSearchBar extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
   final ValueChanged<String> onChanged;
-  final ValueChanged<_Suggestion> onSuggestionTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Material(
-          elevation: 4,
-          borderRadius: BorderRadius.circular(30),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
-            child: Row(
-              children: [
-                Icon(Icons.search, color: Colors.grey[500], size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: onSubmitted,
-                    onChanged: onChanged,
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      border: InputBorder.none,
-                      hintText: appText(context, 'map_search_hint'),
-                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
-                    ),
-                    style: const TextStyle(fontSize: 13.5, color: Color(0xFF0D1B2A)),
-                  ),
-                ),
-                if (searching)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32)),
-                    ),
-                  )
-                else if (controller.text.isNotEmpty)
-                  InkWell(
-                    onTap: onClear,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(Icons.close_rounded, color: Colors.grey[500], size: 18),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 44,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            padding: const EdgeInsets.fromLTRB(2, 4, 8, 6),
-            itemCount: _mapSearchSuggestions.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, i) => _SuggestionChip(
-              label: _mapSearchSuggestions[i].label,
-              onTap: () => onSuggestionTap(_mapSearchSuggestions[i]),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SuggestionChip extends StatelessWidget {
-  const _SuggestionChip({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      elevation: 2,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF0D1B2A), fontWeight: FontWeight.w500),
-          ),
+      elevation: 4,
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+        child: Row(
+          children: [
+            Icon(Icons.search, color: Colors.grey[500], size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                textInputAction: TextInputAction.search,
+                onSubmitted: onSubmitted,
+                onChanged: onChanged,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  hintText: appText(context, 'map_search_hint'),
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
+                ),
+                style: const TextStyle(fontSize: 13.5, color: Color(0xFF0D1B2A)),
+              ),
+            ),
+            if (searching)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2E7D32)),
+                ),
+              )
+            else if (controller.text.isNotEmpty)
+              InkWell(
+                onTap: onClear,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(Icons.close_rounded, color: Colors.grey[500], size: 18),
+                ),
+              ),
+          ],
         ),
       ),
     );
