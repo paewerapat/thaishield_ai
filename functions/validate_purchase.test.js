@@ -235,9 +235,65 @@ test('Apple: another app’s product in the same receipt is ignored', () => {
   assert.equal(answer.reason, 'product_not_in_receipt');
 });
 
-test('Apple: a non-zero status is reported rather than treated as valid', () => {
-  // 21004 is a wrong shared secret — a configuration mistake that must never
-  // read as "the user did not pay".
-  assert.equal(readAppleReceipt({status: 21004}, 'thaishield_premium_monthly', 30 * DAY).reason, 'apple_status_21004');
-  assert.equal(readAppleReceipt({}, 'thaishield_premium_monthly', 30 * DAY).reason, 'apple_status_unknown');
+test('Apple: a non-zero status is no opinion, never a denial', () => {
+  // 21004 is a wrong shared secret. It is a console field nobody filled in, so
+  // it must reach the app as `unavailable` — the one reason PurchaseVerifier
+  // reads as "fall back to the store SDK". Any other reason string denies, and
+  // a paying customer loses what they bought. The status is kept in `detail`
+  // so a misconfiguration is still diagnosable from the logs.
+  const wrongSecret = readAppleReceipt({status: 21004}, 'thaishield_premium_monthly', 30 * DAY);
+  assert.equal(wrongSecret.reason, 'unavailable');
+  assert.equal(wrongSecret.detail, 'apple_status_21004');
+
+  // Apple down, an unreadable receipt, the wrong endpoint, a deleted account:
+  // none of them is evidence about payment either.
+  for (const status of [21000, 21002, 21003, 21005, 21008, 21009, 21010]) {
+    assert.equal(
+      readAppleReceipt({status}, 'thaishield_premium_monthly', 30 * DAY).reason,
+      'unavailable',
+      `status ${status} must not deny`,
+    );
+  }
+
+  const noStatus = readAppleReceipt({}, 'thaishield_premium_monthly', 30 * DAY);
+  assert.equal(noStatus.reason, 'unavailable');
+  assert.equal(noStatus.detail, 'apple_status_unknown');
+});
+
+test('Apple: status 0 still carries the real evidence of non-payment', () => {
+  // The counterweight to the test above: making config errors silent must not
+  // make anything silent. A receipt Apple vouched for is still read strictly.
+  const refunded = readAppleReceipt(
+    {
+      status: 0,
+      latest_receipt_info: [
+        {
+          product_id: 'thaishield_premium_monthly',
+          expires_date_ms: String(Date.now() + 30 * DAY),
+          cancellation_date_ms: String(Date.now() - DAY),
+        },
+      ],
+    },
+    'thaishield_premium_monthly',
+    30 * DAY,
+  );
+  assert.equal(refunded.valid, false);
+  assert.equal(refunded.reason, 'refunded');
+  assert.notEqual(refunded.reason, 'unavailable');
+
+  const expired = readAppleReceipt(
+    {
+      status: 0,
+      latest_receipt_info: [
+        {
+          product_id: 'thaishield_premium_monthly',
+          expires_date_ms: String(Date.now() - DAY),
+        },
+      ],
+    },
+    'thaishield_premium_monthly',
+    30 * DAY,
+  );
+  assert.equal(expired.valid, false);
+  assert.equal(expired.reason, 'expired');
 });

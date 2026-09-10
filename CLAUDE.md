@@ -971,7 +971,7 @@ a console login or a real handset, not code.**
 | Acknowledge on every terminal state | ✅ built and pinned by test |
 | **Consume the pass — at the END of its fortnight** | ✅ `BillingService.consume`, Android-only, three tests |
 | **Per-plan expiry** (pass from the store's purchase time, subscription rolling) | ✅ `PremiumProvider._expiryFor` |
-| **Receipt validation** | ✅ `validatePurchase` in `functions/index.js` + `PurchaseVerifier`, 18 tests in `functions/validate_purchase.test.js` |
+| **Receipt validation** | ✅ `validatePurchase` in `functions/index.js` + `PurchaseVerifier`, 19 tests in `functions/validate_purchase.test.js` |
 | Pending purchases, cancellations, errors, retired product ids | ✅ each has its own outcome and its own copy in six languages |
 | Store-localised prices on the paywall | ✅ `PremiumProvider.storeProducts()` |
 | Firestore copy of a purchase | ✅ written **for the pass only** — the store answers better for a subscription |
@@ -1000,6 +1000,29 @@ softened:**
    The only thing that denies access is Play or Apple saying the purchase is not
    real. A receipt check that is down must not become a refund queue.
 
+   🚨 **Fixed 2026-09-10: the Apple path broke this invariant.** `readAppleReceipt`
+   turned every non-zero `verifyReceipt` status into `reason: apple_status_NNNN`,
+   and `CloudFunctionVerifier` reads *only* the literal string `unavailable` as
+   "no opinion" — so a wrong shared secret (21004), Apple being down (21005,
+   21009) or an unreadable receipt (21002, 21003) all came back as
+   `hasOpinion: true, valid: false` and **denied a paying iOS customer**. No
+   non-zero status is evidence about payment; they are all about our request or
+   Apple's servers. They now answer `unavailable` and keep the code in a
+   `detail` field, which is also logged. The evidence of non-payment lives
+   behind `status === 0`: product not in the receipt, `cancellation_date_ms`,
+   an expiry in the past. Two tests pin both halves.
+
+   The lesson generalises: **the app matches one reason string, so any new
+   reason invented in `functions/index.js` denies by default.** Adding a
+   failure path there means choosing `unavailable` deliberately.
+
+⚠️ **Every `firebase` command here needs `-P staging`.** `.firebaserc` defines that
+alias and no `default`, and the CLI's remembered active project is keyed to the
+repository's *old* path (`C:/Github-Repo/Fastwork/thaishield_ai`), so a bare
+`firebase deploy` from the current checkout dies with "No project active". Run
+`firebase use staging` once, or pass the flag every time. `staging` is not a second
+environment — it points at `thaishield-ai-790eb`, the only project there is.
+
 **Two console steps before `validatePurchase` can answer:**
 
 - **Android** — Play Console → Users & permissions → invite
@@ -1008,9 +1031,14 @@ softened:**
   API in the GCP project. Until then every Android check answers `unavailable`,
   which is the fall-back path, not an outage.
 - **iOS** — `firebase functions:secrets:set APPLE_SHARED_SECRET` with the value from
-  App Store Connect → App Information. 🚨 The function *declares* this secret, so
-  **it will not deploy until the secret exists** — set a placeholder now if the real
-  one is not to hand.
+  App Store Connect → the app → General → App Information → *App-Specific Shared
+  Secret* (or the account-wide one under Users and Access → Integrations). Needs an
+  Account Holder / Admin Apple ID, so it is the client's to fetch. 🚨 The function
+  *declares* this secret, so **it will not deploy until the secret exists** — a
+  placeholder is safe **since the 2026-09-10 fix above**, and was not before it: a
+  placeholder makes Apple answer 21004, which used to deny every iOS purchase
+  outright. When the real value arrives, `secrets:set` again **and redeploy** — a
+  running function keeps the version it booted with.
 
 🚨 **`PremiumProvider` takes its `BillingService` as an optional argument that
 defaults to null.** That is what lets every widget test build a screen without

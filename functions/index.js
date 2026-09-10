@@ -554,10 +554,26 @@ function readAndroidProduct(body, durationMillis) {
  * A `cancellation_date_ms` is a refund or a family-sharing revocation. Apple
  * keeps the transaction in the receipt either way, so ignoring that field
  * would keep access alive for someone whose money was given back.
+ *
+ * \U0001F6A8 **No non-zero status is evidence that the user did not pay.** Every one of
+ * them is about our own request or Apple's own servers \u2014 21004 is a shared secret
+ * that does not match, 21002/21003 a receipt Apple could not read, 21005/21009
+ * Apple being down, 21008/21010 the wrong endpoint or a deleted account. So they
+ * all answer `unavailable`, the one reason the app reads as "no opinion, fall
+ * back to the store SDK". Answering `valid: false` here would deny a paying
+ * customer over a console field nobody filled in. The real evidence of
+ * non-payment lives below, behind `status === 0`: the product missing from the
+ * receipt, a refund, an expiry already past.
+ *
+ * The status is kept in `detail` and logged \u2014 a permanent `unavailable` on iOS
+ * is how a wrong shared secret announces itself, and there is nowhere else to
+ * see it.
  */
 function readAppleReceipt(body, productId, durationMillis) {
   if (body?.status !== 0) {
-    return {valid: false, reason: `apple_status_${body?.status ?? 'unknown'}`};
+    const detail = `apple_status_${body?.status ?? 'unknown'}`;
+    logger.warn(`validatePurchase: Apple would not answer (${detail})`);
+    return {valid: false, reason: 'unavailable', detail};
   }
   const all = [
     ...(Array.isArray(body?.latest_receipt_info) ? body.latest_receipt_info : []),
