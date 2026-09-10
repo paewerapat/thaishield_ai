@@ -492,7 +492,12 @@ function readAndroidSubscription(body) {
   const expiries = lineItems
     .map((item) => Date.parse(item?.expiryTime ?? ''))
     .filter((millis) => Number.isFinite(millis));
-  if (expiries.length === 0) return {valid: false, reason: 'no_expiry'};
+  // Play answered, but with nothing we can read a date out of. That is our
+  // problem, not the buyer's — same rule as the Apple statuses above.
+  if (expiries.length === 0) {
+    logger.warn('validatePurchase: Play subscription had no readable expiry');
+    return {valid: false, reason: 'unavailable', detail: 'no_expiry'};
+  }
 
   const expiresAtMillis = Math.max(...expiries);
   const live =
@@ -530,7 +535,8 @@ function readAndroidProduct(body, durationMillis) {
   }
   const purchasedAtMillis = Number(body?.purchaseTimeMillis);
   if (!Number.isFinite(purchasedAtMillis) || purchasedAtMillis <= 0) {
-    return {valid: false, reason: 'no_purchase_time'};
+    logger.warn('validatePurchase: Play purchase had no readable purchase time');
+    return {valid: false, reason: 'unavailable', detail: 'no_purchase_time'};
   }
   const expiresAtMillis = purchasedAtMillis + durationMillis;
   const live = expiresAtMillis > Date.now();

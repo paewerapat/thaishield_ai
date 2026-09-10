@@ -112,15 +112,21 @@ test('several line items resolve to the furthest expiry', () => {
   assert.equal(answer.expiresAtMillis, far.getTime());
 });
 
-test('a subscription with no readable expiry is refused rather than guessed', () => {
-  assert.equal(readAndroidSubscription({subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE'}).reason, 'no_expiry');
-  assert.equal(
-    readAndroidSubscription({
-      subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
-      lineItems: [{expiryTime: 'not a date'}],
-    }).reason,
-    'no_expiry',
-  );
+test('a subscription with no readable expiry is no opinion, not a denial', () => {
+  // Play answered 200 and we still cannot find a date. Never guess one — but
+  // never bill it to the buyer either: it is `unavailable`, the reason the app
+  // reads as "fall back to the store SDK". The unreadable shape is kept in
+  // `detail` so the logs still say which of the two it was.
+  const noItems = readAndroidSubscription({subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE'});
+  assert.equal(noItems.reason, 'unavailable');
+  assert.equal(noItems.detail, 'no_expiry');
+
+  const unparseable = readAndroidSubscription({
+    subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+    lineItems: [{expiryTime: 'not a date'}],
+  });
+  assert.equal(unparseable.reason, 'unavailable');
+  assert.equal(unparseable.detail, 'no_expiry');
 });
 
 test('the 14-day pass expires 14 days after Play says it was bought', () => {
@@ -159,14 +165,36 @@ test('a pending or cancelled Play purchase grants nothing', () => {
   );
 });
 
-test('a purchase with no time from Play is refused, not dated from now', () => {
+test('a purchase with no time from Play is never dated from now', () => {
   // Dating it from "now" is the reinstall exploit the whole server-side check
-  // exists to close.
-  assert.equal(readAndroidProduct({purchaseState: 0}, 14 * DAY).reason, 'no_purchase_time');
-  assert.equal(
-    readAndroidProduct({purchaseState: 0, purchaseTimeMillis: '0'}, 14 * DAY).reason,
-    'no_purchase_time',
-  );
+  // exists to close, so the pass must not be granted on this path. It is still
+  // `unavailable` rather than a denial: an unreadable answer is our failure,
+  // and the device's own store SDK then decides as it did before.
+  const noTime = readAndroidProduct({purchaseState: 0}, 14 * DAY);
+  assert.equal(noTime.reason, 'unavailable');
+  assert.equal(noTime.detail, 'no_purchase_time');
+  assert.equal(noTime.valid, false);
+  assert.equal(noTime.expiresAtMillis, undefined);
+
+  const zeroTime = readAndroidProduct({purchaseState: 0, purchaseTimeMillis: '0'}, 14 * DAY);
+  assert.equal(zeroTime.reason, 'unavailable');
+  assert.equal(zeroTime.detail, 'no_purchase_time');
+});
+
+test('Play states that really are evidence still deny', () => {
+  // The counterweight, as on the Apple side: making unreadable answers silent
+  // must not silence the answers Play gave us clearly. A subscription on hold
+  // and a purchase Play calls pending are both the store saying no.
+  const onHold = readAndroidSubscription({
+    subscriptionState: 'SUBSCRIPTION_STATE_ON_HOLD',
+    lineItems: [{expiryTime: new Date(Date.now() + 30 * DAY).toISOString()}],
+  });
+  assert.equal(onHold.valid, false);
+  assert.equal(onHold.reason, 'not_active');
+
+  const pending = readAndroidProduct({purchaseState: 2, purchaseTimeMillis: String(Date.now())}, 14 * DAY);
+  assert.equal(pending.valid, false);
+  assert.equal(pending.reason, 'not_purchased');
 });
 
 test('Apple: the newest transaction for the product decides', () => {

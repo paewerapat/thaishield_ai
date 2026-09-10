@@ -971,7 +971,7 @@ a console login or a real handset, not code.**
 | Acknowledge on every terminal state | ✅ built and pinned by test |
 | **Consume the pass — at the END of its fortnight** | ✅ `BillingService.consume`, Android-only, three tests |
 | **Per-plan expiry** (pass from the store's purchase time, subscription rolling) | ✅ `PremiumProvider._expiryFor` |
-| **Receipt validation** | ✅ `validatePurchase` in `functions/index.js` + `PurchaseVerifier`, 19 tests in `functions/validate_purchase.test.js` |
+| **Receipt validation** | ✅ `validatePurchase` in `functions/index.js` + `PurchaseVerifier`, 20 tests in `functions/validate_purchase.test.js` |
 | Pending purchases, cancellations, errors, retired product ids | ✅ each has its own outcome and its own copy in six languages |
 | Store-localised prices on the paywall | ✅ `PremiumProvider.storeProducts()` |
 | Firestore copy of a purchase | ✅ written **for the pass only** — the store answers better for a subscription |
@@ -1015,6 +1015,16 @@ softened:**
    The lesson generalises: **the app matches one reason string, so any new
    reason invented in `functions/index.js` denies by default.** Adding a
    failure path there means choosing `unavailable` deliberately.
+
+   The Play side had the same shape and was fixed in the same round:
+   `no_expiry` (a 200 with no readable `expiryTime`) and `no_purchase_time`
+   (a 200 with no usable `purchaseTimeMillis`) describe an answer *we* could
+   not read, not a buyer who did not pay, so both now answer `unavailable`
+   with the old string in `detail`. The pass is still never dated from "now"
+   — that is the reinstall exploit the server check exists to close; it is
+   simply not granted on that path either. What still denies, on both stores,
+   is the store speaking clearly: `not_active`, `not_purchased`, `expired`,
+   `refunded`, `product_not_in_receipt`.
 
 ⚠️ **Every `firebase` command here needs `-P staging`.** `.firebaserc` defines that
 alias and no `default`, and the CLI's remembered active project is keyed to the
