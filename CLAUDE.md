@@ -1023,6 +1023,43 @@ repository's *old* path (`C:/Github-Repo/Fastwork/thaishield_ai`), so a bare
 `firebase use staging` once, or pass the flag every time. `staging` is not a second
 environment — it points at `thaishield-ai-790eb`, the only project there is.
 
+🚨 **Deployed 2026-09-10, and it answers 403 to everyone.** The function is live with
+the current code, but `firebase deploy` could not give it a public invoker:
+
+```
+POST run.googleapis.com/v1/.../services/validatepurchase:setIamPolicy
+  {"role":"roles/run.invoker","members":["allUsers"]}
+→ 400 FAILED_PRECONDITION
+  "One or more users named in the policy do not belong to a permitted customer,
+   perhaps due to an organization policy."
+```
+
+That is **Domain Restricted Sharing** (`constraints/iam.allowedPolicyMemberDomains`)
+on the `thaishieldapp.com` organization refusing `allUsers`. It is not a missing
+role and not a race — three deploys produced it identically. `computeRoute` is
+public (400 to an empty body, not 403) because its binding predates the policy;
+existing bindings survive, new ones are refused.
+
+Only an **Organization Policy Administrator** can lift it: GCP Console → IAM & Admin
+→ Organization Policies → *Domain restricted sharing* → add a project-level rule for
+`thaishield-ai-790eb` that allows `allUsers`. Making the function `onCall` instead
+does not dodge it — callables need the same Cloud Run binding.
+
+✅ **No user is affected meanwhile.** A 403 is a non-200, and `CloudFunctionVerifier`
+turns every non-200 into `noOpinion`, so the app falls back to the store SDK exactly
+as it did before the function existed. Verify with
+`curl -s -o /dev/null -w "%{http_code}" -X POST <url> -d '{}'`: **400 means reachable,
+403 means still blocked.**
+
+⚠️ **`FUNCTIONS_DISCOVERY_TIMEOUT=90` is required to deploy from this machine.** The
+default 10s discovery step times out here ("User code failed to load. Cannot determine
+backend specification") even though `require('./functions/index.js')` finishes in ~500ms,
+so it is the port handshake, not the code. Raising the timeout deploys cleanly.
+
+🔐 `APPLE_SHARED_SECRET` version 1 exists as the literal string
+`placeholder-until-app-store-connect`, set 2026-09-10 so the deploy could proceed.
+Safe only because of the fix above; replace it with the real value and **redeploy**.
+
 **Two console steps before `validatePurchase` can answer:**
 
 - **Android** — Play Console → Users & permissions → invite
