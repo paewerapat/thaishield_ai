@@ -1026,6 +1026,23 @@ softened:**
    is the store speaking clearly: `not_active`, `not_purchased`, `expired`,
    `refunded`, `product_not_in_receipt`.
 
+🚨 **Play's ฟีเจอร์ทางการเงิน form has three boxes that force an organization account, and
+2026-09-09 cleared only one of them.** The 08/09 rejection was re-submitted on 09/09 and
+**rejected again on the same policy**, because under ข้อตกลงในการสั่งซื้อ two boxes were still
+ticked: **ซื้อก่อน จ่ายทีหลัง** (buy now, pay later — a lending product) and **รางวัล แต้ม
+การสะสมไมล์…**, which nobody had looked at. Only การชำระเงินผ่านมือถือ… had been cleared.
+Both were false: `grep -riE "reward|loyalty|แต้ม|cashback|installment|ผ่อน" lib/` returns
+nothing (the "points" hits are map coordinates and polylines). Cleared 2026-09-10 and
+re-submitted; submission 3 is under review.
+
+Two lessons for any console form:
+- **Read the saved value back, expanded, before believing an edit landed.** เนื้อหาแอป →
+  ดำเนินการแล้ว → expand the row prints exactly what Google now holds. The 09/09
+  session recorded "both boxes cleared" from intent, not from that read-back.
+- **Clearing every checkbox is not the same as declaring "none".** The form leaves ถัดไป
+  disabled until แอปของฉันไม่มีฟีเจอร์ทางการเงิน is ticked; with it ticked, step 2 asks for no
+  documents. **Selling through Play Billing is declared nowhere on this form.**
+
 ⚠️ **Every `firebase` command here needs `-P staging`.** `.firebaserc` defines that
 alias and no `default`, and the CLI's remembered active project is keyed to the
 repository's *old* path (`C:/Github-Repo/Fastwork/thaishield_ai`), so a bare
