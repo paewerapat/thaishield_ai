@@ -1824,15 +1824,7 @@ bypasses the table). The bug lived exactly in the gap between the first two.
 
 ⚠️ **Still open after this sweep — neither is a Dart change:**
 
-- **iOS permission dialogs are English-only.** The five `NS*UsageDescription` strings in
-  `ios/Runner/Info.plist` have no `*.lproj/InfoPlist.strings` beside them and the plist
-  declares no `CFBundleLocalizations`, so a Korean, Russian or Japanese user meets English
-  at the camera/microphone/location prompt — often the first sentence the app ever shows
-  them. Fixing it means adding six `.lproj` folders **and registering them in
-  `Runner.xcodeproj`**, which cannot be verified from this machine (§1: no Mac) and would
-  land untested in the Codemagic build. `NSSpeechRecognitionUsageDescription` also still
-  says *"your spoken English"*, which has been untrue since the app shipped six STT
-  locales (§2.3).
+- ✅ **iOS permission dialogs — done 2026-09-12.** See §10.2 below.
 - **The ARB / `AppLocalizations` system is dead code.** `l10n.yaml` and `generate: true`
   produce `lib/l10n/app_localizations*.dart` from six `.arb` files, but
   `AppLocalizations.delegate` is **not** in `main.dart`'s `localizationsDelegates` and
@@ -1841,6 +1833,65 @@ bypasses the table). The bug lived exactly in the gap between the first two.
   added to the ARB files has no effect, silently. Either wire the delegate or delete the
   ARB path — but note §2's B1 row credits "ARB + `flutter_localizations`" as delivered, so
   deleting it is a documentation change too.
+
+### 10.2 iOS permission dialogs, six languages (2026-09-12)
+
+`ios/Runner/<locale>.lproj/InfoPlist.strings` now exists for **en, th, zh-Hans, ko, ru,
+ja**, carrying all five `NS*UsageDescription` strings. These are the first sentences the
+app ever shows most users — the camera, microphone and location prompts — and they were
+English-only until this date.
+
+🚨 **These follow the DEVICE language, not the app's own picker, and that is not a bug to
+fix later.** iOS presents the alert itself, before any Dart runs, so a phone set to English
+shows the English line even if the user chose Korean on the onboarding screen. There is no
+supported way to change it (an `AppleLanguages` override rewrites the whole bundle's
+language and fights Flutter's own resolution). **Say this plainly to the client rather than
+claiming the prompts follow the in-app choice.** What the change does buy is every tourist
+whose phone is already in their own language — which, for inbound travellers, is most of
+them.
+
+Details worth keeping:
+
+- **The folder is `zh-Hans.lproj`, not `zh.lproj`.** Apple identifies Chinese by script and
+  a device set to 简体中文 reports `zh-Hans-CN`; plain `zh.lproj` would not be selected. The
+  app's Flutter locale is still `zh`. `test/ios_localization_test.dart` holds the mapping.
+- **Half the work is `Runner.xcodeproj`, and that half fails silently.** A `.lproj` on disk
+  that is not registered is simply absent from the bundle — no error, no warning. The
+  wiring is a `PBXVariantGroup` (six `PBXFileReference` children), a `PBXBuildFile`
+  wrapping *the group*, that build file in the Runner target's Resources phase, and every
+  locale in `knownRegions`. It follows the shape the Flutter template already uses for
+  `Main.storyboard`.
+  ⚠️ **The classic error is putting the variant group's own id into `files = (...)`
+  instead of the `PBXBuildFile` that wraps it.** The test asserts against exactly that.
+- **`CFBundleLocalizations` was deliberately NOT added.** With real `.lproj` folders the
+  bundle is already authoritative; adding the key would be a second list to keep in sync
+  and a silent fallback when the two disagree.
+- **`NSSpeechRecognitionUsageDescription` said "your spoken English"**, untrue since SOS
+  shipped six STT locales (§2.3). Fixed in `Info.plist` *and* in `en.lproj` — the plist is
+  the fallback for any language with no `.lproj`, so fixing only one would have left it.
+- ⚠️ **Two hygiene findings raised and NOT acted on, because both are behaviour decisions:**
+  1. **The app never uses the iOS Speech framework.** There is no `speech_to_text` package
+     and no `SFSpeechRecognizer`; SOS records with `record` and posts the audio to Google
+     Cloud STT (§2.3). So `NSSpeechRecognitionUsageDescription` describes a permission the
+     app never requests. Harmless at runtime — iOS only shows a purpose string when the API
+     is called — but App Review reads declared capabilities.
+  2. **`NSLocationAlwaysAndWhenInUseUsageDescription` promises background location**, which
+     §7 forbids and `LocationService` never asks for. Declaring "Always" invites Apple to
+     ask why, and can prompt users for an upgrade the app has no use for.
+
+**Verified how, given §1 says there is no Mac:** `test/ios_localization_test.dart` (10
+tests) asserts the file set, key parity against `Info.plist`, that no language is a copy of
+the English, and every piece of the Xcode wiring. It was negative-tested — removing `ru`
+from `knownRegions` and copying the English into `ru.lproj` each make it fail. That is
+**not** the same as a green iOS build: the first Codemagic run is still the proof, and if
+it fails, this is the change to look at first.
+
+⚠️ There is **no `Podfile`** in this project (plugins come through
+`FlutterGeneratedPluginSwiftPackage`), and Codemagic's "Install pods" step is a
+`find . -name "Podfile"` that currently matches nothing — so nothing rewrites
+`project.pbxproj` during CI. If a future plugin drags CocoaPods back in, `pod install` will
+edit that file; it adds its own entries rather than removing resources, but re-run the test
+afterwards.
 
 ---
 

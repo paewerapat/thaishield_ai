@@ -1,0 +1,14 @@
+/* iOS permission dialogs — Simplified Chinese. See en.lproj/InfoPlist.strings
+ * for why these files exist and why iOS picks them by DEVICE language, not by
+ * the app's own language picker. Keep the key set identical across all six.
+ *
+ * The folder is zh-Hans.lproj, not zh.lproj: Apple identifies Chinese by
+ * script, and a device set to 简体中文 reports zh-Hans-CN. The app's own locale
+ * is plain `zh` (Flutter), and the app's copy is Simplified throughout, so
+ * this is the matching pair, not a mismatch. */
+
+"NSLocationWhenInUseUsageDescription" = "ThaiShield AI 使用您的位置在个人资料中显示，并用于安全相关功能。";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "ThaiShield AI 使用您的位置在个人资料中显示，并用于安全相关功能。";
+"NSCameraUsageDescription" = "ThaiShield AI 使用您的相机扫描菜单价格，用于 AI 价格扫描功能。";
+"NSMicrophoneUsageDescription" = "ThaiShield AI 使用您的麦克风录制语音，用于 AI 语音 SOS 功能，将您所说的内容翻译成泰语以便与当地人沟通。";
+"NSSpeechRecognitionUsageDescription" = "ThaiShield AI 使用语音识别将您所说的内容转换为文字，用于 AI 语音 SOS 功能。";

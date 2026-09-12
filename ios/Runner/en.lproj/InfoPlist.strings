@@ -1,0 +1,22 @@
+/* iOS permission dialogs — English.
+ *
+ * 🚨 These are the FIRST sentences the app ever shows a user, and until
+ * 2026-09-12 they only existed in English: there was no *.lproj beside
+ * Info.plist and no CFBundleLocalizations, so a Korean, Russian or Japanese
+ * phone got the English text at the camera, microphone and location prompts.
+ *
+ * ⚠️ iOS picks these from the DEVICE language, not from the app's own language
+ * picker. A phone set to Russian sees the Russian line below; a phone set to
+ * English sees this file even if the user chose Korean inside the app. That is
+ * how Apple defines it and there is no supported way around it — the prompt is
+ * presented by the system before the app is involved.
+ *
+ * Keep the key set identical in all six files. A key missing from one language
+ * falls back to the value compiled into Info.plist, which is this English.
+ */
+
+"NSLocationWhenInUseUsageDescription" = "ThaiShield AI uses your location to show it in your profile and for safety features.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "ThaiShield AI uses your location to show it in your profile and for safety features.";
+"NSCameraUsageDescription" = "ThaiShield AI uses your camera to scan menu prices for the AI Price Scanner.";
+"NSMicrophoneUsageDescription" = "ThaiShield AI uses your microphone to record your voice for the AI Voice SOS feature, which translates your speech into Thai for local communication.";
+"NSSpeechRecognitionUsageDescription" = "ThaiShield AI uses speech recognition to convert what you say into text for the AI Voice SOS feature.";
