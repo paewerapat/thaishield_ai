@@ -127,5 +127,67 @@ void main() {
       // app renders one frame as a free user for someone who has paid.
       expect(source.contains('await premiumProvider.load()'), isTrue);
     });
+
+    test('there is exactly one localization system, and it is app_text', () {
+      // 🚨 There were two until 2026-09-12, and only one of them worked.
+      // `l10n.yaml` + `generate: true` produced `lib/l10n/app_localizations*.dart`
+      // from six .arb files, but `AppLocalizations.delegate` was never added to
+      // `localizationsDelegates` and nothing ever called
+      // `AppLocalizations.of(context)`. Every string the app actually shows
+      // comes from `app_text.dart`. The ARB half was not a bug — it was worse,
+      // a trap: a key added there compiled cleanly, generated cleanly, and had
+      // no effect, silently. Deleted rather than wired, because wiring it would
+      // have meant two tables for one job.
+      //
+      // The three Global* delegates below are `flutter_localizations`, which is
+      // still needed and must not be removed with it — they are what translate
+      // the OS-supplied strings (the back-button tooltip, date pickers) and
+      // what stops a non-English locale logging "unsupported locale".
+      expect(
+        Directory('lib/l10n').existsSync(),
+        isFalse,
+        reason: 'lib/l10n is back. If a second localization system is genuinely '
+            'wanted, wire its delegate in main.dart in the same commit — an '
+            'unwired one silently swallows every key added to it.',
+      );
+      expect(File('l10n.yaml').existsSync(), isFalse,
+          reason: 'l10n.yaml is back but nothing reads the output');
+      expect(
+        File('pubspec.yaml').readAsStringSync().contains('generate: true'),
+        isFalse,
+        reason: 'generate: true regenerates the ARB path on every pub get',
+      );
+      expect(source.contains('AppLocalizations'), isFalse,
+          reason: 'main.dart references AppLocalizations, which no longer exists');
+
+      // The half that stays.
+      for (final delegate in const [
+        'GlobalMaterialLocalizations.delegate',
+        'GlobalWidgetsLocalizations.delegate',
+        'GlobalCupertinoLocalizations.delegate',
+      ]) {
+        expect(source.contains(delegate), isTrue,
+            reason: '$delegate was removed along with the ARB path. It is '
+                'flutter_localizations, not the generated code, and without it '
+                'every non-English locale falls back for OS-supplied strings.');
+      }
+    });
+
+    test('main.dart supports exactly the six languages app_text serves', () {
+      // The list in main.dart and the columns in app_text.dart are the two
+      // halves of the same promise. A locale in one and not the other is a
+      // language the app offers and cannot draw, or draws and cannot be set to.
+      for (final language in const ['th', 'en', 'zh', 'ko', 'ru', 'ja']) {
+        expect(source.contains("Locale('$language')"), isTrue,
+            reason: '$language is missing from main.dart supportedLocales');
+      }
+      final declared = RegExp(r"Locale\('(\w+)'\)")
+          .allMatches(source)
+          .map((m) => m.group(1)!)
+          .toSet();
+      expect(declared, hasLength(6),
+          reason: 'main.dart declares $declared, but the app ships six '
+              'languages — add or remove the matching app_text column too');
+    });
   });
 }

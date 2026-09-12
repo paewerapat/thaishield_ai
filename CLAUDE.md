@@ -42,7 +42,7 @@ check (§4, Phase 2C) if you do.
 
 | # | Feature | Status |
 |---|---|---|
-| B1 | **Language Onboarding** — first-launch language picker (TH, EN, ZH, KO, RU, JA), `shared_preferences` + `LocaleProvider`, ARB + `flutter_localizations`, 5-tab bottom nav (Home / Scan / Map / SOS / Profile), language switch from Profile, Android release signing + Play AAB upload | ✅ Complete |
+| B1 | **Language Onboarding** — first-launch language picker (TH, EN, ZH, KO, RU, JA), `shared_preferences` + `LocaleProvider`, `flutter_localizations` + the `app_text` table (the ARB half was never wired and was deleted 2026-09-12, see §10.3), 5-tab bottom nav (Home / Scan / Map / SOS / Profile), language switch from Profile, Android release signing + Play AAB upload | ✅ Complete |
 | B2 | **Firebase Backend Setup** — `flutterfire configure`, `firebase_core` + `cloud_firestore`, `Firebase.initializeApp()` in `main.dart`, `FirestoreService` reading the three content collections | ✅ Complete |
 | B3 | **Fair Price & Travel Alert Map v1** — `google_maps_flutter`, partner pins from `partner_locations`, custom pop-up (name, rating, verified badge), colored `alert_zones` overlays: green (safe) / amber (caution) / red (danger) | ✅ Complete |
 | B4 | **Home Travel Alerts (newsdata.io)** — see §2.1 below | ✅ Complete |
@@ -945,7 +945,7 @@ which cannot follow a currency, a regional tax rule, or a price change.
 | Task | Description | Est. |
 |---|---|---|
 | 2.8 | **In-App Purchase integration** — Google Play Billing + Apple StoreKit, receipt validation, "Restore Purchases" | 3 weeks (partly parallel — see 2B) |
-| 2.6 | **Legal-wording revision pass** on all new copy across all 6 language ARB files | 2 days |
+| 2.6 | **Legal-wording revision pass** on all new copy in all 6 languages (`app_text.dart`; there are no ARB files since 2026-09-12) | 2 days |
 | 2.7 | **QA** — regression test on existing Map / Scanner / SOS features, release build | 2–3 days |
 
 **Task 2.6 — the audit is done, the enforcement is permanent (2026-08-24).** All 216
@@ -1148,7 +1148,7 @@ Play listing needs sits in `C:\Fastwork\thaishield-ai\store-assets\`: `icon-512.
 description in **all six app languages** (th, en-US, zh-CN, ko-KR, ru-RU, ja-JP — lengths
 checked against the 30/80/4000 limits), and `data-safety-checklist.md`, the tick-by-tick
 answer sheet for Play's Data Safety form, Apple's App Privacy and the IARC content rating.
-The listing copy follows §10 like the ARB files do but `wording_test.dart` cannot see it —
+The listing copy follows §10 like `app_text.dart` does but `wording_test.dart` cannot see it —
 re-read it by hand if it changes. The client has **still** not approved the copy (Rev.8 §6.4
 and §10), but it is now **in Play Console** (2026-09-08) as a saved draft — a draft app
 publishes nothing until a release is submitted, and the copy can still be edited in place.
@@ -1158,7 +1158,7 @@ languages still sold "weekly and monthly, auto-renewing" — the plan that was c
 2026-09-07. It now sells the one-time 14-day pass beside the monthly subscription, matching
 `PremiumPlan` and `premium_legal_note`. A listing that misstates the billing model is a
 policy problem, not a wording preference: whenever a plan changes, this file changes in the
-same round as the ARB copy.
+same round as the in-app copy.
 
 **What is in Play Console after 2026-09-08:** ข้อมูลสินค้าใน Store for all six languages
 (name / short / full), the icon, the feature graphic and 7 screenshots each for phone,
@@ -1638,7 +1638,7 @@ ThaiShield AI displays pricing and travel-safety information. To minimise legal 
 copy, alerts, scan results, radar cards, paywall copy and map screens MUST use neutral,
 statistical, informational wording** — never accusatory or judgmental language.
 
-Applies to: widget text, ARB localization strings, Firestore seed data, **CMS-entered
+Applies to: widget text, `app_text.dart` strings, Firestore seed data, **CMS-entered
 content**, push notifications, and any AI-generated (Gemini) response shown to users.
 
 ### Wording replacement table
@@ -1822,17 +1822,8 @@ permission for the string to come back somewhere nobody argued for it.
 (CMS content asks for the reader's language) · `hardcoded_ui_text_test.dart` (no chrome
 bypasses the table). The bug lived exactly in the gap between the first two.
 
-⚠️ **Still open after this sweep — neither is a Dart change:**
-
-- ✅ **iOS permission dialogs — done 2026-09-12.** See §10.2 below.
-- **The ARB / `AppLocalizations` system is dead code.** `l10n.yaml` and `generate: true`
-  produce `lib/l10n/app_localizations*.dart` from six `.arb` files, but
-  `AppLocalizations.delegate` is **not** in `main.dart`'s `localizationsDelegates` and
-  nothing anywhere calls `AppLocalizations.of(context)`. All 14 keys are duplicated in
-  `app_text.dart`, which is what the app actually reads. It is a trap, not a bug: a key
-  added to the ARB files has no effect, silently. Either wire the delegate or delete the
-  ARB path — but note §2's B1 row credits "ARB + `flutter_localizations`" as delivered, so
-  deleting it is a documentation change too.
+**Both items this sweep raised were closed the same day:** iOS permission dialogs (§10.2)
+and the dead ARB path (§10.3).
 
 ### 10.2 iOS permission dialogs, six languages (2026-09-12)
 
@@ -1915,6 +1906,44 @@ it fails, this is the change to look at first.
 `project.pbxproj` during CI. If a future plugin drags CocoaPods back in, `pod install` will
 edit that file; it adds its own entries rather than removing resources, but re-run the test
 afterwards.
+
+### 10.3 The ARB path is gone — there is one localization table (2026-09-12)
+
+🚨 **`lib/l10n/`, `l10n.yaml` and `generate: true` are deleted. Every user-facing string in
+this app comes from `lib/core/localization/app_text.dart` and nowhere else.**
+
+The project carried **two** localization systems and only one of them worked. `l10n.yaml`
+plus `generate: true` compiled `lib/l10n/app_localizations*.dart` from six `.arb` files on
+every `pub get` — but `AppLocalizations.delegate` was never added to `main.dart`'s
+`localizationsDelegates`, and nothing in the app, the tests or the integration suite ever
+called `AppLocalizations.of(context)`. All 14 of its keys were duplicated in `app_text.dart`,
+which is what actually rendered.
+
+**That is worse than dead code, and the distinction is the point.** Dead code does nothing.
+This *invited* work: a key added to `app_en.arb` and its five siblings compiled cleanly,
+generated cleanly, passed analyze, passed every test — and never appeared on screen. The
+next person to "add a string properly" would have used it.
+
+What was deleted and what deliberately stayed:
+
+| | |
+|---|---|
+| ❌ `lib/l10n/` — 6 `.arb` + 7 generated `.dart` | nothing imported them |
+| ❌ `l10n.yaml` | only input to the generator |
+| ❌ `generate: true` in `pubspec.yaml` | would regenerate the path on the next `pub get`, so removing the files alone is not enough |
+| ❌ `intl` as a **direct** dependency | its only importers were the generated files. `pubspec.lock` was diffed before and after: the single change is `intl` moving from `direct main` to `transitive` at the **same version**, because `flutter_localizations` still brings it |
+| ✅ **`flutter_localizations`** | 🚨 **must not be removed with it.** `GlobalMaterialLocalizations` / `GlobalWidgetsLocalizations` / `GlobalCupertinoLocalizations` are what translate OS-supplied strings — the back-button tooltip (`route_preview_screen.dart`, `radar_screen.dart` both use `MaterialLocalizations.of(context).backButtonTooltip`), date pickers, text-selection menus — and their absence also makes every non-English locale log "unsupported locale" |
+| ✅ `app_text.dart` | 252 keys × 6 languages, and the only table there is |
+
+**Guarded by two tests in `main_wiring_test.dart`:** one fails if `lib/l10n/`, `l10n.yaml`
+or `generate: true` comes back **while still unwired**, and pins the three `Global*`
+delegates so the useful half cannot be deleted by someone tidying up after this note; the
+other asserts `main.dart` declares exactly the six locales `app_text` serves, which is the
+promise the ARB half was pretending to keep.
+
+⚠️ **If a second table is ever genuinely wanted, wire its delegate in the same commit.**
+The failure here was not choosing ARB or choosing `app_text` — either is fine. It was
+shipping one of them half-connected for months.
 
 ---
 

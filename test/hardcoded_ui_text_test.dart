@@ -118,8 +118,12 @@ void main() {
 
       // The localization table itself is nothing but literals, and the seed
       // scripts write sample Firestore rows rather than draw anything.
+      //
+      // `lib/l10n/` used to be skipped here too. It was deleted on 2026-09-12
+      // — the ARB/AppLocalizations path was never wired up — and the entry
+      // went with it rather than being left as a standing exemption for a
+      // directory nothing would notice coming back.
       if (path.startsWith('lib/core/localization/')) continue;
-      if (path.startsWith('lib/l10n/')) continue;
       if (path.startsWith('lib/tools/')) continue;
       if (path.endsWith('firebase_options.dart')) continue;
 
