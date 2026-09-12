@@ -158,14 +158,48 @@ void main() {
     test('anything inside the default radius reads in metres', () {
       // The whole point of the panel is "how far is that" at a glance, and
       // "0.4 km" is harder to judge on foot than "400 m".
-      expect(formatDistance(0.45, isTh: false), '450 m');
-      expect(formatDistance(0.45, isTh: true), '450 ม.');
-      expect(formatDistance(0.999, isTh: false), '999 m');
+      expect(formatDistance(0.45, langCode: 'en'), '450 m');
+      expect(formatDistance(0.45, langCode: 'th'), '450 ม.');
+      expect(formatDistance(0.999, langCode: 'en'), '999 m');
     });
 
     test('past a kilometre it switches to km', () {
-      expect(formatDistance(1.0, isTh: false), '1.0 km');
-      expect(formatDistance(3.24, isTh: true), '3.2 กม.');
+      expect(formatDistance(1.0, langCode: 'en'), '1.0 km');
+      expect(formatDistance(3.24, langCode: 'th'), '3.2 กม.');
+    });
+
+    // 🚨 The reason this group exists at all. `formatDistance` took an
+    // `isTh` bool until 2026-09-12, so Chinese, Korean, Russian and Japanese
+    // readers were shown the **English** abbreviations — CLAUDE.md §10 had it
+    // filed as a known gap and the client reported it. A bool cannot express
+    // six languages; these two tests are what stop one coming back.
+    test('every language the app ships has its own unit suffix', () {
+      for (final language in _languages) {
+        expect(distanceUnits[language], isNotNull,
+            reason: 'no distance units for $language');
+        final (metres, km) = distanceUnits[language]!;
+        expect(metres.trim(), isNotEmpty);
+        expect(km.trim(), isNotEmpty);
+        expect(formatDistance(0.45, langCode: language), '450 $metres');
+        expect(formatDistance(3.24, langCode: language), '3.2 $km');
+      }
+    });
+
+    test('the four languages that used to fall back no longer read as English',
+        () {
+      // Russian and Chinese have their own words for these units; Korean and
+      // Japanese genuinely print the Latin ones, so they are asserted equal on
+      // purpose rather than left out.
+      expect(formatDistance(3.24, langCode: 'ru'), '3.2 км');
+      expect(formatDistance(0.45, langCode: 'ru'), '450 м');
+      expect(formatDistance(3.24, langCode: 'zh'), '3.2 公里');
+      expect(formatDistance(0.45, langCode: 'zh'), '450 米');
+      expect(formatDistance(3.24, langCode: 'ko'), '3.2 km');
+      expect(formatDistance(3.24, langCode: 'ja'), '3.2 km');
+    });
+
+    test('an unknown language falls back to English rather than throwing', () {
+      expect(formatDistance(3.24, langCode: 'de'), '3.2 km');
     });
   });
 

@@ -245,10 +245,10 @@ class _ScannerHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'ThaiShield AI',
                 style: TextStyle(
                     color: Colors.white,
@@ -256,8 +256,8 @@ class _ScannerHeader extends StatelessWidget {
                     fontWeight: FontWeight.bold),
               ),
               Text(
-                'AI Price Scanner',
-                style: TextStyle(color: Color(0xFFFFB300), fontSize: 12),
+                appText(context, 'tool_price_scanner'),
+                style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12),
               ),
             ],
           ),

@@ -45,7 +45,7 @@ class _TravelAlertsListScreenState extends State<TravelAlertsListScreen> {
             padding: const EdgeInsets.all(20),
             itemCount: alerts.length,
             separatorBuilder: (_, _) => const SizedBox(height: 14),
-            itemBuilder: (context, i) => _AlertListCard(alert: alerts[i], timeAgo: timeAgoLabel(alerts[i].publishedAt)),
+            itemBuilder: (context, i) => _AlertListCard(alert: alerts[i], timeAgo: timeAgoLabel(context, alerts[i].publishedAt)),
           );
         },
       ),

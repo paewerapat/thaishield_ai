@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/localization/app_text.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/utils/geo_utils.dart';
 import '../../map/screens/map_screen.dart';
 import '../../premium/models/premium_feature.dart';
 import '../../premium/providers/premium_provider.dart';
@@ -391,20 +392,24 @@ class _RadarToolbar extends StatelessWidget {
   final bool filtersLocked;
   final bool busy;
 
-  String _radiusLabel(double km, bool isTh) {
+  /// Like [formatDistance], but drops the ".0" from a whole number of
+  /// kilometres — the radius slider only ever shows round steps.
+  String _radiusLabel(double km, String langCode) {
+    final (metreUnit, kmUnit) =
+        distanceUnits[langCode] ?? distanceUnits['en']!;
     if (km < 1) {
       final metres = (km * 1000).round();
-      return isTh ? '$metres ม.' : '$metres m';
+      return '$metres $metreUnit';
     }
     final value = km == km.roundToDouble()
         ? km.toStringAsFixed(0)
         : km.toStringAsFixed(1);
-    return isTh ? '$value กม.' : '$value km';
+    return '$value $kmUnit';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
+    final langCode = Localizations.localeOf(context).languageCode;
 
     return Container(
       color: Colors.white,
@@ -429,7 +434,7 @@ class _RadarToolbar extends StatelessWidget {
                   children: [
                     for (final km in RadarService.radiusOptionsKm)
                       _RadiusChip(
-                        label: _radiusLabel(km, isTh),
+                        label: _radiusLabel(km, langCode),
                         selected: km == radiusKm,
                         onTap: busy ? null : () => onRadiusChanged(km),
                       ),

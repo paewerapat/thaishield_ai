@@ -169,13 +169,13 @@ class HomeTab extends StatelessWidget {
     final tools = [
       _Tool(
         icon: Icons.document_scanner_outlined,
-        label: 'AI Price Scanner',
+        label: appText(context, 'tool_price_scanner'),
         color: const Color(0xFF4FC3F7),
         onTap: () => onNavigateToTab(1),
       ),
       _Tool(
         icon: Icons.map_outlined,
-        label: 'Smart Map',
+        label: appText(context, 'tool_smart_map'),
         color: const Color(0xFF2E7D32),
         onTap: () => onNavigateToTab(2),
       ),
@@ -187,7 +187,7 @@ class HomeTab extends StatelessWidget {
       ),
       _Tool(
         icon: Icons.record_voice_over_outlined,
-        label: 'AI Voice SOS',
+        label: appText(context, 'tool_voice_sos'),
         color: const Color(0xFFEF5350),
         onTap: () => onNavigateToTab(3),
       ),
@@ -493,7 +493,7 @@ class _TopNewsCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          timeAgoLabel(alert.publishedAt),
+                          timeAgoLabel(context, alert.publishedAt),
                           style: const TextStyle(color: Colors.white70, fontSize: 11),
                         ),
                       ),

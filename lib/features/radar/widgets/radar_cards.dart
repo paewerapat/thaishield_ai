@@ -165,7 +165,7 @@ class RadarZoneCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final langCode = Localizations.localeOf(context).languageCode;
-    final isTh = langCode == 'th';
+
     final zone = entry.zone;
     final color = riskLevelColor(zone.riskLevel);
     final description = zone.localizedDescription(langCode);
@@ -194,7 +194,7 @@ class RadarZoneCard extends StatelessWidget {
               _DistanceLabel(
                 text: entry.isInside
                     ? appText(context, 'radar_you_are_inside')
-                    : formatDistance(entry.distanceKm, isTh: isTh),
+                    : formatDistance(entry.distanceKm, langCode: langCode),
                 color: entry.isInside ? color : _muted,
                 emphasised: entry.isInside,
               ),
@@ -244,7 +244,7 @@ class RadarPartnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
+    final langCode = Localizations.localeOf(context).languageCode;
     final partner = entry.partner;
     final category = entry.category;
     final color = partnerCategoryColor[category]!;
@@ -271,7 +271,7 @@ class RadarPartnerCard extends StatelessWidget {
                 ),
               ),
               _DistanceLabel(
-                text: formatDistance(entry.distanceKm, isTh: isTh),
+                text: formatDistance(entry.distanceKm, langCode: langCode),
                 color: _muted,
               ),
             ],

@@ -103,14 +103,34 @@ double distanceToZoneKm(LatLng point, AlertZone zone) {
   return math.max(0, toCenter - zone.radiusKm);
 }
 
+/// The metre and kilometre suffixes, per language.
+///
+/// 🚨 Was a Thai-or-English pair until 2026-09-12 — CLAUDE.md §10 recorded it
+/// as a known gap, and the client reported it as part of "some parts still do
+/// not change with the language". `m`/`km` are **English abbreviations**, not
+/// universal symbols: a Russian reader expects м/км in Cyrillic and a Chinese
+/// reader 米/公里. Korean and Japanese keep the Latin forms because that is
+/// what those locales actually print on a map.
+const Map<String, (String, String)> distanceUnits = {
+  'th': ('ม.', 'กม.'),
+  'en': ('m', 'km'),
+  'zh': ('米', '公里'),
+  'ko': ('m', 'km'),
+  'ru': ('м', 'км'),
+  'ja': ('m', 'km'),
+};
+
+(String, String) _unitsFor(String langCode) =>
+    distanceUnits[langCode] ?? distanceUnits['en']!;
+
 /// Formats a distance for display: metres under 1 km, one decimal above it.
-String formatDistance(double km, {required bool isTh}) {
+String formatDistance(double km, {required String langCode}) {
+  final (metreUnit, kmUnit) = _unitsFor(langCode);
   if (km < 1) {
     final metres = (km * 1000).round();
-    return isTh ? '$metres ม.' : '$metres m';
+    return '$metres $metreUnit';
   }
-  final value = km.toStringAsFixed(1);
-  return isTh ? '$value กม.' : '$value km';
+  return '${km.toStringAsFixed(1)} $kmUnit';
 }
 
 /// The smallest [LatLngBounds] containing every point in [points], padded by

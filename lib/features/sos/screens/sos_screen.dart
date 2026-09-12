@@ -541,10 +541,10 @@ class _SosHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'ThaiShield AI',
                 style: TextStyle(
                     color: Colors.white,
@@ -552,8 +552,8 @@ class _SosHeader extends StatelessWidget {
                     fontWeight: FontWeight.bold),
               ),
               Text(
-                'AI Voice SOS',
-                style: TextStyle(color: Color(0xFFFFB300), fontSize: 12),
+                appText(context, 'tool_voice_sos'),
+                style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12),
               ),
             ],
           ),

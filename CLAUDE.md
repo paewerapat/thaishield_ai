@@ -1775,14 +1775,72 @@ imply coverage:
   If a real count ever exists it belongs in Firestore first. The `rating` field
   stays: that one is real, entered by staff through the CMS.
 
-- ⚠️ Two milder gaps, deliberately left: `_riskLabel`/`_riskLabelTh` in
-  `map_screen.dart` and `formatDistance` in `geo_utils.dart` are **Thai-or-English
-  pairs**, so the other four languages fall back to English rather than to Thai.
-  Wrong, but not a §10 risk and not a broken string — worth folding into the table
-  when those screens are next touched.
+- ✅ **Those two "milder gaps" were closed on 2026-09-12, and deferring them was the
+  wrong call.** This bullet used to read: *"Two milder gaps, deliberately left:
+  `_riskLabel`/`_riskLabelTh` in `map_screen.dart` and `formatDistance` in
+  `geo_utils.dart` are Thai-or-English pairs … worth folding into the table when those
+  screens are next touched."* They were never touched, and on 2026-09-12 the **client
+  reported them** — *"บางส่วนยังไม่เปลี่ยนตามภาษาเช่นหน้าแรกของแอป"*. A gap a user can see
+  is not mild, and "when next touched" is not a schedule. See §10.1 below for the full
+  sweep that closed them and the guard that now prevents the class.
 
 The four older per-feature `§10 wording` blocks are now redundant but stay: a deleted
 test is a deleted safety net (§7.5), and they assert other things besides.
+
+### 10.1 Localization sweep, 2026-09-12 — what the client saw and what now stops it
+
+The client reported *"บางส่วนยังไม่เปลี่ยนตามภาษา เช่นหน้าแรกของแอป"* — some parts still do
+not change with the language, the app's home screen for example. A full sweep of `lib/`
+followed. **The translation tables were never the problem**: all 252 `app_text` keys carry
+all six languages, and every CMS call site already asks for the reader's locale
+(`localized_text_call_sites_test.dart` has held that since 2026-09-02). What was wrong was
+text that never reached the table at all.
+
+**Fixed, and each one is user-visible:**
+
+| Where | What a non-English reader saw |
+|---|---|
+| **Home → Useful Tools** | `AI Price Scanner`, `Smart Map`, `AI Voice SOS` were literals; `Safety Radar` and `Safety Tips` beside them were not. Three of five tiles in English, on the first screen of the app — this is what the client reported |
+| **Map → zone popup header** | `_riskLabel`/`_riskLabelTh` printed English over Thai always. Now `radar_group_zone_*`, the six-language table the Radar already used. The Thai second line is kept **only for non-Thai readers**, because the popup is what a tourist holds up to a local |
+| **Map → load failure** | A hard-coded Thai sentence shown to all six languages, at the one moment the screen has nothing else on it |
+| **Map / Scanner / SOS headers** | `Smart Map`, `AI Price Scanner`, `AI Voice SOS` as the gold subtitle — Radar and Route got this right from `appText`, these three did not |
+| **Distances everywhere** | `formatDistance(isTh:)` — a **bool cannot express six languages**, so zh/ko/ru/ja got the English `m`/`km`. Now `distanceUnits`, with `米/公里` and `м/км`; ko and ja keep the Latin forms because those locales really print them |
+| **Profile → About** | `Version …` / `ID …` labels in English in all six |
+| **Profile → location error** | Resolved to text at fetch time and held in `State`, so it **froze in the language that was active when it failed** |
+| **`timeAgoLabel`** | `5m` / `3h` / `2d` — dormant behind `showTravelNewsOnHome`, fixed so restoring the news block does not restore the bug |
+
+🚨 **The guard is `test/hardcoded_ui_text_test.dart`** — a source scan over all of `lib/`
+failing on any string literal passed to `Text`, `label:`, `title:`, `hintText:` and the
+rest. It was verified against the real bug: re-inserting `label: 'Smart Map'` makes it
+fail, naming the file and line. Its allowlist is per **(file, literal)** with a written
+reason, and a third test deletes stale entries by failing when an allowlisted literal is
+no longer in the file that claims it — an allowlist outliving its code is a standing
+permission for the string to come back somewhere nobody argued for it.
+
+**The three guards now divide the space, and all three are needed:**
+`wording_test.dart` (every key in the table obeys §10) · `localized_text_call_sites_test.dart`
+(CMS content asks for the reader's language) · `hardcoded_ui_text_test.dart` (no chrome
+bypasses the table). The bug lived exactly in the gap between the first two.
+
+⚠️ **Still open after this sweep — neither is a Dart change:**
+
+- **iOS permission dialogs are English-only.** The five `NS*UsageDescription` strings in
+  `ios/Runner/Info.plist` have no `*.lproj/InfoPlist.strings` beside them and the plist
+  declares no `CFBundleLocalizations`, so a Korean, Russian or Japanese user meets English
+  at the camera/microphone/location prompt — often the first sentence the app ever shows
+  them. Fixing it means adding six `.lproj` folders **and registering them in
+  `Runner.xcodeproj`**, which cannot be verified from this machine (§1: no Mac) and would
+  land untested in the Codemagic build. `NSSpeechRecognitionUsageDescription` also still
+  says *"your spoken English"*, which has been untrue since the app shipped six STT
+  locales (§2.3).
+- **The ARB / `AppLocalizations` system is dead code.** `l10n.yaml` and `generate: true`
+  produce `lib/l10n/app_localizations*.dart` from six `.arb` files, but
+  `AppLocalizations.delegate` is **not** in `main.dart`'s `localizationsDelegates` and
+  nothing anywhere calls `AppLocalizations.of(context)`. All 14 keys are duplicated in
+  `app_text.dart`, which is what the app actually reads. It is a trap, not a bug: a key
+  added to the ARB files has no effect, silently. Either wire the delegate or delete the
+  ARB path — but note §2's B1 row credits "ARB + `flutter_localizations`" as delivered, so
+  deleting it is a documentation change too.
 
 ---
 

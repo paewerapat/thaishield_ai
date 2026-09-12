@@ -484,7 +484,7 @@ class _RouteSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
+    final langCode = Localizations.localeOf(context).languageCode;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -535,7 +535,7 @@ class _RouteSummaryCard extends StatelessWidget {
               Expanded(
                 child: _Metric(
                   label: appText(context, 'route_distance'),
-                  value: formatDistance(route.distanceKm, isTh: isTh),
+                  value: formatDistance(route.distanceKm, langCode: langCode),
                   icon: Icons.straighten_rounded,
                 ),
               ),

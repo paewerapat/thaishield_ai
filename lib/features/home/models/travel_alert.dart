@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_text.dart';
+
 enum AlertCategory { flood, fire, storm, earthquake, accident, other }
 
 class TravelAlert {
@@ -147,9 +149,17 @@ const Map<AlertCategory, Color> alertCategoryColor = {
   AlertCategory.other: Color(0xFF607D8B),
 };
 
-String timeAgoLabel(DateTime time) {
+/// How long ago an article was published, in the reader's language.
+///
+/// The abbreviations used to be 'm' / 'h' / 'd' with no locale at all, which
+/// is English however short it is. Dormant while `showTravelNewsOnHome` is
+/// false — fixed here so restoring the news block does not restore the bug.
+String timeAgoLabel(BuildContext context, DateTime time) {
   final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-  if (diff.inHours < 24) return '${diff.inHours}h';
-  return '${diff.inDays}d';
+  final (key, n) = switch (diff) {
+    _ when diff.inMinutes < 60 => ('time_ago_minutes', diff.inMinutes),
+    _ when diff.inHours < 24 => ('time_ago_hours', diff.inHours),
+    _ => ('time_ago_days', diff.inDays),
+  };
+  return appText(context, key).replaceFirst('{n}', '$n');
 }

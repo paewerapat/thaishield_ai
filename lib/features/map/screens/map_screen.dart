@@ -47,25 +47,24 @@ IconData _riskIcon(String riskLevel) {
   }
 }
 
-String _riskLabel(String riskLevel) {
+/// The appText key naming a zone's risk level.
+///
+/// 🚨 Until 2026-09-12 this screen held the three labels twice over as English
+/// and Thai literals (`_riskLabel` / `_riskLabelTh`) and stacked both on the
+/// zone popup, so a Korean, Chinese, Russian or Japanese reader got English
+/// over Thai and neither line ever changed with the language — on the header
+/// of the one card that describes a real place. The six-language wording
+/// already existed as `radar_group_zone_*`, which the Radar and the Around You
+/// panel were using all along; this is the same table, not a new one, so the
+/// two screens cannot drift apart again.
+String _riskLabelKey(String riskLevel) {
   switch (riskLevel) {
     case 'danger':
-      return 'Community Alert Zone';
+      return 'radar_group_zone_danger';
     case 'caution':
-      return 'Tourist Advisory Area';
+      return 'radar_group_zone_caution';
     default:
-      return 'Travel Information Area';
-  }
-}
-
-String _riskLabelTh(String riskLevel) {
-  switch (riskLevel) {
-    case 'danger':
-      return 'พื้นที่ที่ชุมชนแจ้งเตือน';
-    case 'caution':
-      return 'พื้นที่คำแนะนำสำหรับนักท่องเที่ยว';
-    default:
-      return 'พื้นที่ข้อมูลการท่องเที่ยว';
+      return 'radar_group_zone_safe';
   }
 }
 
@@ -144,7 +143,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   /// Set only by the manual refresh button, so a background refresh on tab
   /// activation never blanks the map the user is already reading.
   bool _refreshing = false;
-  String? _error;
+  String? _errorKey;
   GoogleMapController? _mapController;
   MapType _mapType = MapType.normal;
   /// Which partner categories and zone risk levels are drawn. Replaces the
@@ -416,7 +415,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           ..addAll(polygons);
         _loading = false;
         _refreshing = false;
-        _error = null;
+        _errorKey = null;
       });
       // After the pins, so the sheet and the map are built from the same
       // fetch rather than two that could straddle a refresh.
@@ -427,7 +426,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
         // A failed background refresh must not wipe a map that is already
         // drawn — only report the error when there is nothing else to show.
         if (_markers.isEmpty && _polygons.isEmpty && _circles.isEmpty) {
-          _error = 'โหลดข้อมูลแผนที่ไม่สำเร็จ';
+          // The key, not the resolved string: this is held in State and
+          // outlives a language change, so storing text would freeze the
+          // failure message in whatever language was active when it failed.
+          _errorKey = 'map_load_error';
         }
         _loading = false;
         _refreshing = false;
@@ -732,10 +734,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         color: Color(0xFF2E7D32),
                       ),
                     )
-                  : _error != null
+                  : _errorKey != null
                       ? Center(
                           child: Text(
-                            _error!,
+                            appText(context, _errorKey!),
                             style: const TextStyle(color: Color(0xFF0D1B2A)),
                           ),
                         )
@@ -897,7 +899,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                           ],
                         ),
             ),
-            if (!_loading && _error == null && _selectedPartner != null)
+            if (!_loading && _errorKey == null && _selectedPartner != null)
               _PartnerBottomPanel(
                 partner: _selectedPartner!,
                 onViewDetails: () => _openPartnerDetail(_selectedPartner!),
@@ -995,9 +997,9 @@ class _MapHeader extends StatelessWidget {
             height: 22,
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Smart Map',
-            style: TextStyle(
+          Text(
+            appText(context, 'tool_smart_map'),
+            style: const TextStyle(
               color: Color(0xFF0D1B2A),
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1345,20 +1347,26 @@ class _ZonePopup extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _riskLabel(zone.riskLevel),
+                          appText(context, _riskLabelKey(zone.riskLevel)),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
                         ),
-                        Text(
-                          _riskLabelTh(zone.riskLevel),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
+                        // The Thai line under it is kept for a reader who is
+                        // not Thai: the popup is what a tourist holds up to a
+                        // local. For a Thai reader the first line already is
+                        // Thai, so a second copy of it would be the only thing
+                        // the row said twice.
+                        if (Localizations.localeOf(context).languageCode != 'th')
+                          Text(
+                            appTextIn('th', _riskLabelKey(zone.riskLevel)),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

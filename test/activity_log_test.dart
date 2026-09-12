@@ -438,10 +438,22 @@ void main() {
             'Profile no longer reads the install id. The published privacy '
             'policy tells users it is shown there.',
       );
+      // 🚨 Pinned as "the id reaches the About subtitle", not as one literal.
+      // Until 2026-09-12 this asserted the exact string `ID $_installId` —
+      // which was itself the bug, because that 'ID' label was English in all
+      // six languages. The label now comes from `profile_about_install_id`;
+      // what the policy actually promises is that the **value** is on screen.
       expect(
-        source.contains(r'ID $_installId'),
+        source.contains("appText(context, 'profile_about_install_id')"),
         isTrue,
-        reason: 'Profile reads the install id but no longer displays it.',
+        reason: 'Profile no longer labels the install id from the six-language '
+            'table.',
+      );
+      expect(
+        source.contains(r".replaceFirst('{value}', _installId!)"),
+        isTrue,
+        reason: 'Profile reads the install id but no longer displays it. The '
+            'published privacy policy tells users it is shown there.',
       );
     });
 

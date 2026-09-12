@@ -147,6 +147,25 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'О ThaiShield AI',
     'ja': 'ThaiShield AI について',
   },
+
+  // The two lines of the About tile's subtitle. `{value}` is the version
+  // string or the install id — both stay verbatim, only the label translates.
+  'profile_about_version': {
+    'th': 'เวอร์ชัน {value}',
+    'en': 'Version {value}',
+    'zh': '版本 {value}',
+    'ko': '버전 {value}',
+    'ru': 'Версия {value}',
+    'ja': 'バージョン {value}',
+  },
+  'profile_about_install_id': {
+    'th': 'รหัสติดตั้ง {value}',
+    'en': 'ID {value}',
+    'zh': '安装 ID {value}',
+    'ko': '설치 ID {value}',
+    'ru': 'ID установки {value}',
+    'ja': 'インストールID {value}',
+  },
   'scanner_coming_soon': {
     'th': 'เฟส 3 — เร็วๆ นี้',
     'en': 'Phase 3 — Coming Soon',
@@ -248,6 +267,18 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Эта информация собрана из открытых новостных источников и носит исключительно информационный характер. Перед поездкой уточните данные в официальных источниках.',
     'ja': 'この情報は公開ニュースソースから集約したもので、参考情報です。旅行前に公式情報をご確認ください。',
   },
+  // Relative age of a news item. `{n}` is the count. Abbreviated on purpose —
+  // it sits on a card corner — but abbreviated *per language*: 'm'/'h'/'d'
+  // are English abbreviations, not universal symbols.
+  'time_ago_minutes': {
+    'th': '{n} นาที', 'en': '{n}m', 'zh': '{n}分钟前', 'ko': '{n}분 전', 'ru': '{n} мин', 'ja': '{n}分前',
+  },
+  'time_ago_hours': {
+    'th': '{n} ชม.', 'en': '{n}h', 'zh': '{n}小时前', 'ko': '{n}시간 전', 'ru': '{n} ч', 'ja': '{n}時間前',
+  },
+  'time_ago_days': {
+    'th': '{n} วัน', 'en': '{n}d', 'zh': '{n}天前', 'ko': '{n}일 전', 'ru': '{n} дн', 'ja': '{n}日前',
+  },
   'alert_category_flood': {
     'th': 'น้ำท่วม', 'en': 'FLOOD', 'zh': '洪水', 'ko': '홍수', 'ru': 'ПАВОДОК', 'ja': '洪水',
   },
@@ -296,6 +327,38 @@ const Map<String, Map<String, String>> _appText = {
   },
   'home_useful_tools': {
     'th': 'เครื่องมือที่ใช้บ่อย', 'en': 'Useful Tools', 'zh': '实用工具', 'ko': '유용한 도구', 'ru': 'Полезные инструменты', 'ja': '便利な機能',
+  },
+  // The three feature names under "Useful Tools" on Home, and the same names
+  // as the gold subtitle in each feature's own header.
+  //
+  // 🚨 These were English literals until 2026-09-12 — the client reported Home
+  // as "still not changing with the language" and these were what they meant:
+  // two of the five tools (Safety Radar, Safety Tips) localised and three did
+  // not, on the first screen of the app. "AI" stays Latin in every language
+  // because it is read that way in all six; the rest is translated.
+  'tool_price_scanner': {
+    'th': 'สแกนราคา AI',
+    'en': 'AI Price Scanner',
+    'zh': 'AI 价格扫描',
+    'ko': 'AI 가격 스캐너',
+    'ru': 'AI-сканер цен',
+    'ja': 'AI価格スキャナー',
+  },
+  'tool_smart_map': {
+    'th': 'แผนที่อัจฉริยะ',
+    'en': 'Smart Map',
+    'zh': '智能地图',
+    'ko': '스마트 지도',
+    'ru': 'Умная карта',
+    'ja': 'スマートマップ',
+  },
+  'tool_voice_sos': {
+    'th': 'SOS ด้วยเสียง AI',
+    'en': 'AI Voice SOS',
+    'zh': 'AI 语音 SOS',
+    'ko': 'AI 음성 SOS',
+    'ru': 'AI-голосовой SOS',
+    'ja': 'AI音声SOS',
   },
   'tool_safety_tips': {
     'th': 'คำแนะนำความปลอดภัย',
@@ -609,6 +672,18 @@ const Map<String, Map<String, String>> _appText = {
     'ko': '위치를 찾을 수 없습니다. 다른 이름을 입력해 보세요.',
     'ru': 'Место не найдено. Попробуйте другое название.',
     'ja': '場所が見つかりません。別の名前をお試しください。',
+  },
+
+  /// Shown in place of the map when the first load fails and there is nothing
+  /// already drawn. Was a Thai literal until 2026-09-12, so five of the six
+  /// languages met Thai at the one moment the screen had nothing else on it.
+  'map_load_error': {
+    'th': 'โหลดข้อมูลแผนที่ไม่สำเร็จ',
+    'en': 'Could not load map data.',
+    'zh': '无法加载地图数据。',
+    'ko': '지도 데이터를 불러오지 못했습니다.',
+    'ru': 'Не удалось загрузить данные карты.',
+    'ja': '地図データを読み込めませんでした。',
   },
 
   // --- Partner categories (the 11 values of partner_locations.type, §3) ---
@@ -1660,9 +1735,19 @@ Map<String, Map<String, String>> get appStrings => _appText;
 
 /// Returns the localized string for [key] based on the app's current
 /// locale, falling back to English if no translation exists.
-String appText(BuildContext context, String key) {
-  final code = Localizations.localeOf(context).languageCode;
+String appText(BuildContext context, String key) =>
+    appTextIn(Localizations.localeOf(context).languageCode, key);
+
+/// The same lookup in an **explicitly named** language rather than the
+/// reader's.
+///
+/// 🚨 Only for the rare case where a second, fixed language is the point —
+/// today that is the Thai line under the risk level on the Map's zone popup,
+/// which exists so a tourist can show the card to a local. It is **not** a way
+/// to avoid passing a `BuildContext`: every other caller wants [appText], and
+/// a hard-coded `'en'` here is the exact bug this whole file exists to prevent.
+String appTextIn(String langCode, String key) {
   final entry = _appText[key];
   if (entry == null) return key;
-  return entry[code] ?? entry['en'] ?? key;
+  return entry[langCode] ?? entry['en'] ?? key;
 }

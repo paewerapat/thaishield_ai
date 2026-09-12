@@ -197,13 +197,13 @@ void main() {
 
   group('formatDistance', () {
     test('uses metres below 1 km', () {
-      expect(formatDistance(0.42, isTh: false), '420 m');
-      expect(formatDistance(0.42, isTh: true), '420 ม.');
+      expect(formatDistance(0.42, langCode: 'en'), '420 m');
+      expect(formatDistance(0.42, langCode: 'th'), '420 ม.');
     });
 
     test('uses one decimal kilometre above 1 km', () {
-      expect(formatDistance(2.34, isTh: false), '2.3 km');
-      expect(formatDistance(2.34, isTh: true), '2.3 กม.');
+      expect(formatDistance(2.34, langCode: 'en'), '2.3 km');
+      expect(formatDistance(2.34, langCode: 'th'), '2.3 กม.');
     });
   });
 

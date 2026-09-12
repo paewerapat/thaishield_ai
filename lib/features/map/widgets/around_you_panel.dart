@@ -82,7 +82,7 @@ class AroundYouPanel extends StatelessWidget {
     final current = result;
     if (current == null) return const SizedBox.shrink();
 
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
+    final langCode = Localizations.localeOf(context).languageCode;
 
     final zones = current.entries.whereType<RadarZoneEntry>().toList();
     final partners = current.entries.whereType<RadarPartnerEntry>().toList();
@@ -160,7 +160,7 @@ class AroundYouPanel extends StatelessWidget {
                 updatedAt: updatedAt,
               ),
               const SizedBox(height: 14),
-              _Header(radiusKm: current.radiusKm, isTh: isTh),
+              _Header(radiusKm: current.radiusKm, langCode: langCode),
               const SizedBox(height: 12),
               _CountTiles(result: current, zones: zones, partners: partners),
               if (shownAdvisories.isNotEmpty) ...[
@@ -173,7 +173,7 @@ class AroundYouPanel extends StatelessWidget {
                 for (final entry in shownAdvisories)
                   _AdvisoryRow(
                     entry: entry,
-                    isTh: isTh,
+                    langCode: langCode,
                     onTap: () => onShowEntry(entry),
                   ),
               ],
@@ -187,7 +187,7 @@ class AroundYouPanel extends StatelessWidget {
                 for (final entry in shownPartners)
                   _PartnerRow(
                     entry: entry,
-                    isTh: isTh,
+                    langCode: langCode,
                     onTap: () => onShowEntry(entry),
                   ),
               ],
@@ -207,7 +207,7 @@ class AroundYouPanel extends StatelessWidget {
                 const SizedBox(height: 10),
                 _CategoryCards(
                   cards: categoryCards,
-                  isTh: isTh,
+                  langCode: langCode,
                   onTap: onShowEntry,
                 ),
               ],
@@ -272,12 +272,12 @@ class _CategoryCard {
 class _CategoryCards extends StatelessWidget {
   const _CategoryCards({
     required this.cards,
-    required this.isTh,
+    required this.langCode,
     required this.onTap,
   });
 
   final List<_CategoryCard> cards;
-  final bool isTh;
+  final String langCode;
   final ValueChanged<RadarEntry> onTap;
 
   @override
@@ -290,7 +290,7 @@ class _CategoryCards extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) => _CategoryCardTile(
           card: cards[index],
-          isTh: isTh,
+          langCode: langCode,
           onTap: () => onTap(cards[index].nearest),
         ),
       ),
@@ -301,12 +301,12 @@ class _CategoryCards extends StatelessWidget {
 class _CategoryCardTile extends StatelessWidget {
   const _CategoryCardTile({
     required this.card,
-    required this.isTh,
+    required this.langCode,
     required this.onTap,
   });
 
   final _CategoryCard card;
-  final bool isTh;
+  final String langCode;
   final VoidCallback onTap;
 
   @override
@@ -387,7 +387,7 @@ class _CategoryCardTile extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        formatDistance(card.nearest.distanceKm, isTh: isTh),
+                        formatDistance(card.nearest.distanceKm, langCode: langCode),
                         style: const TextStyle(color: _muted, fontSize: 10.5),
                       ),
                       const Spacer(),
@@ -594,18 +594,20 @@ class _YouAreHere extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.radiusKm, required this.isTh});
+  const _Header({required this.radiusKm, required this.langCode});
 
   final double radiusKm;
-  final bool isTh;
+  final String langCode;
 
   @override
   Widget build(BuildContext context) {
     // The radius comes from the result, not a literal, so the heading cannot
     // drift from the ring drawn on the map or from what was actually searched.
+    // Whole kilometres read better than "1.0 km" in the heading, so the
+    // suffix comes from the shared table rather than the formatter.
     final radius = radiusKm < 1
-        ? formatDistance(radiusKm, isTh: isTh)
-        : (isTh ? '${_trim(radiusKm)} กม.' : '${_trim(radiusKm)} km');
+        ? formatDistance(radiusKm, langCode: langCode)
+        : '${_trim(radiusKm)} ${distanceUnits[langCode]?.$2 ?? 'km'}';
 
     return Text(
       appText(context, 'around_title').replaceFirst('{radius}', radius),
@@ -810,12 +812,12 @@ class _RowShell extends StatelessWidget {
 class _AdvisoryRow extends StatelessWidget {
   const _AdvisoryRow({
     required this.entry,
-    required this.isTh,
+    required this.langCode,
     required this.onTap,
   });
 
   final RadarZoneEntry entry;
-  final bool isTh;
+  final String langCode;
   final VoidCallback onTap;
 
   @override
@@ -878,7 +880,7 @@ class _AdvisoryRow extends StatelessWidget {
             // rounding artefact rather than the most important fact on the row.
             entry.isInside
                 ? appText(context, 'radar_you_are_inside')
-                : formatDistance(entry.distanceKm, isTh: isTh),
+                : formatDistance(entry.distanceKm, langCode: langCode),
             style: TextStyle(
               color: color,
               fontSize: 11,
@@ -894,12 +896,12 @@ class _AdvisoryRow extends StatelessWidget {
 class _PartnerRow extends StatelessWidget {
   const _PartnerRow({
     required this.entry,
-    required this.isTh,
+    required this.langCode,
     required this.onTap,
   });
 
   final RadarPartnerEntry entry;
-  final bool isTh;
+  final String langCode;
   final VoidCallback onTap;
 
   @override
@@ -952,7 +954,7 @@ class _PartnerRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                formatDistance(entry.distanceKm, isTh: isTh),
+                formatDistance(entry.distanceKm, langCode: langCode),
                 style: const TextStyle(
                   color: _muted,
                   fontSize: 11,

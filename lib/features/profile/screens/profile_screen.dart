@@ -95,18 +95,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _loadingLocation = false;
   String? _address;
-  String? _locationError;
+  /// The appText **key** of the location failure, never the resolved
+  /// text. This outlives a language change — resolving it at fetch time
+  /// left the old language on screen until the next location fetch.
+  String? _locationErrorKey;
 
   Future<void> _updateLocation() async {
     setState(() {
       _loadingLocation = true;
-      _locationError = null;
+      _locationErrorKey = null;
     });
 
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) setState(() { _locationError = appText(context, 'profile_location_error'); _loadingLocation = false; });
+        if (mounted) setState(() { _locationErrorKey = 'profile_location_error'; _loadingLocation = false; });
         return;
       }
 
@@ -115,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        if (mounted) setState(() { _locationError = appText(context, 'profile_location_denied'); _loadingLocation = false; });
+        if (mounted) setState(() { _locationErrorKey = 'profile_location_denied'; _loadingLocation = false; });
         return;
       }
 
@@ -140,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) setState(() { _address = address; _loadingLocation = false; });
     } catch (_) {
-      if (mounted) setState(() { _locationError = appText(context, 'profile_location_error'); _loadingLocation = false; });
+      if (mounted) setState(() { _locationErrorKey = 'profile_location_error'; _loadingLocation = false; });
     }
   }
 
@@ -195,7 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       Icons.info_outline,
                       appText(context, 'profile_about_title'),
-                      _aboutSubtitle,
+                      _aboutSubtitle(context),
                       // Tapping copies the id rather than the whole line: it
                       // is 32 characters, and a user asked to quote it in a
                       // support email will otherwise transcribe it by hand and
@@ -416,8 +419,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 if (_loadingLocation)
                   const CircularProgressIndicator(color: Color(0xFF2E7D32))
-                else if (_locationError != null)
-                  Text(_locationError!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent, fontSize: 12))
+                else if (_locationErrorKey != null)
+                  Text(appText(context, _locationErrorKey!), textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent, fontSize: 12))
                 else if (_address != null)
                   Text(_address!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF0D1B2A), fontWeight: FontWeight.w600))
                 else
@@ -604,9 +607,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Two lines — the version, then the installation id. Shows the version
   /// alone until the id has been read, so the tile never renders empty and
   /// never jumps.
-  String get _aboutSubtitle {
-    final version = _version == null ? null : 'Version $_version';
-    final id = _installId == null ? null : 'ID $_installId';
+  String _aboutSubtitle(BuildContext context) {
+    final version = _version == null
+        ? null
+        : appText(context, 'profile_about_version')
+            .replaceFirst('{value}', _version!);
+    final id = _installId == null
+        ? null
+        : appText(context, 'profile_about_install_id')
+            .replaceFirst('{value}', _installId!);
     return [version, id].whereType<String>().join('\n');
   }
 

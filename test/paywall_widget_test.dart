@@ -429,6 +429,47 @@ void main() {
       expect(find.text('200 ม.'), findsWidgets);
     });
 
+    // 🚨 The client reported on 2026-09-12 that parts of the app did not
+    // change with the language, and distances were one of them: until that
+    // day `formatDistance` took an `isTh` bool, so the four languages that
+    // are neither Thai nor English were shown the **English** abbreviation.
+    // The unit tests in around_you_test.dart prove the formatter; only this
+    // proves the panel hands it the reader's language rather than a guess.
+    for (final (language, expected) in const [
+      ('th', '200 ม.'),
+      ('en', '200 m'),
+      ('zh', '200 米'),
+      ('ko', '200 km'), // ko/ja genuinely print the Latin forms
+      ('ru', '200 м'),
+      ('ja', '200 km'),
+    ]) {
+      testWidgets('distances render in $language, not in English',
+          (tester) async {
+        await tester.pumpWidget(
+          _host(
+            AroundYouPanel(
+              result: _around(partners: 1),
+              isPremium: true,
+              onShowEntry: (_) {},
+              onUnlock: () {},
+            ),
+            language: language,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _openSheet(tester);
+
+        // ko and ja share the Latin suffix with English, so for those two the
+        // metre form is what distinguishes a real lookup from a fallback.
+        final metres = expected.startsWith('200 k') ? '200 m' : expected;
+        expect(
+          find.text(metres),
+          findsWidgets,
+          reason: 'the panel printed a distance that is not $language',
+        );
+      });
+    }
+
     testWidgets('a tapped row hands the entry back to the map', (tester) async {
       RadarEntry? tapped;
       await tester.pumpWidget(

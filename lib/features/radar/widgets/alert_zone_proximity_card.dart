@@ -101,7 +101,6 @@ class _AlertZoneProximityCardState extends State<AlertZoneProximityCard>
     final entry = _entry;
     if (entry == null || _dismissed) return const SizedBox.shrink();
 
-    final isTh = Localizations.localeOf(context).languageCode == 'th';
     final langCode = Localizations.localeOf(context).languageCode;
     final zone = entry.zone;
     final color = riskLevelColor(zone.riskLevel);
@@ -163,7 +162,7 @@ class _AlertZoneProximityCardState extends State<AlertZoneProximityCard>
                           : appText(context, 'proximity_distance_away')
                               .replaceFirst(
                               '{distance}',
-                              formatDistance(entry.distanceKm, isTh: isTh),
+                              formatDistance(entry.distanceKm, langCode: langCode),
                             ),
                       style: TextStyle(
                         color: color,
