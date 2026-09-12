@@ -3,7 +3,5 @@
  * language picker. Keep the key set identical across all six. */
 
 "NSLocationWhenInUseUsageDescription" = "ThaiShield AI は、プロフィールに現在地を表示し、安全機能を提供するために位置情報を使用します。";
-"NSLocationAlwaysAndWhenInUseUsageDescription" = "ThaiShield AI は、プロフィールに現在地を表示し、安全機能を提供するために位置情報を使用します。";
 "NSCameraUsageDescription" = "ThaiShield AI は、AI価格スキャナー機能でメニューの価格を読み取るためにカメラを使用します。";
 "NSMicrophoneUsageDescription" = "ThaiShield AI は、AI音声SOS機能で音声を録音するためにマイクを使用します。録音内容はタイ語に翻訳され、現地の人とのやり取りに使われます。";
-"NSSpeechRecognitionUsageDescription" = "ThaiShield AI は、AI音声SOS機能で話した内容をテキストに変換するために音声認識を使用します。";

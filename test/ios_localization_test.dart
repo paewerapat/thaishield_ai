@@ -126,30 +126,58 @@ void main() {
       }
     });
 
-    test('no purpose string promises a language the app does not accept', () {
-      // 🚨 `NSSpeechRecognitionUsageDescription` said "your spoken English"
-      // until 2026-09-12, while SOS has accepted six STT locales since it
-      // shipped (CLAUDE.md §2.3). A purpose string that misdescribes what the
-      // app does with the data is exactly what App Review reads.
-      final english = parseStrings(
-        File('ios/Runner/en.lproj/InfoPlist.strings').readAsStringSync(),
+    test('the app declares exactly the three permissions it actually asks for',
+        () {
+      // 🚨 This list is not documentation — on iOS it is **build input.**
+      // `permission_handler_apple`'s Package.swift reads Info.plist and
+      // compiles in a permission strategy for every purpose string it finds
+      // (`PERMISSION_SPEECH_RECOGNIZER`, `PERMISSION_LOCATION_ALWAYS`, …),
+      // defaulting to *off* for anything with no key. So an unused key does
+      // not sit there harmlessly: it links a framework into the binary, and
+      // Apple's static scanner reads the binary, not the source.
+      //
+      // Removed 2026-09-12 for exactly that reason:
+      //   • NSSpeechRecognitionUsageDescription — the app has no
+      //     `speech_to_text` and no SFSpeechRecognizer. SOS records with
+      //     `record` and posts the audio to Google Cloud STT (CLAUDE.md §2.3),
+      //     and nothing calls `Permission.speech`. The key was compiling in a
+      //     Speech framework the app never touches.
+      //   • NSLocationAlwaysAndWhenInUseUsageDescription — §7 forbids
+      //     background location and `LocationService` never asks for it.
+      //     geolocator checks the WhenInUse key *first* and only falls to the
+      //     Always branch when WhenInUse is absent, so removing it changes no
+      //     runtime behaviour — it just stops declaring something untrue.
+      //
+      // Adding a key back is therefore a deliberate act with a build
+      // consequence. If the app genuinely gains a permission, add it here in
+      // the same commit and in all six .lproj files.
+      expect(
+        usageKeysIn(infoPlist),
+        {
+          'NSLocationWhenInUseUsageDescription',
+          'NSCameraUsageDescription',
+          'NSMicrophoneUsageDescription',
+        },
+        reason: 'the set of iOS permissions the app declares has changed. Each '
+            'one compiles a permission strategy into the binary, so a key here '
+            'that no code requests is a framework reference Apple will see and '
+            'the app cannot justify.',
       );
-      final speech = english['NSSpeechRecognitionUsageDescription'];
-      if (speech != null) {
-        expect(speech.toLowerCase(), isNot(contains('english')),
-            reason: 'the speech purpose string names English specifically, but '
-                'SOS transcribes th/en/zh/ko/ru/ja');
-      }
+    });
 
-      // Info.plist is the fallback for any language with no .lproj of its own,
-      // so the same sentence has to be right there too — it was the one that
-      // was actually wrong, and fixing only en.lproj would have left it.
-      final plistSpeech = RegExp(
-        r'<key>NSSpeechRecognitionUsageDescription</key>\s*<string>([^<]*)</string>',
-      ).firstMatch(infoPlist)?.group(1);
-      if (plistSpeech != null) {
-        expect(plistSpeech.toLowerCase(), isNot(contains('english')),
-            reason: 'Info.plist still names English as the spoken language');
+    test('no purpose string promises a language the app does not accept', () {
+      // `NSSpeechRecognitionUsageDescription` said "your spoken English" until
+      // 2026-09-12, while SOS has accepted six STT locales since it shipped.
+      // That key is gone now, but the rule outlives it: the microphone string
+      // describes the same feature and must not name one language either.
+      for (final source in [
+        infoPlist,
+        ...locales.values.map((d) =>
+            File('ios/Runner/$d.lproj/InfoPlist.strings').readAsStringSync()),
+      ]) {
+        expect(source.toLowerCase(), isNot(contains('spoken english')),
+            reason: 'a purpose string still names English as the language the '
+                'user speaks, but SOS transcribes th/en/zh/ko/ru/ja');
       }
     });
   });

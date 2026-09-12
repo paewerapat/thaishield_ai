@@ -16,7 +16,5 @@
  */
 
 "NSLocationWhenInUseUsageDescription" = "ThaiShield AI uses your location to show it in your profile and for safety features.";
-"NSLocationAlwaysAndWhenInUseUsageDescription" = "ThaiShield AI uses your location to show it in your profile and for safety features.";
 "NSCameraUsageDescription" = "ThaiShield AI uses your camera to scan menu prices for the AI Price Scanner.";
 "NSMicrophoneUsageDescription" = "ThaiShield AI uses your microphone to record your voice for the AI Voice SOS feature, which translates your speech into Thai for local communication.";
-"NSSpeechRecognitionUsageDescription" = "ThaiShield AI uses speech recognition to convert what you say into text for the AI Voice SOS feature.";

@@ -1866,18 +1866,41 @@ Details worth keeping:
 - **`CFBundleLocalizations` was deliberately NOT added.** With real `.lproj` folders the
   bundle is already authoritative; adding the key would be a second list to keep in sync
   and a silent fallback when the two disagree.
-- **`NSSpeechRecognitionUsageDescription` said "your spoken English"**, untrue since SOS
-  shipped six STT locales (§2.3). Fixed in `Info.plist` *and* in `en.lproj` — the plist is
-  the fallback for any language with no `.lproj`, so fixing only one would have left it.
-- ⚠️ **Two hygiene findings raised and NOT acted on, because both are behaviour decisions:**
-  1. **The app never uses the iOS Speech framework.** There is no `speech_to_text` package
-     and no `SFSpeechRecognizer`; SOS records with `record` and posts the audio to Google
-     Cloud STT (§2.3). So `NSSpeechRecognitionUsageDescription` describes a permission the
-     app never requests. Harmless at runtime — iOS only shows a purpose string when the API
-     is called — but App Review reads declared capabilities.
-  2. **`NSLocationAlwaysAndWhenInUseUsageDescription` promises background location**, which
-     §7 forbids and `LocationService` never asks for. Declaring "Always" invites Apple to
-     ask why, and can prompt users for an upgrade the app has no use for.
+- 🚨 **The app now declares exactly three permissions — location-when-in-use, camera,
+  microphone — and two were DELETED on 2026-09-12 because nothing requests them.**
+  `NSSpeechRecognitionUsageDescription` and `NSLocationAlwaysAndWhenInUseUsageDescription`
+  are gone from `Info.plist` and from all six `.lproj`.
+
+  ⚠️ **On iOS this list is build input, not documentation.** `permission_handler_apple`'s
+  `Package.swift` reads the host app's `Info.plist` and compiles in a permission strategy
+  for **every purpose string it finds** — `PERMISSION_SPEECH_RECOGNIZER`,
+  `PERMISSION_LOCATION_ALWAYS` and the rest — defaulting to *off* for anything with no key.
+  So an unused purpose string is not inert: it **links a framework into the binary**, and
+  Apple's static scanner reads the binary, not the source. Deleting the key is what removes
+  the code.
+
+  Why each was safe to remove:
+  - **Speech:** there is no `speech_to_text` package and no `SFSpeechRecognizer` anywhere.
+    SOS records with `record` and posts the audio to Google Cloud STT (§2.3), and nothing
+    calls `Permission.speech` — the app only ever asks for `Permission.microphone`. The key
+    was compiling in a Speech framework the app never touches, and its text claimed the app
+    transcribed *"your spoken English"*, untrue since SOS shipped six STT locales.
+  - **Location Always:** §7 forbids background location and `LocationService` never asks
+    for it. `geolocator_apple`'s `PermissionHandler.m` checks
+    `NSLocationWhenInUseUsageDescription` **first** and only reaches the
+    `requestAlwaysAuthorization` branch when that key is *absent* — so removing the Always
+    key changes no runtime behaviour at all. It only stops the app declaring something
+    untrue, and drops `PERMISSION_LOCATION_ALWAYS` to 0.
+
+  `test/ios_localization_test.dart` pins the exact three-key set, so adding one back is a
+  deliberate act with a stated build consequence rather than a copy-paste.
+
+  ⚠️ Because these flags are evaluated from `Info.plist` at *manifest* time, the package's
+  own note applies: after changing the key set, clear DerivedData so Xcode re-evaluates.
+  Codemagic starts from a clean checkout, so CI is unaffected.
+- **Not a gap:** `image_picker` is only ever called with `ImageSource.camera`
+  (`scanner_screen.dart`), so no `NSPhotoLibraryUsageDescription` is needed. Adding one
+  would compile in `PERMISSION_PHOTOS` for nothing.
 
 **Verified how, given §1 says there is no Mac:** `test/ios_localization_test.dart` (10
 tests) asserts the file set, key parity against `Info.plist`, that no language is a copy of
