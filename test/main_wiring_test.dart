@@ -143,8 +143,12 @@ void main() {
       // still needed and must not be removed with it — they are what translate
       // the OS-supplied strings (the back-button tooltip, date pickers) and
       // what stops a non-English locale logging "unsupported locale".
+      // Files, not the folder: `flutter build` can leave an EMPTY lib/l10n
+      // behind (seen 2026-09-13), which git cannot even commit.
+      final l10n = Directory('lib/l10n');
       expect(
-        Directory('lib/l10n').existsSync(),
+        l10n.existsSync() &&
+            l10n.listSync(recursive: true).whereType<File>().isNotEmpty,
         isFalse,
         reason: 'lib/l10n is back. If a second localization system is genuinely '
             'wanted, wire its delegate in main.dart in the same commit — an '
