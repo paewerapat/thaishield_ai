@@ -1914,6 +1914,12 @@ Details worth keeping:
   (`scanner_screen.dart`), so no `NSPhotoLibraryUsageDescription` is needed. Adding one
   would compile in `PERMISSION_PHOTOS` for nothing.
 
+🚨 **iPhone only since 2026-09-13 (user decision).** `TARGETED_DEVICE_FAMILY = 1` in every
+build configuration and the `UISupportedInterfaceOrientations~ipad` block is gone, so App
+Store Connect needs iPhone screenshots only. Apple does not let a later version drop iPad
+once a build declaring it is uploaded — this had to land before the first Codemagic run.
+`test/ios_device_family_test.dart` pins it. iOS sells in **Thailand only**, matching Play.
+
 **Verified how, given §1 says there is no Mac:** `test/ios_localization_test.dart` (10
 tests) asserts the file set, key parity against `Info.plist`, that no language is a copy of
 the English, and every piece of the Xcode wiring. It was negative-tested — removing `ru`
