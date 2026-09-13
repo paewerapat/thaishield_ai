@@ -1090,8 +1090,19 @@ but a redeploy alone still left the Cloud Run service with an **empty** IAM poli
 worked was Cloud Run console → `validatepurchase` → Security → allow unauthenticated.
 That same save also tried to roll a new revision and reported `Image
 …gcf-artifacts/…validate_purchase:version_1 not found` (the old image had been cleaned up);
-the access change still applied and traffic stayed on the last good revision. The next
-`firebase deploy` of this function builds a fresh image and replaces the failed revision.
+the access change still applied and traffic stayed on the last good revision.
+
+⚠️ **Every `firebase deploy` of this function now ends in "Deploys failed … Unable to set
+the invoker" — expected, and left that way on purpose (user decision 2026-09-13).** The code
+still declares `invoker: 'public'`, the org policy still refuses the `allUsers` binding, and
+public access actually comes from the Cloud Run console setting above, which survives a
+redeploy. After every deploy, confirm it is still reachable (400 = fine, 403 = redo the
+console step):
+
+    curl -s -o NUL -w "%{http_code}" -X POST https://asia-southeast1-thaishield-ai-790eb.cloudfunctions.net/validatePurchase -H "Content-Type: application/json" -d "{}"
+
+Do not remove `invoker: 'public'` to silence the message without asking: it is the only
+record in the code that this endpoint is meant to be public.
 
 ✅ **Before that fix, no user was affected.** A 403 is a non-200, and `CloudFunctionVerifier`
 turns every non-200 into `noOpinion`, so the app falls back to the store SDK exactly
