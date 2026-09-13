@@ -54,12 +54,27 @@ class PartnerLocation {
   final String type;
   final double rating;
   final bool isVerified;
+
+  /// `fair` | `caution` | `high`, or `''` when the document has none — which
+  /// is how the CMS stores a place with no prices (since 2026-09-13). Read
+  /// [showsPriceTier] rather than comparing this directly.
   final String priceTier;
   final String imageUrl;
 
   /// `type` resolved to one of the 11 documented categories (CLAUDE.md §3).
   /// Unrecognised strings fall back to `restaurant`.
   PartnerCategory get category => PartnerCategory.fromValue(type);
+
+  /// Whether any price badge belongs on this place.
+  bool get showsPriceTier =>
+      category.hasPriceTier && _knownTiers.contains(priceTier);
+
+  /// Only a stored `caution` or `high` is "above typical range". A blank or
+  /// unknown value used to fall into this branch and put an orange price
+  /// warning on places that have no prices.
+  bool get isAboveTypicalRange => showsPriceTier && priceTier != 'fair';
+
+  static const _knownTiers = {'fair', 'caution', 'high'};
 
   factory PartnerLocation.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
@@ -76,7 +91,7 @@ class PartnerLocation {
       type:        d['type'] ?? 'restaurant',
       rating:      (d['rating'] as num?)?.toDouble() ?? 0,
       isVerified:  d['is_verified'] ?? false,
-      priceTier:   d['price_tier'] ?? 'fair',
+      priceTier:   d['price_tier'] ?? '',
       imageUrl:    d['image_url'] ?? '',
     );
   }

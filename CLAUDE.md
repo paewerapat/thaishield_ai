@@ -264,9 +264,21 @@ lng          number
 type         string    // one of the 11 categories below
 rating       number    // 0.0–5.0
 is_verified  bool
-price_tier   string    // "fair" | "caution" | "high"
+price_tier   string    // OPTIONAL — "fair" | "caution" | "high", or ABSENT
 image_url    string    // may be "" — see below
 ```
+
+- 🚨 **`price_tier` is optional since 2026-09-13** (client report: staff could not save
+  hospitals, police stations or transport — nothing to rate). The CMS stores "no tier" by
+  **omitting the field**, never as a string: builds ≤ 1.1.29 read any value other than
+  `fair` as "above typical range" and would have put an orange price warning on a
+  hospital, while a missing field falls back to `fair` there. Six types never carry one —
+  `transport`, `hospital`, `police`, `tourist_police`, `atm_bank`, `tourist_info` — listed
+  in `PartnerCategory.hasPriceTier` here and `TYPES_WITHOUT_PRICE_TIER` in the CMS schema;
+  change both together. The app now reads a missing field as `''` and draws a price badge
+  only through `PartnerLocation.showsPriceTier` / `isAboveTypicalRange`
+  (`test/partner_price_tier_test.dart`). ⚠️ Until the next build ships, 1.1.29 still shows
+  a green "within typical range" tag on those places.
 
 - ⚠️ **No `updated_at` on this collection.** `price_standards` has one; this does not.
   Don't write a shared "last updated" widget that assumes the field exists.

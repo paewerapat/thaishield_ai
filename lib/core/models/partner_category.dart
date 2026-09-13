@@ -37,6 +37,25 @@ enum PartnerCategory {
     return PartnerCategory.restaurant;
   }
 
+  /// Whether a place of this kind can carry a `price_tier` at all. A hospital,
+  /// a police station or a bus stop has no price to rate, so the app never
+  /// shows a price badge for one — even a legacy document still storing
+  /// `fair`. Mirrors `TYPES_WITHOUT_PRICE_TIER` in the web-admin repo's
+  /// `lib/schemas/partner-locations.ts`; change both together.
+  bool get hasPriceTier {
+    switch (this) {
+      case PartnerCategory.transport:
+      case PartnerCategory.hospital:
+      case PartnerCategory.police:
+      case PartnerCategory.touristPolice:
+      case PartnerCategory.atmBank:
+      case PartnerCategory.touristInfo:
+        return false;
+      default:
+        return true;
+    }
+  }
+
   /// Key into the shared `appText` table (`lib/core/localization/app_text.dart`).
   String get textKey => 'cat_$value';
 

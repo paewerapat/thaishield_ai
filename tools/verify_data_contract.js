@@ -458,7 +458,11 @@ function checkPartnerLocations(docs) {
     }
     checkEnum(ctx, doc.data, "type", PARTNER_TYPES, { fallback: "restaurant" });
     checkNumber(ctx, doc.data, "rating", { min: 0, max: 5 });
-    checkEnum(ctx, doc.data, "price_tier", PRICE_TIERS, { fallback: "fair" });
+    // Optional since 2026-09-13: the CMS stores a place with no prices
+    // (hospital, police, transport…) without the field.
+    if (doc.data.price_tier !== undefined) {
+      checkEnum(ctx, doc.data, "price_tier", PRICE_TIERS);
+    }
 
     if (typeof doc.data.is_verified !== "boolean") {
       error(

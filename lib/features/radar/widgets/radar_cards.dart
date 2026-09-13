@@ -317,7 +317,7 @@ class RadarPartnerCard extends StatelessWidget {
                   label: appText(context, 'radar_badge_partner'),
                   color: const Color(0xFF1565C0),
                 ),
-              if (partner.priceTier != 'fair')
+              if (partner.isAboveTypicalRange)
                 _Badge(
                   label: appText(context, 'radar_badge_above_range'),
                   color: const Color(0xFFFF9800),

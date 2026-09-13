@@ -1698,17 +1698,18 @@ class _PartnerCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _Tag(
-                    label: appText(
-                      context,
-                      partner.priceTier == 'fair'
-                          ? 'variance_within'
-                          : 'radar_badge_above_range',
+                  if (partner.showsPriceTier)
+                    _Tag(
+                      label: appText(
+                        context,
+                        partner.isAboveTypicalRange
+                            ? 'radar_badge_above_range'
+                            : 'variance_within',
+                      ),
+                      color: partner.isAboveTypicalRange
+                          ? const Color(0xFFFF9800)
+                          : const Color(0xFF4CAF50),
                     ),
-                    color: partner.priceTier == 'fair'
-                        ? const Color(0xFF4CAF50)
-                        : const Color(0xFFFF9800),
-                  ),
                   if (partner.isVerified)
                     _Tag(
                       label: appText(context, 'radar_badge_certified'),
@@ -1933,17 +1934,18 @@ class _PartnerDetailSheet extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        _Tag(
-                          label: appText(
-                            context,
-                            partner.priceTier == 'fair'
-                                ? 'variance_within'
-                                : 'radar_badge_above_range',
+                        if (partner.showsPriceTier)
+                          _Tag(
+                            label: appText(
+                              context,
+                              partner.isAboveTypicalRange
+                                  ? 'radar_badge_above_range'
+                                  : 'variance_within',
+                            ),
+                            color: partner.isAboveTypicalRange
+                                ? const Color(0xFFFF9800)
+                                : const Color(0xFF4CAF50),
                           ),
-                          color: partner.priceTier == 'fair'
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFFF9800),
-                        ),
                         if (partner.isVerified)
                           _Tag(
                             label: appText(context, 'radar_badge_certified'),
