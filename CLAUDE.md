@@ -1084,7 +1084,16 @@ Only an **Organization Policy Administrator** can lift it: GCP Console → IAM &
 `thaishield-ai-790eb` that allows `allUsers`. Making the function `onCall` instead
 does not dodge it — callables need the same Cloud Run binding.
 
-✅ **No user is affected meanwhile.** A 403 is a non-200, and `CloudFunctionVerifier`
+✅ **Resolved 2026-09-13 — the function answers 400 `{"error":"unknown_product"}` to an
+empty body, i.e. it is public.** The owner added the project-level org-policy exception,
+but a redeploy alone still left the Cloud Run service with an **empty** IAM policy. What
+worked was Cloud Run console → `validatepurchase` → Security → allow unauthenticated.
+That same save also tried to roll a new revision and reported `Image
+…gcf-artifacts/…validate_purchase:version_1 not found` (the old image had been cleaned up);
+the access change still applied and traffic stayed on the last good revision. The next
+`firebase deploy` of this function builds a fresh image and replaces the failed revision.
+
+✅ **Before that fix, no user was affected.** A 403 is a non-200, and `CloudFunctionVerifier`
 turns every non-200 into `noOpinion`, so the app falls back to the store SDK exactly
 as it did before the function existed. Verify with
 `curl -s -o /dev/null -w "%{http_code}" -X POST <url> -d '{}'`: **400 means reachable,
