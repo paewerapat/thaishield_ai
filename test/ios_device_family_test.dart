@@ -22,6 +22,18 @@ void main() {
     expect(families, everyElement('1'));
   });
 
+  test('export compliance is declared exempt (HTTPS only)', () {
+    // Without it every TestFlight upload stops at the encryption question.
+    // Only standard HTTPS/TLS is used; revisit if the app ever adds its own
+    // cryptography.
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    expect(
+      RegExp(r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>')
+          .hasMatch(plist),
+      isTrue,
+    );
+  });
+
   test('Info.plist carries no iPad-only orientation block', () {
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
     expect(plist, isNot(contains('~ipad')));
