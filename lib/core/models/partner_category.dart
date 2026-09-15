@@ -113,32 +113,64 @@ const Map<PartnerCategory, Color> partnerCategoryColor = {
   PartnerCategory.touristInfo: Color(0xFF4FC3F7),
 };
 
-/// Marker hue used for this category's pin on the Smart Map. Google Maps only
-/// accepts a fixed set of hues, so these approximate `partnerCategoryColor`.
-/// Pin colour by category, grouped rather than one hue per type.
+/// Which colour a category's pin takes on the Smart Map. Four groups, not
+/// eleven colours: the client asked on 2026-08-29 for every partner business
+/// to share one colour so a tourist reads "these are the places in the
+/// programme" in one glance, and on 2026-09-15 for the police to stop sharing
+/// the hospitals' red — a police station and an emergency room answer
+/// different questions, and a blue badge next to a red cross is read faster
+/// than two red pins.
 ///
-/// Changed 2026-08-29 at the client's request: every **partner business** is
-/// now the same blue, so a tourist scanning the map reads "these are the places
-/// in the programme" in one glance instead of decoding eleven colours. The two
-/// groups that are not partner businesses keep their own colour because they
-/// answer a different question — red for where you go when something is wrong,
-/// cyan for how you get around.
+/// Colours as of 2026-09-15 (final design pass, client's words):
+/// - **partner** — green, the same green as the status tags on the partner
+///   card, so the pin and the card read as one design;
+/// - **police** — blue, for both police and tourist police;
+/// - **emergency** — red, hospital and pharmacy;
+/// - **transport** — teal, how you get around.
 ///
-/// The grouping is [PartnerCategory.radarGroup], not a second list, so a
-/// category added later cannot end up grouped one way on the map and another
-/// way in the Radar.
-const double _partnerHue = 210; // azure — every partner business
-const double _emergencyHue = 0; // red — hospital, pharmacy, both police
+/// The grouping stays derived from [PartnerCategory.radarGroup] except for the
+/// police split, so a category added later cannot end up grouped one way on
+/// the map and another way in the Radar without somebody choosing that.
+enum MarkerGroup { partner, police, emergency, transport }
+
+extension PartnerCategoryMarkerGroup on PartnerCategory {
+  MarkerGroup get markerGroup {
+    switch (this) {
+      case PartnerCategory.police:
+      case PartnerCategory.touristPolice:
+        return MarkerGroup.police;
+      default:
+        switch (radarGroup) {
+          case RadarGroup.emergencyServices:
+            return MarkerGroup.emergency;
+          case RadarGroup.transport:
+            return MarkerGroup.transport;
+          default:
+            return MarkerGroup.partner;
+        }
+    }
+  }
+}
+
+/// Google Maps' fixed hue for each [MarkerGroup]. Only the stock-teardrop
+/// fallback in `MarkerIcons.forCategory` draws with these; the real pins use
+/// [markerGroupColor]. Kept in step with it so a pin that fails to rasterise
+/// is still roughly the right colour.
+const double _partnerHue = 120; // green — every partner business
+const double _policeHue = 210; // azure — police, tourist police
+const double _emergencyHue = 0; // red — hospital, pharmacy
 const double _transportHue = 180; // cyan — getting around
 
 double partnerCategoryHueFor(PartnerCategory category) {
-  switch (category.radarGroup) {
-    case RadarGroup.emergencyServices:
-      return _emergencyHue;
-    case RadarGroup.transport:
-      return _transportHue;
-    default:
+  switch (category.markerGroup) {
+    case MarkerGroup.partner:
       return _partnerHue;
+    case MarkerGroup.police:
+      return _policeHue;
+    case MarkerGroup.emergency:
+      return _emergencyHue;
+    case MarkerGroup.transport:
+      return _transportHue;
   }
 }
 
@@ -151,7 +183,20 @@ const Map<PartnerCategory, double> partnerCategoryMarkerHue = {
   PartnerCategory.touristInfo: _partnerHue,
   PartnerCategory.hospital: _emergencyHue,
   PartnerCategory.pharmacy: _emergencyHue,
-  PartnerCategory.police: _emergencyHue,
-  PartnerCategory.touristPolice: _emergencyHue,
+  PartnerCategory.police: _policeHue,
+  PartnerCategory.touristPolice: _policeHue,
   PartnerCategory.transport: _transportHue,
+};
+
+/// The exact fill each [MarkerGroup]'s pin is drawn with, and the colour the
+/// map legend's "Partner" chip uses for the same reason. The partner green is
+/// the app's primary green (`0xFF2E7D32`) — the "Certified Fair Price" tag and
+/// the Directions button — rather than the lighter `0xFF4CAF50` of the
+/// "within typical range" tag, because the lighter one sinks into the pale
+/// green Google paints parks and countryside with.
+const Map<MarkerGroup, Color> markerGroupColor = {
+  MarkerGroup.partner: Color(0xFF2E7D32),
+  MarkerGroup.police: Color(0xFF1565C0),
+  MarkerGroup.emergency: Color(0xFFD32F2F),
+  MarkerGroup.transport: Color(0xFF00838F),
 };

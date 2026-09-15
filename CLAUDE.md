@@ -277,8 +277,10 @@ image_url    string    // may be "" — see below
   in `PartnerCategory.hasPriceTier` here and `TYPES_WITHOUT_PRICE_TIER` in the CMS schema;
   change both together. The app now reads a missing field as `''` and draws a price badge
   only through `PartnerLocation.showsPriceTier` / `isAboveTypicalRange`
-  (`test/partner_price_tier_test.dart`). ⚠️ Until the next build ships, 1.1.29 still shows
-  a green "within typical range" tag on those places.
+  (`test/partner_price_tier_test.dart`). ⚠️ Builds ≤ 1.1.31 — including the one the
+  client tested on 2026-09-15 and the one attached to the App Store review — still show
+  a green "within typical range" tag on a police station; 1.1.32+ does not. The client's
+  2026-09-15 "hide the price tag on police/hospitals" request is this fix, already made.
 
 - ⚠️ **No `updated_at` on this collection.** `price_standards` has one; this does not.
   Don't write a shared "last updated" widget that assumes the field exists.
@@ -640,9 +642,15 @@ location, not a shortcut. `test/map_search_chips_test.dart` holds the row out.
   superset: per-category pin filtering plus the same three zone-risk toggles. The map's
   second floating button is now `tune` with a count badge, so a narrowed map is never
   mistaken for missing data.
-- Partner markers are now coloured **by category** (`partnerCategoryMarkerHue`) instead of
-  by `is_verified`; verified status still shows as the "Certified Fair Price" badge in the
-  partner panel and on radar cards.
+- Partner markers are coloured **by group, never by category or by `is_verified`**
+  (`MarkerGroup` / `markerGroupColor` in `partner_category.dart`, drawn by
+  `marker_icons.dart`). 🚨 Final palette, client's request 2026-09-15: **partner businesses
+  green `#2E7D32`** (the card's status-tag green, and the legend's "Partner" chip uses the
+  same constant), **police + tourist police blue `#1565C0`**, hospital + pharmacy red
+  `#D32F2F`, transport teal `#00838F`. Before 2026-09-15 partners were blue and the police
+  shared the hospitals' red; the client asked for the split so an emergency pin and a
+  government pin are told apart at a glance. Verified status still shows only as the
+  "Certified Fair Price" badge. Guarded by `test/marker_icons_test.dart`.
 - `_scanCategoryToPartnerType` in `home_screen.dart` no longer maps a scanned
   `attraction` onto `hotel` — `attraction` is a real category now.
 
@@ -2021,3 +2029,7 @@ header, page body and bottom nav. This was fixed once already (bottom nav was ti
 - New screens from Phase 2A/2B/2C (**Radar sheet, Filter panel, Route preview, Paywall**)
   default to this same header + bottom-nav treatment, with the risk-level colors reused
   from the map: green = safe, amber = caution, red = alert.
+- **Smart Map pins** (client's final design pass, 2026-09-15): partner business = `#2E7D32`
+  green, police / tourist police = `#1565C0` blue, hospital / pharmacy = `#D32F2F` red,
+  transport = `#00838F` teal. The only source is `markerGroupColor`; nothing else may
+  hard-code a pin colour, and the legend's "Partner" chip reads the same constant.

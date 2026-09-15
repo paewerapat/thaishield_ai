@@ -20,13 +20,14 @@ import '../../../core/models/partner_category.dart';
 ///
 /// ## The colour rule this must not break
 ///
-/// 🚨 **Every partner business is blue.** The client asked for that explicitly
-/// on 2026-08-29 — restaurants, hotels, shops, banks and attractions read as
-/// one programme rather than eleven colours to decode. So the *fill* comes from
-/// [partnerCategoryMarkerHue]'s three groups (blue partners, red emergency,
-/// cyan transport) and only the *glyph* varies by category. Do not switch the
-/// fill to [partnerCategoryColor], which is the per-category palette used by
-/// list rows and would undo that request.
+/// 🚨 **Pins are coloured by group, never by category.** The client asked on
+/// 2026-08-29 for every partner business to share one colour, and on
+/// 2026-09-15 (final design pass) fixed the palette: partners **green** (the
+/// card's status-tag green), police **blue**, hospitals and pharmacies **red**,
+/// transport teal. So the *fill* comes from [markerGroupColor] keyed by
+/// [PartnerCategoryMarkerGroup.markerGroup] and only the *glyph* varies by
+/// category. Do not switch the fill to [partnerCategoryColor], which is the
+/// per-category palette used by list rows and would undo both requests.
 ///
 /// ## Cost
 ///
@@ -81,7 +82,7 @@ class MarkerIcons {
     } catch (_) {
       // A pin that renders is worth more than a pin that matches the poster.
       return BitmapDescriptor.defaultMarkerWithHue(
-        partnerCategoryMarkerHue[category] ?? BitmapDescriptor.hueAzure,
+        partnerCategoryHueFor(category),
       );
     }
   }
@@ -168,12 +169,8 @@ class MarkerIcons {
   }
 
   /// 🚨 Group colour, not per-category colour — see the class comment.
-  Color _fillFor(PartnerCategory category) {
-    final hue = partnerCategoryMarkerHue[category] ?? BitmapDescriptor.hueAzure;
-    if (hue == 0) return const Color(0xFFD32F2F); // emergency services
-    if (hue == 180) return const Color(0xFF00838F); // getting around
-    return const Color(0xFF1565C0); // every partner business
-  }
+  Color _fillFor(PartnerCategory category) =>
+      markerGroupColor[category.markerGroup]!;
 
   @visibleForTesting
   void clearCache() => _cache.clear();

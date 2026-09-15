@@ -64,9 +64,13 @@ void main() {
   });
 
   group('the colour rule the client asked for', () {
-    // 🚨 2026-08-29: every partner business is blue, so the map reads as one
-    // programme instead of eleven colours to decode. Adding per-category
-    // glyphs must not have quietly reintroduced per-category fills.
+    // 🚨 2026-08-29: every partner business shares one colour, so the map
+    // reads as one programme instead of eleven colours to decode.
+    // 🚨 2026-09-15 (final design pass): partners are green — the card's
+    // status-tag green — police are blue, hospitals and pharmacies stay red.
+    // Adding per-category glyphs must not have quietly reintroduced
+    // per-category fills, and a later "tidy" must not merge the police back
+    // into the hospitals' red.
     const partnerBusinesses = [
       PartnerCategory.restaurant,
       PartnerCategory.hotel,
@@ -83,9 +87,37 @@ void main() {
       expect(hues, hasLength(1), reason: 'partner pins are not one colour');
     });
 
-    test('emergency and transport stay distinct from partners', () {
+    test("every partner business is drawn in the card's status-tag green", () {
+      for (final category in partnerBusinesses) {
+        expect(category.markerGroup, MarkerGroup.partner,
+            reason: category.value);
+      }
+      expect(markerGroupColor[MarkerGroup.partner], const Color(0xFF2E7D32));
+    });
+
+    test("police and tourist police are blue, not the hospitals' red", () {
+      expect(PartnerCategory.police.markerGroup, MarkerGroup.police);
+      expect(PartnerCategory.touristPolice.markerGroup, MarkerGroup.police);
+      expect(markerGroupColor[MarkerGroup.police], const Color(0xFF1565C0));
+      expect(PartnerCategory.hospital.markerGroup, MarkerGroup.emergency);
+      expect(PartnerCategory.pharmacy.markerGroup, MarkerGroup.emergency);
+      expect(markerGroupColor[MarkerGroup.emergency], const Color(0xFFD32F2F));
+    });
+
+    test('the four groups are four different colours and four hues', () {
+      expect(markerGroupColor.values.toSet(),
+          hasLength(MarkerGroup.values.length));
+      final hues = {
+        for (final c in PartnerCategory.values) partnerCategoryHueFor(c),
+      };
+      expect(hues, hasLength(MarkerGroup.values.length));
+    });
+
+    test('emergency, police and transport stay distinct from partners', () {
       final partner = partnerCategoryMarkerHue[PartnerCategory.restaurant];
       expect(partnerCategoryMarkerHue[PartnerCategory.hospital],
+          isNot(equals(partner)));
+      expect(partnerCategoryMarkerHue[PartnerCategory.police],
           isNot(equals(partner)));
       expect(partnerCategoryMarkerHue[PartnerCategory.transport],
           isNot(equals(partner)));

@@ -1243,9 +1243,11 @@ class _LegendRow extends StatelessWidget {
               label: appText(context, 'map_legend_alert'),
             ),
             const SizedBox(width: 8),
+            // The same green the partner pins are drawn with, so the legend
+            // matches the map (client, 2026-09-15).
             _LegendChip(
               icon: Icons.location_on_rounded,
-              color: const Color(0xFF1565C0),
+              color: markerGroupColor[MarkerGroup.partner]!,
               label: appText(context, 'map_legend_partner'),
             ),
           ],
