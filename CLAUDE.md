@@ -1123,9 +1123,14 @@ default 10s discovery step times out here ("User code failed to load. Cannot det
 backend specification") even though `require('./functions/index.js')` finishes in ~500ms,
 so it is the port handshake, not the code. Raising the timeout deploys cleanly.
 
-🔐 `APPLE_SHARED_SECRET` version 1 exists as the literal string
-`placeholder-until-app-store-connect`, set 2026-09-10 so the deploy could proceed.
-Safe only because of the fix above; replace it with the real value and **redeploy**.
+🔐 `APPLE_SHARED_SECRET`: version 1 was the literal string
+`placeholder-until-app-store-connect` (2026-09-10, so the deploy could proceed). ✅ **Version 2
+is the real App-Specific Shared Secret**, set by the user on 2026-09-16 with
+`firebase functions:secrets:set APPLE_SHARED_SECRET -P staging` (run from this folder — the
+`staging` alias lives in `.firebaserc` here and nowhere else); the CLI's "re-deploy and destroy
+the stale version" prompt was answered yes, so `validatePurchase` already runs on version 2 and
+version 1 is gone. curl after: 400. From here an iOS receipt gets a real answer rather than
+`unavailable`.
 
 **Two console steps before `validatePurchase` can answer:**
 
