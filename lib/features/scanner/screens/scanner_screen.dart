@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../../core/services/firestore_service.dart';
+import '../../../core/widgets/ai_consent_sheet.dart';
 import '../models/scan_result.dart';
 import '../services/gemini_vision_service.dart';
 import '../services/price_scan_service.dart';
@@ -29,6 +30,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
   File? _capturedImage;
 
   Future<void> _captureAndScan() async {
+    // Before the camera opens, not after: a photo that may go to Gemini must
+    // not exist until the user has agreed to that (App Review 5.1.1).
+    if (!await ensureAiConsent(context, AiConsentPurpose.scanner)) return;
+    if (!mounted) return;
+
     final picked = await ImagePicker().pickImage(
       source: ImageSource.camera,
       imageQuality: 85,

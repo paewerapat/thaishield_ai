@@ -91,7 +91,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       case StoreOutcome.notAvailableYet:
       case StoreOutcome.failed:
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(appText(context, 'premium_store_unavailable'))),
+          SnackBar(content: Text(storeText(context, 'premium_store_unavailable'))),
         );
     }
   }
@@ -169,7 +169,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 const SizedBox(height: 2),
                 _FootNote(text: appText(context, 'premium_trial_note')),
                 const SizedBox(height: 8),
-                _FootNote(text: appText(context, 'premium_price_note')),
+                _FootNote(text: storeText(context, 'premium_price_note')),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -233,9 +233,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _FootNote(text: appText(context, 'premium_platform_note')),
+                _FootNote(text: storeText(context, 'premium_platform_note')),
                 const SizedBox(height: 8),
-                _FootNote(text: appText(context, 'premium_legal_note')),
+                _FootNote(text: storeText(context, 'premium_legal_note')),
                 const SizedBox(height: 10),
                 const _LegalLinks(),
               ],

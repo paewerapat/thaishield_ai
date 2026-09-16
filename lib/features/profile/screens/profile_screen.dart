@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/services/ai_consent.dart';
 import '../../../core/services/install_identity.dart';
 import '../../onboarding/screens/language_selection_screen.dart';
 import '../../premium/models/premium_plan.dart';
@@ -193,6 +194,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildFeedbackTile(context),
                     const SizedBox(height: 12),
                     _buildPrivacyTile(context),
+                    const SizedBox(height: 12),
+                    const _AiConsentSwitch(),
                     const SizedBox(height: 12),
                     _buildInfoTile(
                       context,
@@ -724,6 +727,61 @@ class _EmergencyRow extends StatelessWidget {
 /// `PremiumProvider.qaUnlock` refuses outside debug on top of that, so this
 /// cannot become a way to unlock a shipped app. Deliberately not localised:
 /// it is a developer control that never reaches a user.
+/// The AI-processing consent, shown where the privacy policy says it can be
+/// withdrawn. Off means the next scan or SOS press asks again; nothing else in
+/// the app changes. See `AiConsentStore` for the App Review history.
+class _AiConsentSwitch extends StatefulWidget {
+  const _AiConsentSwitch();
+
+  @override
+  State<_AiConsentSwitch> createState() => _AiConsentSwitchState();
+}
+
+class _AiConsentSwitchState extends State<_AiConsentSwitch> {
+  final AiConsentStore _store = AiConsentStore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_store.isLoaded) _store.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _store,
+      builder: (context, _) => Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        child: SwitchListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          secondary: const Icon(
+            Icons.auto_awesome_outlined,
+            color: Color(0xFF4FC3F7),
+          ),
+          activeThumbColor: const Color(0xFF2E7D32),
+          title: Text(
+            appText(context, 'profile_ai_title'),
+            style: const TextStyle(
+              color: Color(0xFF0D1B2A),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            appText(context, 'profile_ai_subtitle'),
+            style: const TextStyle(color: Color(0xFF90A4AE), fontSize: 12),
+          ),
+          value: _store.isGranted,
+          onChanged: (on) => on ? _store.grant() : _store.revoke(),
+        ),
+      ),
+    );
+  }
+}
+
 class _QaPremiumSwitch extends StatelessWidget {
   const _QaPremiumSwitch();
 

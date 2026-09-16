@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Small shared UI-string table for chrome text (nav labels, headers,
@@ -1385,6 +1386,19 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Вы платите ту цену, которая указана в Google Play или App Store вашей страны; она может отличаться от приведённой здесь из-за валюты и налогов.',
     'ja': '実際にお支払いいただく金額は、お住まいの国の Google Play または App Store に表示される価格です。通貨や税により、ここに表示された金額と異なる場合があります。',
   },
+  // 🚨 iOS wording, chosen by `storeText`. App Review rejected 1.1.31 on
+  // 2026-09-16 under guideline 2.3.10 because the paywall named Google Play
+  // and Android on an iPhone. Every `*_ios` variant below must name only
+  // Apple's store and account; `premium_test.dart` scans them for the banned
+  // words.
+  'premium_price_note_ios': {
+    'th': 'ราคาที่คุณต้องจ่ายจริงคือราคาที่แสดงใน App Store ของประเทศคุณ ซึ่งอาจต่างจากที่แสดงที่นี่ตามสกุลเงินและภาษี',
+    'en': 'The price you pay is the one shown by the App Store in your country, which may differ from the figure here depending on currency and tax.',
+    'zh': '您实际支付的价格以您所在国家/地区的 App Store 显示为准，可能因币种与税费而与此处不同。',
+    'ko': '실제 결제 금액은 사용자 국가의 App Store에 표시된 가격이며, 통화와 세금에 따라 여기 표시된 금액과 다를 수 있습니다.',
+    'ru': 'Вы платите ту цену, которая указана в App Store вашей страны; она может отличаться от приведённой здесь из-за валюты и налогов.',
+    'ja': '実際にお支払いいただく金額は、お住まいの国の App Store に表示される価格です。通貨や税により、ここに表示された金額と異なる場合があります。',
+  },
   // The buy button, chosen by `PremiumPlan.isSubscription`. "Subscribe" on a
   // one-time pass would misdescribe the purchase at the exact moment the user
   // commits to it, which is the one place a store reviewer looks.
@@ -1418,6 +1432,14 @@ const Map<String, Map<String, String>> _appText = {
     'ko': '스토어에 연결할 수 없습니다. Google Play 또는 App Store에 로그인되어 있는지 확인한 후 다시 시도해 주세요.',
     'ru': 'Не удалось связаться с магазином. Убедитесь, что вы вошли в Google Play или App Store, и попробуйте ещё раз.',
     'ja': 'ストアに接続できませんでした。Google Play または App Store にログインしているかご確認のうえ、もう一度お試しください。',
+  },
+  'premium_store_unavailable_ios': {
+    'th': 'เชื่อมต่อ App Store ไม่ได้ กรุณาตรวจสอบว่าคุณลงชื่อเข้าใช้ด้วย Apple ID อยู่ แล้วลองอีกครั้ง',
+    'en': 'Could not reach the App Store. Check that you are signed in with your Apple ID, then try again.',
+    'zh': '无法连接到 App Store。请确认您已登录 Apple ID，然后重试。',
+    'ko': 'App Store에 연결할 수 없습니다. Apple ID로 로그인되어 있는지 확인한 후 다시 시도해 주세요.',
+    'ru': 'Не удалось связаться с App Store. Убедитесь, что вы вошли с Apple ID, и попробуйте ещё раз.',
+    'ja': 'App Store に接続できませんでした。Apple ID でサインインしているかご確認のうえ、もう一度お試しください。',
   },
   // A purchase the store has accepted but not yet collected payment for — a
   // card still clearing, a parent's approval, cash at a convenience store.
@@ -1473,6 +1495,14 @@ const Map<String, Map<String, String>> _appText = {
     'ru': 'Покупка привязана к аккаунту Google Play или Apple ID, через который она совершена, и не переносится между Android и iOS. Месячный тариф восстанавливается на обеих платформах после переустановки или смены телефона. Пропуск на 14 дней восстанавливается только на Android: на iOS удаление приложения до конца 14 дней приводит к потере оставшихся дней.',
     'ja': '購入は支払いに使用した Google Play または Apple ID のアカウントに紐づき、Android と iOS の間では引き継げません。月額プランは再インストールや機種変更のあと、どちらのストアでも復元できます。14日間パスを復元できるのは Android のみで、iOS では14日が終わる前にアプリを削除すると残りの日数は失われます。',
   },
+  'premium_platform_note_ios': {
+    'th': 'การซื้อผูกกับ Apple ID ที่ใช้ซื้อ · แผนรายเดือนกู้คืนได้เมื่อติดตั้งใหม่หรือเปลี่ยนเครื่อง · บัตรผ่าน 14 วันกู้คืนไม่ได้ หากลบแอปก่อนครบ 14 วัน วันที่เหลือจะหายไป',
+    'en': 'A purchase is tied to the Apple ID you buy with. The monthly plan can be restored after reinstalling or moving to a new iPhone. The 14-day pass cannot be restored — deleting the app before the 14 days are up loses the remaining days.',
+    'zh': '购买与您付款时使用的 Apple ID 绑定。月度方案在重新安装或更换 iPhone 后可以恢复；14 天通行证无法恢复，若在 14 天结束前删除应用，剩余天数将会失去。',
+    'ko': '구매는 결제에 사용한 Apple ID에 연결됩니다. 월간 요금제는 재설치하거나 새 iPhone으로 바꾼 뒤 복원할 수 있습니다. 14일 이용권은 복원할 수 없으며, 14일이 끝나기 전에 앱을 삭제하면 남은 기간은 사라집니다.',
+    'ru': 'Покупка привязана к Apple ID, через который она совершена. Месячный тариф восстанавливается после переустановки или смены iPhone. Пропуск на 14 дней не восстанавливается: удаление приложения до конца 14 дней приводит к потере оставшихся дней.',
+    'ja': '購入は支払いに使用した Apple ID に紐づきます。月額プランは再インストールや機種変更のあとに復元できます。14日間パスは復元できず、14日が終わる前にアプリを削除すると残りの日数は失われます。',
+  },
   // Both stores require the billing model to be stated next to the price, and
   // review the purchase screen for it. For the subscription four things have to
   // appear: that it renews, what account is charged, where to cancel — the
@@ -1512,6 +1542,14 @@ const Map<String, Map<String, String>> _appText = {
     'ko': '월간 요금제는 자동 갱신 구독입니다. 결제는 구독에 사용한 Google Play 또는 Apple ID 계정으로 청구되며, 현재 기간이 끝나면 다음 기간 요금이 자동으로 청구됩니다. 언제든지 스토어의 구독 설정에서 해지할 수 있으며(이 앱에서는 해지할 수 없습니다), 해지 후에도 이미 결제한 기간이 끝날 때까지 이용할 수 있습니다. 14일 이용권은 한 번만 청구되며 갱신되지 않고 해지할 것도 없습니다. 14일은 구매 시점부터 연속으로 계산되며 앱을 사용하지 않는 동안에도 멈추지 않습니다. 이용 기간이 끝나면 앱은 무료 버전으로 돌아갑니다.',
     'ru': 'Месячный тариф — подписка с автоматическим продлением. Оплата списывается с аккаунта Google Play или Apple ID, через который оформлена подписка, и следующий период оплачивается автоматически по окончании текущего, пока вы не отмените подписку. Отменить можно в любой момент в настройках подписок магазина — не в этом приложении — доступ сохраняется до конца оплаченного периода. Пропуск на 14 дней оплачивается один раз: он не продлевается, отменять нечего, а его 14 дней идут подряд с момента покупки и не приостанавливаются, пока вы не пользуетесь приложением. Когда доступ заканчивается, приложение возвращается к бесплатной версии.',
     'ja': '月額プランは自動更新のサブスクリプションです。料金は登録に使用した Google Play または Apple ID のアカウントに請求され、現在の期間が終了すると、解約するまで次の期間の料金が自動的に請求されます。解約はストアのサブスクリプション設定からいつでも可能です（本アプリ内では解約できません）。解約後も支払い済みの期間の終了までご利用いただけます。14日間パスの料金は一度だけ請求され、更新はなく、解約するものもありません。14日間は購入時から連続して進み、アプリを使っていない間も止まりません。期間が終わるとアプリは無料版に戻ります。',
+  },
+  'premium_legal_note_ios': {
+    'th': 'แผนรายเดือนเป็นการสมัครสมาชิกแบบต่ออายุอัตโนมัติ ระบบจะเรียกเก็บเงินผ่านบัญชี Apple ID ของคุณเมื่อยืนยันการซื้อ และเก็บเงินรอบถัดไปโดยอัตโนมัติเมื่อครบกำหนด จนกว่าคุณจะยกเลิก · ยกเลิกได้ตลอดเวลาจากหน้าตั้งค่าการสมัครสมาชิกของ App Store ไม่ได้ยกเลิกในแอปนี้ · เมื่อยกเลิกแล้วยังใช้ต่อได้จนครบรอบที่จ่ายเงินไปแล้ว · บัตรผ่าน 14 วันเรียกเก็บเงินครั้งเดียว ไม่มีการต่ออายุและไม่มีอะไรให้ยกเลิก โดยนับ 14 วันต่อเนื่องจากเวลาที่ซื้อ ไม่หยุดนับระหว่างที่คุณไม่ได้ใช้แอป · เมื่อสิทธิ์หมดอายุ แอปจะกลับไปใช้เวอร์ชันฟรี',
+    'en': 'The monthly plan is an auto-renewing subscription. Payment is charged to your Apple ID account when you confirm the purchase, and the next period is charged automatically when the current one ends, until you cancel. You can cancel at any time in your App Store subscription settings — not in this app — and you keep access until the end of the period you have already paid for. The 14-day pass is charged once: it never renews, there is nothing to cancel, and its 14 days run continuously from the time of purchase — they do not pause while you are not using the app. When access ends, the app returns to the free version.',
+    'zh': '月度方案为自动续订订阅。确认购买时费用将从您的 Apple ID 账户扣除，当前周期结束时会自动扣取下一期费用，直到您取消为止。您可以随时在 App Store 的订阅设置中取消（不在本应用内取消），取消后仍可使用至已付费周期结束。14 天通行证只收费一次，不会续订，也没有需要取消的内容；14 天自购买时刻起连续计算，不会因为您未使用应用而暂停。权限到期后，应用将回到免费版本。',
+    'ko': '월간 요금제는 자동 갱신 구독입니다. 구매를 확인하면 Apple ID 계정으로 결제되며, 현재 기간이 끝나면 다음 기간 요금이 자동으로 청구됩니다. 언제든지 App Store의 구독 설정에서 해지할 수 있으며(이 앱에서는 해지할 수 없습니다), 해지 후에도 이미 결제한 기간이 끝날 때까지 이용할 수 있습니다. 14일 이용권은 한 번만 청구되며 갱신되지 않고 해지할 것도 없습니다. 14일은 구매 시점부터 연속으로 계산되며 앱을 사용하지 않는 동안에도 멈추지 않습니다. 이용 기간이 끝나면 앱은 무료 버전으로 돌아갑니다.',
+    'ru': 'Месячный тариф — подписка с автоматическим продлением. Оплата списывается с вашего аккаунта Apple ID при подтверждении покупки, и следующий период оплачивается автоматически по окончании текущего, пока вы не отмените подписку. Отменить можно в любой момент в настройках подписок App Store — не в этом приложении — доступ сохраняется до конца оплаченного периода. Пропуск на 14 дней оплачивается один раз: он не продлевается, отменять нечего, а его 14 дней идут подряд с момента покупки и не приостанавливаются, пока вы не пользуетесь приложением. Когда доступ заканчивается, приложение возвращается к бесплатной версии.',
+    'ja': '月額プランは自動更新のサブスクリプションです。購入を確定すると Apple ID のアカウントに請求され、現在の期間が終了すると、解約するまで次の期間の料金が自動的に請求されます。解約は App Store のサブスクリプション設定からいつでも可能です（本アプリ内では解約できません）。解約後も支払い済みの期間の終了までご利用いただけます。14日間パスの料金は一度だけ請求され、更新はなく、解約するものもありません。14日間は購入時から連続して進み、アプリを使っていない間も止まりません。期間が終わるとアプリは無料版に戻ります。',
   },
   'premium_status_free_title': {
     'th': 'อัปเกรดเป็น Premium',
@@ -1724,6 +1762,81 @@ const Map<String, Map<String, String>> _appText = {
   'map_type_hybrid': {
     'th': 'แบบผสม', 'en': 'Hybrid', 'zh': '混合', 'ko': '하이브리드', 'ru': 'Гибрид', 'ja': 'ハイブリッド',
   },
+  // AI-processing consent (App Review 5.1.1 / 5.1.2, 2026-09-16). Shown once
+  // before the first scan and the first SOS recording, and again after the
+  // user withdraws consent in Profile. See `lib/core/services/ai_consent.dart`.
+  'ai_consent_title': {
+    'th': 'ก่อนใช้ฟีเจอร์นี้',
+    'en': 'Before you use this feature',
+    'zh': '使用此功能前',
+    'ko': '이 기능을 사용하기 전에',
+    'ru': 'Перед использованием этой функции',
+    'ja': 'この機能を使う前に',
+  },
+  'ai_consent_body_scanner': {
+    'th': 'ภาพที่คุณถ่าย และตำแหน่งโดยประมาณของคุณ (ถ้าอนุญาต) จะถูกส่งไปยังบริการ AI ของ Google (Gemini) เพื่อระบุเมนูหรืออ่านป้ายราคา แล้วนำผลกลับมาแสดง',
+    'en': 'The photo you take, and your approximate location if you have allowed it, are sent to Google’s AI service (Gemini) to identify the dish or read the price sign. The result is shown to you.',
+    'zh': '您拍摄的照片以及您的大致位置（如已允许）将被发送到 Google 的 AI 服务（Gemini），用于识别菜品或读取价格标牌，然后向您显示结果。',
+    'ko': '촬영한 사진과 대략적인 위치(허용한 경우)가 Google의 AI 서비스(Gemini)로 전송되어 음식을 식별하거나 가격표를 읽은 뒤, 결과가 표시됩니다.',
+    'ru': 'Сделанное фото и ваше примерное местоположение (если вы его разрешили) отправляются в ИИ-сервис Google (Gemini), чтобы распознать блюдо или прочитать ценник. Результат показывается вам.',
+    'ja': '撮影した写真と、許可している場合はおおよその位置情報が、料理の識別や値札の読み取りのために Google の AI サービス（Gemini）へ送信され、結果が表示されます。',
+  },
+  'ai_consent_body_sos': {
+    'th': 'เสียงที่คุณบันทึกจะถูกส่งไปยัง Google Cloud Speech-to-Text เพื่อถอดเป็นข้อความ และข้อความนั้นจะถูกส่งไปยังบริการ AI ของ Google (Gemini) เพื่อแปลเป็นภาษาไทย แล้วนำผลกลับมาแสดงและอ่านออกเสียง',
+    'en': 'Your voice recording is sent to Google Cloud Speech-to-Text to turn it into text, and that text is sent to Google’s AI service (Gemini) to translate it into Thai. The result is shown and read aloud.',
+    'zh': '您的录音将被发送到 Google Cloud Speech-to-Text 转换为文字，该文字再发送到 Google 的 AI 服务（Gemini）翻译成泰语，然后向您显示并朗读结果。',
+    'ko': '녹음한 음성은 Google Cloud Speech-to-Text로 전송되어 텍스트로 변환되고, 그 텍스트는 Google의 AI 서비스(Gemini)로 전송되어 태국어로 번역됩니다. 결과가 표시되고 음성으로 읽어 줍니다.',
+    'ru': 'Ваша голосовая запись отправляется в Google Cloud Speech-to-Text для преобразования в текст, а этот текст — в ИИ-сервис Google (Gemini) для перевода на тайский. Результат показывается и озвучивается.',
+    'ja': '録音した音声は Google Cloud Speech-to-Text へ送信されて文字に変換され、その文字はタイ語に翻訳するために Google の AI サービス（Gemini）へ送信されます。結果が表示され、読み上げられます。',
+  },
+  'ai_consent_common': {
+    'th': 'ข้อมูลนี้ใช้เพื่อสร้างผลลัพธ์ให้คุณเท่านั้น เราไม่เก็บภาพ เสียง หรือข้อความของคุณไว้ในระบบ Google ประมวลผลข้อมูลตามข้อกำหนดของ Google · คุณเปลี่ยนใจได้ทุกเมื่อในหน้าโปรไฟล์ หากปิด ฟีเจอร์นี้จะใช้ไม่ได้ แต่ส่วนอื่นของแอปยังใช้ได้ตามปกติ',
+    'en': 'This data is used only to produce your result. We do not keep your photos, recordings or text; Google processes them under Google’s terms. You can change your mind at any time in Profile. If you turn it off, this feature stops working and the rest of the app works as usual.',
+    'zh': '这些数据仅用于生成您的结果。我们不会保存您的照片、录音或文字；Google 依据其条款处理这些数据。您可以随时在“个人资料”中更改选择。关闭后此功能将无法使用，应用的其他部分照常使用。',
+    'ko': '이 데이터는 결과를 만드는 데만 사용됩니다. 사진, 녹음, 텍스트를 저장하지 않으며 Google은 자사 약관에 따라 처리합니다. 프로필에서 언제든지 변경할 수 있습니다. 끄면 이 기능은 사용할 수 없지만 앱의 나머지 기능은 그대로 사용할 수 있습니다.',
+    'ru': 'Эти данные используются только для получения результата. Мы не храним ваши фото, записи и текст; Google обрабатывает их по своим условиям. Изменить решение можно в любой момент в профиле. Если выключить, эта функция перестанет работать, а остальное приложение будет работать как обычно.',
+    'ja': 'このデータはあなたへの結果を作るためだけに使われます。写真・録音・文字を当方が保存することはなく、Google は自社の規約に従って処理します。プロフィールでいつでも変更できます。オフにするとこの機能は使えなくなりますが、アプリの他の部分は通常どおり使えます。',
+  },
+  'ai_consent_agree': {
+    'th': 'ยอมรับและใช้งานต่อ',
+    'en': 'Agree and continue',
+    'zh': '同意并继续',
+    'ko': '동의하고 계속',
+    'ru': 'Согласиться и продолжить',
+    'ja': '同意して続ける',
+  },
+  'ai_consent_decline': {
+    'th': 'ไม่ใช่ตอนนี้',
+    'en': 'Not now',
+    'zh': '暂不',
+    'ko': '나중에',
+    'ru': 'Не сейчас',
+    'ja': '今はしない',
+  },
+  'ai_consent_privacy_link': {
+    'th': 'อ่านนโยบายความเป็นส่วนตัว',
+    'en': 'Read the privacy policy',
+    'zh': '阅读隐私政策',
+    'ko': '개인정보 처리방침 읽기',
+    'ru': 'Прочитать политику конфиденциальности',
+    'ja': 'プライバシーポリシーを読む',
+  },
+  'profile_ai_title': {
+    'th': 'การประมวลผลด้วย AI',
+    'en': 'AI processing',
+    'zh': 'AI 处理',
+    'ko': 'AI 처리',
+    'ru': 'Обработка с помощью ИИ',
+    'ja': 'AI による処理',
+  },
+  'profile_ai_subtitle': {
+    'th': 'ส่งภาพและเสียงไปยังบริการ AI ของ Google สำหรับสแกนราคาและ SOS · ปิดได้ทุกเมื่อ',
+    'en': 'Send photos and voice to Google’s AI services for the price scanner and SOS. Can be turned off at any time.',
+    'zh': '将照片和语音发送到 Google 的 AI 服务，用于价格扫描和 SOS。可随时关闭。',
+    'ko': '가격 스캐너와 SOS를 위해 사진과 음성을 Google의 AI 서비스로 전송합니다. 언제든지 끌 수 있습니다.',
+    'ru': 'Отправлять фото и голос в ИИ-сервисы Google для сканера цен и SOS. Можно выключить в любой момент.',
+    'ja': '価格スキャンと SOS のために写真と音声を Google の AI サービスへ送信します。いつでもオフにできます。',
+  },
 };
 
 /// Every string in every language, keyed the same way [appText] reads them.
@@ -1750,4 +1863,23 @@ String appTextIn(String langCode, String key) {
   final entry = _appText[key];
   if (entry == null) return key;
   return entry[langCode] ?? entry['en'] ?? key;
+}
+
+/// [appText], but with the store-specific wording on an iPhone.
+///
+/// Four paywall strings have to name the store and the account the purchase
+/// is tied to. Naming *both* stores on both platforms was rejected by App
+/// Review on 2026-09-16 (guideline 2.3.10: no references to other mobile
+/// platforms), so each of those keys has a `_ios` twin that names only the
+/// App Store and Apple ID. On every other platform the base key is used
+/// unchanged; a key with no twin falls through to [appText].
+///
+/// Keyed on [defaultTargetPlatform] rather than `dart:io` so a widget test can
+/// flip it with `debugDefaultTargetPlatformOverride`.
+String storeText(BuildContext context, String key) {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    final ios = _appText['${key}_ios'];
+    if (ios != null) return appText(context, '${key}_ios');
+  }
+  return appText(context, key);
 }

@@ -1993,6 +1993,51 @@ shipping one of them half-connected for months.
 
 ---
 
+### 10.4 App Review rejected 1.1.31 on 2026-09-16 — three findings, what changed
+
+Apple's first review of the app came back with three guideline citations. Each has a fix,
+a test that pins it, and a thing the next person must not "tidy" away.
+
+**2.3.10 Accurate Metadata — the paywall named Google Play and Android on an iPhone.**
+Four strings (`premium_price_note`, `premium_store_unavailable`, `premium_platform_note`,
+`premium_legal_note`) now have an `_ios` twin in all six languages that names only the App
+Store and Apple ID, and the paywall reads them through **`storeText`** (`app_text.dart`),
+which picks the twin when `defaultTargetPlatform` is iOS and falls through to `appText`
+otherwise. The base copy still names both stores and both platforms — Google does not
+object, and `premium_test.dart` requires it. `test/paywall_ios_copy_test.dart` scans every
+key: any base string that names Google Play or Android without an `_ios` twin fails, and
+every twin is checked for the banned words *and* for the renewal/cancel disclosures, so a
+rewrite cannot lose "auto-renewing" to lose "Google". 🚨 Any new paywall string that names
+a store goes through `storeText`, not `appText`.
+
+**2.1(a) App Completeness — the reviewer's purchase attempt showed an error.** No code
+defect was found: the flow (`PremiumProvider.purchase` → `queryProducts` → `buy` → purchase
+stream → `validatePurchase` with 21007 sandbox retry → grant) is unchanged. The likely cause
+is outside the app: the Paid Applications Agreement was not in effect (tax form pending),
+so StoreKit returned no products and the paywall showed `premium_product_unavailable` /
+`premium_store_unavailable`. What to check before resubmitting, in order: Agreements page
+shows Paid Apps **Active**; both products are attached to the version and not "Developer
+Action Needed"; the exact error text from the Resolution Center screenshot matches one of
+the paywall's snackbars. If it is `premium_store_unavailable` after products loaded, look at
+`_expiryFor` returning null (server said `valid: false`) — `functions/index.js` maps 21004
+(no shared secret) to *unavailable*, not invalid, so that path needs the secret set wrong
+rather than missing.
+
+**5.1.1 / 5.1.2 Privacy — user content goes to a third-party AI with no in-app consent.**
+Two features hand user content to Google: the scanner sends the photo (and approximate
+location) to Gemini; SOS sends the recording to Cloud Speech-to-Text and the transcript to
+Gemini. Both now call **`ensureAiConsent`** (`lib/core/widgets/ai_consent_sheet.dart`)
+*before* the camera opens or the recorder starts. The sheet names the recipient, the data
+and the purpose in the reader's language, links `/privacy`, and offers "Agree and
+continue" / "Not now". The answer lives in **`AiConsentStore`**
+(`lib/core/services/ai_consent.dart`, a `SharedPreferences` flag); the Profile tab shows it
+as the "AI processing" switch, and turning it off makes the next scan or SOS press ask
+again. "Not now" records nothing. `/privacy` §5.1 (web-admin repo) describes the same flow
+in Thai and English. Tests: `test/ai_consent_test.dart`. 🚨 A third feature that sends
+user content to any external model must gate on the same store, with its own
+`AiConsentPurpose` and body string — the OS camera/microphone prompt does not count as
+consent to *send* the capture anywhere.
+
 ## 11. UI Theme & Color Guide (MANDATORY — every screen, current and future)
 
 ThaiShield AI uses one consistent dark-green "ranger" theme for the top header and the

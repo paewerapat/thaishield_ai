@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../../../core/config/api_keys.dart';
 import '../../../core/localization/app_text.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/widgets/ai_consent_sheet.dart';
 import '../services/sos_response_parsing.dart';
 
 enum _SosState { idle, listening, processing, speaking, error }
@@ -120,6 +121,14 @@ class _SosScreenState extends State<SosScreen>
   }
 
   Future<void> _startListeningInner() async {
+    // The recording goes to Speech-to-Text and the transcript to Gemini, so
+    // the user agrees to that before the recorder starts (App Review 5.1.1).
+    // A hold that opens the sheet ends with the release landing on
+    // `_stopAndProcess` while the state is still idle, which returns at once;
+    // the user simply holds again after agreeing.
+    if (!await ensureAiConsent(context, AiConsentPurpose.sos)) return;
+    if (!mounted) return;
+
     final langCode = context.read<LocaleProvider>().locale.languageCode;
     final granted = await _ensureMicPermission();
     if (!granted) {
