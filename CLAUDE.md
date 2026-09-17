@@ -2015,18 +2015,21 @@ every twin is checked for the banned words *and* for the renewal/cancel disclosu
 rewrite cannot lose "auto-renewing" to lose "Google". 🚨 Any new paywall string that names
 a store goes through `storeText`, not `appText`.
 
-**2.1(a) App Completeness — the reviewer's purchase attempt showed an error.** No code
-defect was found: the flow (`PremiumProvider.purchase` → `queryProducts` → `buy` → purchase
-stream → `validatePurchase` with 21007 sandbox retry → grant) is unchanged. The likely cause
-is outside the app: the Paid Applications Agreement was not in effect (tax form pending),
-so StoreKit returned no products and the paywall showed `premium_product_unavailable` /
-`premium_store_unavailable`. What to check before resubmitting, in order: Agreements page
-shows Paid Apps **Active**; both products are attached to the version and not "Developer
-Action Needed"; the exact error text from the Resolution Center screenshot matches one of
-the paywall's snackbars. If it is `premium_store_unavailable` after products loaded, look at
-`_expiryFor` returning null (server said `valid: false`) — `functions/index.js` maps 21004
-(no shared secret) to *unavailable*, not invalid, so that path needs the secret set wrong
-rather than missing.
+**2.1(a) App Completeness — the reviewer's purchase attempt showed an error.** ✅ Root cause
+found on 2026-09-17 from Apple's own screenshots (iPad Air M3, iPadOS 27, 07:49–07:51 on
+15/09): the reviewer tapped "ซื้อบัตรผ่าน" and the app showed **`premium_product_unavailable`**
+("แพ็กเกจนี้ยังไม่เปิดจำหน่ายในร้านค้าของประเทศคุณ"), i.e. `queryProducts` returned nothing.
+Not a code defect and not the agreement (Paid Apps was Active): on 2026-09-13 the app **and
+both products were set to sell in Thailand only**, and App Review's sandbox account is not on
+the Thai storefront, so StoreKit had no product to return. The message the app showed was the
+correct one for that state. Fix is in App Store Connect, not code: Pricing and Availability →
+add territories (all, or at least the six-language markets plus the United States) and the
+same on both in-app purchases. 🚨 Thailand-only was also wrong for the product itself — the
+audience is tourists whose Apple IDs live in their home storefronts, so Thailand-only meant
+none of them could download the app at all. Play has the same setting and the same problem;
+change it only after the round-3 verdict. If this ever recurs after territories are open,
+then look at `_expiryFor` returning null (server said `valid: false`) — `functions/index.js`
+maps 21004 (no shared secret) to *unavailable*, not invalid.
 
 **5.1.1 / 5.1.2 Privacy — user content goes to a third-party AI with no in-app consent.**
 Two features hand user content to Google: the scanner sends the photo (and approximate
