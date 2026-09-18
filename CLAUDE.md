@@ -1281,6 +1281,24 @@ country list to set.
 2026-09-18 — `thaishield_premium_14days` had zero countries switched off and
 `thaishield_premium_monthly`'s manage-availability dialog was fully checked. Nothing to open.
 
+🚨 **The screenshots still contradict the text that was just fixed — three of them, checked
+file by file on 2026-09-18.** The set uploaded on 2026-09-08 came from
+`store-assets/phone|tablet7|tablet10/` and was shot from an older build:
+
+- **`07-premium.png`** shows the cards **Weekly $3.50 / Monthly $10**, "renews every 7/30
+  days", "**Both plans are auto-renewing subscriptions**" and a "Subscribe" button. That is
+  the plan set cancelled on 2026-09-07. **An image that misstates the billing model is the
+  same policy problem as a paragraph that does** — see the premium-paragraph warning above,
+  which was fixed in text on 2026-09-08 while this picture kept saying the opposite.
+- **`02-home.png`** is captioned "Alerts and travel news" and shows the **Top News** block,
+  which left the app in 1.1.29.
+- **`03-map.png`** shows the place-type chip row (All / Restaurant / Hotel / Transport /
+  Attraction) that was removed from the map.
+
+Re-shoot all three from 1.1.34 for **all three form factors**, and upload one file at a
+time — the console orders screenshots by upload-completion, so they have to be dragged back
+into the 01…07 order afterwards.
+
 **Definition of done (2C):**
 - Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on
   iOS via cloud CI.
