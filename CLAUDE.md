@@ -1255,13 +1255,31 @@ wrong; appeals also take up to 7 days, where a corrected re-submission goes into
 review queue. The submitted artefact is still **1.1.25 (25)**, so the testers' build is
 unchanged by this.
 
-⚠️ **`listing-text.md` still sells "ข่าวและประกาศสำหรับนักท่องเที่ยว / Travel news and notices"
-as a free feature, in all six languages, and so does the copy now in the console.** That is
-correct *for 1.1.25*, which still carries Top News. The moment a build without the news
-block is uploaded, the bullet has to come out of all six locales in the same round — a
-listing that advertises a feature the binary does not have is the same class of policy
-problem as the billing paragraph above. Do not edit the listing before then: the copy is
-under review right now, and editing it pulls it back into pending changes.
+✅ **The news bullet is gone — done 2026-09-18, in the same round as 1.1.34.** Top News left
+the app in 1.1.29, so "ข่าวและประกาศสำหรับนักท่องเที่ยว / Travel news and notices" had to
+leave the listing before a build without it shipped; a listing that advertises a feature the
+binary does not have is the same class of policy problem as the billing paragraph above.
+`listing-text.md` dropped it in all six locales, and on 2026-09-18 all six ข้อมูลสินค้าใน Store
+full descriptions in Play Console were edited to match — verified per locale by SHA-256, not
+by eye, since the console copy was otherwise already identical to the file. **`listing-text.md`
+is the source of truth: whenever a locale's console text is touched, diff it against this file
+rather than re-typing it.**
+
+**Also set in Play Console on 2026-09-18, submitted as one 10-change review** (Play has no
+partial submit — the staged **1.1.34 full rollout to Alpha** went in with them):
+- Alpha closed track Countries/regions **1 → 177** (all).
+- Alpha feedback channel = `dev@thaishieldapp.com`.
+
+🚨 **Two things Play will not let you do, so stop hunting for them.** A **closed testing track
+cannot be deleted** — the empty second one ("การทดสอบแบบปิด - การทดสอบแบบปิด",
+id `4698853098436586588`) has no delete control on the track page, the track list or any tab;
+it can only be left unused. And the **open testing track is locked** behind production access
+("การทดสอบแบบเปิดจะพร้อมใช้งานเมื่อคุณมีสิทธิ์เข้าถึงเวอร์ชันที่ใช้งานจริง"), so it has no
+country list to set.
+
+**Both Monetize products were already sold in every country Play offers (174)** as of
+2026-09-18 — `thaishield_premium_14days` had zero countries switched off and
+`thaishield_premium_monthly`'s manage-availability dialog was fully checked. Nothing to open.
 
 **Definition of done (2C):**
 - Purchase, restore and gate-unlock verified on an Android physical device (sandbox) and on
